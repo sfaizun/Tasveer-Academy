@@ -26,18 +26,31 @@ export async function createAnnouncement(_prev: State, formData: FormData): Prom
   const body = String(formData.get("body") ?? "").trim();
   const urgency = String(formData.get("urgency") ?? "normal");
   const targetType = String(formData.get("target_type") ?? "academy");
-  const class_group_id = String(formData.get("class_group_id") ?? "").trim() || null;
+  const subject_id = String(formData.get("subject_id") ?? "").trim() || null;
+  const teacher_id = String(formData.get("teacher_id") ?? "").trim() || null;
+  const batch = String(formData.get("batch") ?? "").trim() || "A";
   const class_level_id = String(formData.get("class_level_id") ?? "").trim() || null;
   const expiresLocal = String(formData.get("expires_at") ?? "").trim();
 
   if (!title) return { error: "Enter a title." };
   if (!body) return { error: "Enter the announcement text." };
-  if (targetType === "class_group" && !class_group_id) return { error: "Choose a class." };
+  if (targetType === "class_group" && (!subject_id || !teacher_id)) return { error: "Choose a subject and teacher." };
   if (targetType === "class_level" && !class_level_id) return { error: "Choose a junior class." };
 
   const supabase = await createClient();
   const authorId = await myAppUserId(supabase);
   if (!authorId) return { error: "Could not identify your account." };
+
+  let class_group_id: string | null = null;
+  if (targetType === "class_group") {
+    const { data, error } = await supabase.rpc("fn_ensure_class_group", {
+      p_subject_id: subject_id,
+      p_teacher_id: teacher_id,
+      p_batch: batch,
+    });
+    if (error) return { error: "Could not resolve the class — " + error.message };
+    class_group_id = data as string;
+  }
 
   const scope = targetType === "academy" ? "academy" : "class";
 
@@ -92,13 +105,14 @@ export async function unpublishAnnouncement(formData: FormData) {
 export async function submitAnnouncementRequest(_prev: State, formData: FormData): Promise<State> {
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
-  const class_group_id = String(formData.get("class_group_id") ?? "").trim();
+  const subject_id = String(formData.get("subject_id") ?? "").trim();
+  const batch = String(formData.get("batch") ?? "").trim() || "A";
   const publishLocal = String(formData.get("publish_at") ?? "").trim();
   const expiresLocal = String(formData.get("expires_at") ?? "").trim();
 
   if (!title) return { error: "Enter a title." };
   if (!body) return { error: "Enter the announcement text." };
-  if (!class_group_id) return { error: "Choose which of your classes this is for." };
+  if (!subject_id) return { error: "Choose which of your subjects this is for." };
   if (!publishLocal) return { error: "Choose when this should start showing." };
   if (!expiresLocal) return { error: "Choose how long it should stay visible." };
 
@@ -111,6 +125,16 @@ export async function submitAnnouncementRequest(_prev: State, formData: FormData
   const supabase = await createClient();
   const authorId = await myAppUserId(supabase);
   if (!authorId) return { error: "Could not identify your account." };
+
+  const { data: teacherRow } = await supabase.from("teacher").select("id").eq("app_user_id", authorId).maybeSingle();
+  if (!teacherRow) return { error: "Your account isn't linked to a teacher record." };
+
+  const { data: class_group_id, error: cgErr } = await supabase.rpc("fn_ensure_class_group", {
+    p_subject_id: subject_id,
+    p_teacher_id: teacherRow.id,
+    p_batch: batch,
+  });
+  if (cgErr) return { error: "Could not resolve the class — " + cgErr.message };
 
   const { data: ann, error } = await supabase
     .from("announcement")

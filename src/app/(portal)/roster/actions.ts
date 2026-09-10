@@ -13,7 +13,8 @@ function parseCapacity(raw: string) {
 
 export async function addClassSlot(_prev: State, formData: FormData): Promise<State> {
   const targetType = String(formData.get("target_type") ?? "");
-  const class_group_id = String(formData.get("class_group_id") ?? "").trim() || null;
+  const subject_id = String(formData.get("subject_id") ?? "").trim() || null;
+  const batch = String(formData.get("batch") ?? "").trim() || "A";
   const class_level_id = String(formData.get("class_level_id") ?? "").trim() || null;
   const teacher_id = String(formData.get("teacher_id") ?? "").trim() || null;
   const weekday = Number(formData.get("weekday"));
@@ -22,7 +23,7 @@ export async function addClassSlot(_prev: State, formData: FormData): Promise<St
   const room = String(formData.get("room") ?? "").trim() || null;
   const capacity = parseCapacity(String(formData.get("capacity") ?? ""));
 
-  if (targetType === "class_group" && !class_group_id) return { error: "Choose a class." };
+  if (targetType === "class_group" && (!subject_id || !teacher_id)) return { error: "Choose a subject and teacher." };
   if (targetType === "class_level" && !class_level_id) return { error: "Choose a junior class." };
   if (targetType !== "class_group" && targetType !== "class_level") return { error: "Choose what this slot is for." };
   if (Number.isNaN(weekday) || weekday < 0 || weekday > 6) return { error: "Choose a day of the week." };
@@ -30,8 +31,20 @@ export async function addClassSlot(_prev: State, formData: FormData): Promise<St
   if (end_time <= start_time) return { error: "End time must be after the start time." };
 
   const supabase = await createClient();
+
+  let class_group_id: string | null = null;
+  if (targetType === "class_group") {
+    const { data, error } = await supabase.rpc("fn_ensure_class_group", {
+      p_subject_id: subject_id,
+      p_teacher_id: teacher_id,
+      p_batch: batch,
+    });
+    if (error) return { error: "Could not resolve the class — " + error.message };
+    class_group_id = data as string;
+  }
+
   const { error } = await supabase.from("class_slot").insert({
-    class_group_id: targetType === "class_group" ? class_group_id : null,
+    class_group_id,
     class_level_id: targetType === "class_level" ? class_level_id : null,
     teacher_id: targetType === "class_level" ? teacher_id : null,
     weekday,

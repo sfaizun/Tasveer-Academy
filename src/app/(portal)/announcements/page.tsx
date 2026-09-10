@@ -26,11 +26,13 @@ export default async function AnnouncementsPage() {
   const isTeacher = me?.role === "teacher";
 
   if (isAdmin) {
-    const [{ data: pending }, { data: recent }, { data: classGroups }, { data: classLevels }] = await Promise.all([
+    const [{ data: pending }, { data: recent }, { data: subjects }, { data: classLevels }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
       supabase.from("announcement").select(ANN_SELECT).eq("status", "pending_review").order("created_at"),
       supabase.from("announcement").select(ANN_SELECT).neq("status", "pending_review").order("created_at", { ascending: false }).limit(40),
-      supabase.from("class_group").select("id, batch_name, active, subject(name, level, programme(name))").eq("active", true),
+      supabase.from("subject").select("id, name, level, programme:programme_id(code, name)").eq("active", true).order("name"),
       supabase.from("class_level").select("id, name, programme(code, name)").order("sort_order"),
+      supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
+      supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
     ]);
 
     return (
@@ -45,8 +47,10 @@ export default async function AnnouncementsPage() {
           <AdminAnnouncements
             pending={(pending ?? []) as any[]}
             recent={(recent ?? []) as any[]}
-            classGroups={(classGroups ?? []) as any[]}
+            subjects={(subjects ?? []) as any[]}
             classLevels={(classLevels ?? []) as any[]}
+            teachers={(teachers ?? []) as any[]}
+            teacherSubjects={(teacherSubjects ?? []) as any[]}
           />
         </div>
       </>
@@ -60,11 +64,19 @@ export default async function AnnouncementsPage() {
       .eq("app_user_id", me!.id)
       .maybeSingle();
 
-    const [{ data: myGroups }, { data: myRequests }, { data: published }] = await Promise.all([
-      teacher ? supabase.from("class_group").select("id, batch_name, active, subject(name, level)").eq("teacher_id", teacher.id).eq("active", true) : Promise.resolve({ data: [] }),
+    const [{ data: mySubjects }, { data: myRequests }, { data: published }] = await Promise.all([
+      teacher
+        ? supabase
+            .from("teacher_subject")
+            .select("subject_id, subject:subject_id(id, name, level, programme:programme_id(code, name))")
+            .eq("teacher_id", teacher.id)
+            .eq("active", true)
+        : Promise.resolve({ data: [] }),
       supabase.from("announcement").select(ANN_SELECT).eq("author_id", me!.id).order("created_at", { ascending: false }),
       supabase.from("announcement").select(ANN_SELECT).eq("status", "published").order("published_at", { ascending: false }),
     ]);
+
+    const mySubjectRows = ((mySubjects ?? []) as any[]).map((ts) => ts.subject).filter(Boolean);
 
     return (
       <>
@@ -76,7 +88,7 @@ export default async function AnnouncementsPage() {
         </header>
         <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <TeacherAnnouncements
-            classGroups={(myGroups ?? []) as any[]}
+            subjects={mySubjectRows}
             myRequests={(myRequests ?? []) as any[]}
             published={(published ?? []) as any[]}
             hasTeacherRecord={!!teacher}

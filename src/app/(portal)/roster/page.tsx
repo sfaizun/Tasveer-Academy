@@ -47,11 +47,13 @@ export default async function RosterPage() {
     isAdmin
       ? Promise.all([
           supabase
-            .from("class_group")
-            .select("id, batch_name, active, subject(name, level, programme(name)), teacher(full_name)")
-            .eq("active", true),
+            .from("subject")
+            .select("id, name, level, programme:programme_id(code, name)")
+            .eq("active", true)
+            .order("name"),
           supabase.from("class_level").select("id, name, programme(code, name)").order("sort_order"),
           supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
+          supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
         ])
       : Promise.resolve(null),
   ]);
@@ -82,9 +84,10 @@ export default async function RosterPage() {
               isJunior: !!r.class_level_id,
               label: slotLabel(r).title,
             }))}
-            classGroups={(adminData[0].data ?? []) as any[]}
+            subjects={(adminData[0].data ?? []) as any[]}
             classLevels={(adminData[1].data ?? []) as any[]}
             teachers={(adminData[2].data ?? []) as any[]}
+            teacherSubjects={(adminData[3].data ?? []) as any[]}
           />
         )}
 

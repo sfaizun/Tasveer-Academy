@@ -3,6 +3,7 @@ import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "
 import Req from "@/components/Req";
 import { addClassSlot, deleteClassSlot, updateClassSlot } from "./actions";
 import { WEEKDAYS, fmtTime } from "./shared";
+import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 
 const inputStyle: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "9px 11px",
@@ -10,12 +11,8 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit", width: "100%",
 };
 
-type ClassGroup = {
-  id: string;
-  batch_name: string;
-  subject?: { name: string; level: string | null; programme?: { name: string } | null } | null;
-  teacher?: { full_name: string } | null;
-};
+type Subject = SubjectForGrouping;
+type TeacherSubject = { teacher_id: string; subject_id: string };
 type ClassLevel = { id: string; name: string; programme?: { code: string; name: string } | null };
 type Teacher = { id: string; full_name: string };
 type Slot = {
@@ -30,22 +27,39 @@ type Slot = {
   label: string;
 };
 
-function groupLabel(g: ClassGroup) {
-  const level = g.subject?.level ? ` (${g.subject.level.toUpperCase()})` : "";
-  return `${g.subject?.programme?.name ?? ""} — ${g.subject?.name ?? ""}${level} · ${g.teacher?.full_name ?? "no teacher"} (Batch ${g.batch_name})`;
-}
 function levelLabel(l: ClassLevel) {
   return `${l.programme?.name ?? ""} — ${l.name}`;
 }
 
-function AddSlotForm({ classGroups, classLevels, teachers }: { classGroups: ClassGroup[]; classLevels: ClassLevel[]; teachers: Teacher[] }) {
+function AddSlotForm({
+  subjects,
+  teachers,
+  teacherSubjects,
+  classLevels,
+}: {
+  subjects: Subject[];
+  teachers: Teacher[];
+  teacherSubjects: TeacherSubject[];
+  classLevels: ClassLevel[];
+}) {
   const [state, action, pending] = useActionState(addClassSlot, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [targetType, setTargetType] = useState<"class_group" | "class_level">("class_group");
+  const [subjectId, setSubjectId] = useState("");
 
   useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
+    if (state?.ok) {
+      formRef.current?.reset();
+      setSubjectId("");
+    }
   }, [state]);
+
+  const subjectGroups = useMemo(() => groupSubjects(subjects), [subjects]);
+  const eligibleTeachers = useMemo(() => {
+    if (!subjectId) return [];
+    const ids = new Set(teacherSubjects.filter((ts) => ts.subject_id === subjectId).map((ts) => ts.teacher_id));
+    return teachers.filter((t) => ids.has(t.id));
+  }, [subjectId, teacherSubjects, teachers]);
 
   return (
     <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -64,15 +78,42 @@ function AddSlotForm({ classGroups, classLevels, teachers }: { classGroups: Clas
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
         {targetType === "class_group" ? (
-          <div className="field" style={{ gridColumn: "span 2" }}>
-            <label className="lbl">Class<Req /></label>
-            <select style={inputStyle} name="class_group_id" required defaultValue="">
-              <option value="" disabled>Choose…</option>
-              {classGroups.map((g) => (
-                <option key={g.id} value={g.id}>{groupLabel(g)}</option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div className="field">
+              <label className="lbl">Subject<Req /></label>
+              <select
+                style={inputStyle}
+                name="subject_id"
+                required
+                value={subjectId}
+                onChange={(e) => setSubjectId(e.target.value)}
+              >
+                <option value="" disabled>Choose…</option>
+                {subjectGroups.map((g) => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.subjects.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label className="lbl">Teacher<Req /></label>
+              <select key={subjectId} style={inputStyle} name="teacher_id" required defaultValue="" disabled={!subjectId}>
+                <option value="" disabled>
+                  {subjectId ? (eligibleTeachers.length ? "Choose…" : "No teacher mapped to this subject") : "Choose a subject first"}
+                </option>
+                {eligibleTeachers.map((t) => (
+                  <option key={t.id} value={t.id}>{t.full_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label className="lbl">Batch</label>
+              <input style={inputStyle} type="text" name="batch" placeholder="A" defaultValue="A" />
+            </div>
+          </>
         ) : (
           <>
             <div className="field">
@@ -190,14 +231,16 @@ function EditSlotForm({ slot, teachers }: { slot: Slot; teachers: Teacher[] }) {
 
 export default function RosterAdmin({
   slots,
-  classGroups,
+  subjects,
   classLevels,
   teachers,
+  teacherSubjects,
 }: {
   slots: Slot[];
-  classGroups: ClassGroup[];
+  subjects: Subject[];
   classLevels: ClassLevel[];
   teachers: Teacher[];
+  teacherSubjects: TeacherSubject[];
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const sorted = useMemo(() => [...slots].sort((a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time)), [slots]);
@@ -210,7 +253,7 @@ export default function RosterAdmin({
           <div className="sub">Only admin can add, edit or remove a slot.</div>
         </div>
         <div style={{ padding: 16 }}>
-          <AddSlotForm classGroups={classGroups} classLevels={classLevels} teachers={teachers} />
+          <AddSlotForm subjects={subjects} teachers={teachers} teacherSubjects={teacherSubjects} classLevels={classLevels} />
         </div>
       </div>
 

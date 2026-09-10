@@ -4,6 +4,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { taka } from "@/lib/format";
 import PaymentForm from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
+import StatusForm from "./StatusForm";
 
 export const dynamic = "force-dynamic";
 
@@ -111,6 +112,12 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
             <div><div className="lbl">School</div><div>{s.school_name ?? "—"}</div></div>
             <div><div className="lbl">Admitted on</div><div className="mono">{s.admitted_on ?? "—"}</div></div>
           </div>
+          {isAdmin && (
+            <div style={{ padding: "0 18px 18px" }}>
+              <div className="lbl" style={{ marginBottom: 8 }}>Change status</div>
+              <StatusForm studentId={id} status={s.status} />
+            </div>
+          )}
         </div>
 
         {(guardians ?? []).length > 0 && (

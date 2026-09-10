@@ -1,8 +1,9 @@
 "use client";
-import { Fragment, useActionState, useEffect, useRef, useState } from "react";
+import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Req from "@/components/Req";
 import { createAnnouncement, decideAnnouncementRequest, unpublishAnnouncement } from "./actions";
 import { fmtDhaka, targetLabel } from "./shared";
+import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 
 const inputStyle: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "9px 11px",
@@ -10,13 +11,11 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit", width: "100%",
 };
 
-type ClassGroup = { id: string; batch_name: string; subject?: { name: string; level: string | null } | null };
+type Subject = SubjectForGrouping;
+type TeacherSubject = { teacher_id: string; subject_id: string };
+type Teacher = { id: string; full_name: string };
 type ClassLevel = { id: string; name: string; programme?: { code: string; name: string } | null };
 
-function groupLabel(g: ClassGroup) {
-  const level = g.subject?.level ? ` (${g.subject.level.toUpperCase()})` : "";
-  return `${g.subject?.name ?? ""}${level} — Batch ${g.batch_name}`;
-}
 function levelLabel(l: ClassLevel) {
   return `${l.programme?.name ?? ""} — ${l.name}`;
 }
@@ -29,17 +28,36 @@ function StatusChip({ status }: { status: string }) {
   return <span className="st due"><span className="dot" />{status}</span>;
 }
 
-function CreateForm({ classGroups, classLevels }: { classGroups: ClassGroup[]; classLevels: ClassLevel[] }) {
+function CreateForm({
+  subjects,
+  classLevels,
+  teachers,
+  teacherSubjects,
+}: {
+  subjects: Subject[];
+  classLevels: ClassLevel[];
+  teachers: Teacher[];
+  teacherSubjects: TeacherSubject[];
+}) {
   const [state, action, pending] = useActionState(createAnnouncement, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [targetType, setTargetType] = useState<"academy" | "class_group" | "class_level">("academy");
+  const [subjectId, setSubjectId] = useState("");
 
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
       setTargetType("academy");
+      setSubjectId("");
     }
   }, [state]);
+
+  const subjectGroups = useMemo(() => groupSubjects(subjects), [subjects]);
+  const eligibleTeachers = useMemo(() => {
+    if (!subjectId) return [];
+    const ids = new Set(teacherSubjects.filter((ts) => ts.subject_id === subjectId).map((ts) => ts.teacher_id));
+    return teachers.filter((t) => ids.has(t.id));
+  }, [subjectId, teacherSubjects, teachers]);
 
   return (
     <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -61,15 +79,42 @@ function CreateForm({ classGroups, classLevels }: { classGroups: ClassGroup[]; c
           </select>
         </div>
         {targetType === "class_group" && (
-          <div className="field">
-            <label className="lbl">Class<Req /></label>
-            <select style={inputStyle} name="class_group_id" required defaultValue="">
-              <option value="" disabled>Choose…</option>
-              {classGroups.map((g) => (
-                <option key={g.id} value={g.id}>{groupLabel(g)}</option>
-              ))}
-            </select>
-          </div>
+          <>
+            <div className="field">
+              <label className="lbl">Subject<Req /></label>
+              <select
+                style={inputStyle}
+                name="subject_id"
+                required
+                value={subjectId}
+                onChange={(e) => setSubjectId(e.target.value)}
+              >
+                <option value="" disabled>Choose…</option>
+                {subjectGroups.map((g) => (
+                  <optgroup key={g.label} label={g.label}>
+                    {g.subjects.map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                  </optgroup>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label className="lbl">Teacher<Req /></label>
+              <select key={subjectId} style={inputStyle} name="teacher_id" required defaultValue="" disabled={!subjectId}>
+                <option value="" disabled>
+                  {subjectId ? (eligibleTeachers.length ? "Choose…" : "No teacher mapped to this subject") : "Choose a subject first"}
+                </option>
+                {eligibleTeachers.map((t) => (
+                  <option key={t.id} value={t.id}>{t.full_name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field">
+              <label className="lbl">Batch</label>
+              <input style={inputStyle} type="text" name="batch" placeholder="A" defaultValue="A" />
+            </div>
+          </>
         )}
         {targetType === "class_level" && (
           <div className="field">
@@ -125,13 +170,17 @@ function DecideForm({ id }: { id: string }) {
 export default function AdminAnnouncements({
   pending,
   recent,
-  classGroups,
+  subjects,
   classLevels,
+  teachers,
+  teacherSubjects,
 }: {
   pending: any[];
   recent: any[];
-  classGroups: ClassGroup[];
+  subjects: Subject[];
   classLevels: ClassLevel[];
+  teachers: Teacher[];
+  teacherSubjects: TeacherSubject[];
 }) {
   const [open, setOpen] = useState<string | null>(null);
 
@@ -143,7 +192,7 @@ export default function AdminAnnouncements({
           <div className="sub">Goes live immediately</div>
         </div>
         <div style={{ padding: 16 }}>
-          <CreateForm classGroups={classGroups} classLevels={classLevels} />
+          <CreateForm subjects={subjects} classLevels={classLevels} teachers={teachers} teacherSubjects={teacherSubjects} />
         </div>
       </div>
 

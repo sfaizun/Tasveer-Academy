@@ -1,9 +1,10 @@
 "use client";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useMemo, useRef } from "react";
 import Req from "@/components/Req";
 import { submitAnnouncementRequest, withdrawAnnouncementRequest } from "./actions";
 import { fmtDhaka, targetLabel } from "./shared";
 import MyAnnouncements from "./MyAnnouncements";
+import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 
 const inputStyle: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "9px 11px",
@@ -11,12 +12,7 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit", width: "100%",
 };
 
-type ClassGroup = { id: string; batch_name: string; subject?: { name: string; level: string | null } | null };
-
-function groupLabel(g: ClassGroup) {
-  const level = g.subject?.level ? ` (${g.subject.level.toUpperCase()})` : "";
-  return `${g.subject?.name ?? ""}${level} — Batch ${g.batch_name}`;
-}
+type Subject = SubjectForGrouping;
 
 function StatusChip({ status }: { status: string }) {
   if (status === "published") return <span className="st paid"><span className="dot" />Approved &amp; live</span>;
@@ -25,9 +21,10 @@ function StatusChip({ status }: { status: string }) {
   return <span className="st due"><span className="dot" />Awaiting admin</span>;
 }
 
-function RequestForm({ classGroups }: { classGroups: ClassGroup[] }) {
+function RequestForm({ subjects }: { subjects: Subject[] }) {
   const [state, action, pending] = useActionState(submitAnnouncementRequest, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const subjectGroups = useMemo(() => groupSubjects(subjects), [subjects]);
 
   useEffect(() => {
     if (state?.ok) formRef.current?.reset();
@@ -35,14 +32,24 @@ function RequestForm({ classGroups }: { classGroups: ClassGroup[] }) {
 
   return (
     <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div className="field">
-        <label className="lbl">Class<Req /></label>
-        <select style={inputStyle} name="class_group_id" required defaultValue="">
-          <option value="" disabled>Choose…</option>
-          {classGroups.map((g) => (
-            <option key={g.id} value={g.id}>{groupLabel(g)}</option>
-          ))}
-        </select>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
+        <div className="field">
+          <label className="lbl">Subject<Req /></label>
+          <select style={inputStyle} name="subject_id" required defaultValue="">
+            <option value="" disabled>Choose…</option>
+            {subjectGroups.map((g) => (
+              <optgroup key={g.label} label={g.label}>
+                {g.subjects.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </div>
+        <div className="field">
+          <label className="lbl">Batch</label>
+          <input style={inputStyle} type="text" name="batch" placeholder="A" defaultValue="A" />
+        </div>
       </div>
       <div className="field">
         <label className="lbl">Title<Req /></label>
@@ -78,12 +85,12 @@ function RequestForm({ classGroups }: { classGroups: ClassGroup[] }) {
 }
 
 export default function TeacherAnnouncements({
-  classGroups,
+  subjects,
   myRequests,
   published,
   hasTeacherRecord,
 }: {
-  classGroups: ClassGroup[];
+  subjects: Subject[];
   myRequests: any[];
   published: any[];
   hasTeacherRecord: boolean;
@@ -103,7 +110,7 @@ export default function TeacherAnnouncements({
           <div className="ptitle">Request an announcement</div>
         </div>
         <div style={{ padding: 16 }}>
-          <RequestForm classGroups={classGroups} />
+          <RequestForm subjects={subjects} />
         </div>
       </div>
 

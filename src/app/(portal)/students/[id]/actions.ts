@@ -62,6 +62,24 @@ export async function editPayment(_prev: State, formData: FormData): Promise<Sta
   return { ok: true };
 }
 
+const STUDENT_STATUSES = ["applicant", "active", "on_hold", "dropped", "alumni"] as const;
+
+export async function setStudentStatus(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const status = String(formData.get("status") ?? "");
+
+  if (!studentId) return { error: "Missing student." };
+  if (!(STUDENT_STATUSES as readonly string[]).includes(status)) return { error: "Choose a valid status." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("student").update({ status }).eq("id", studentId);
+  if (error) return { error: "Could not update the status — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  return { ok: true };
+}
+
 export async function voidPayment(_prev: State, formData: FormData): Promise<State> {
   const paymentId = String(formData.get("payment_id") ?? "");
   const studentId = String(formData.get("student_id") ?? "");

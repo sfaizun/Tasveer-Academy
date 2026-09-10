@@ -55,14 +55,16 @@ export default async function Settings() {
 
   const options: { value: string; label: string }[] = [];
   if (oLevel) {
-    options.push({ value: `admission|${oLevel.id}||`, label: "Admission fee (one time)" });
+    options.push({ value: `admission|${oLevel.id}||`, label: "Admission fee — O Level (one time)" });
     options.push({ value: `tuition|${oLevel.id}||`, label: "O Level — per subject/month" });
   }
   if (aLevel) {
+    options.push({ value: `admission|${aLevel.id}||`, label: "Admission fee — A Level (one time)" });
     options.push({ value: `tuition|${aLevel.id}|as|`, label: "A Level AS — per subject/month" });
     options.push({ value: `tuition|${aLevel.id}|a2|`, label: "A Level A2 — per subject/month" });
   }
   if (junior_) {
+    options.push({ value: `admission|${junior_.id}||`, label: "Admission fee — Junior (one time)" });
     for (const c of classLevels ?? []) {
       options.push({ value: `tuition|${junior_.id}||${c.id}`, label: `Junior — ${c.name} (monthly)` });
     }
@@ -90,7 +92,7 @@ export default async function Settings() {
               <tbody>
                 {admission.map((r) => (
                   <tr key={r.id}>
-                    <td><b>Admission fee</b></td>
+                    <td><b>Admission fee — {r.programme?.name ?? "—"}</b></td>
                     <td>Per student, one time</td>
                     <td className="n mono"><b>{taka(r.amount)}</b></td>
                     <td className="mono sub">{r.effective_from}</td>
@@ -161,7 +163,7 @@ export default async function Settings() {
                   <tr key={r.id}>
                     <td>
                       {r.kind === "admission"
-                        ? "Admission fee"
+                        ? `Admission fee — ${r.programme?.name ?? "—"}`
                         : r.class_level
                         ? `Junior — ${r.class_level.name}`
                         : `${r.programme?.name}${r.level ? ` (${r.level.toUpperCase()})` : ""}`}
