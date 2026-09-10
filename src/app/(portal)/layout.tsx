@@ -47,7 +47,8 @@ export default async function PortalLayout({ children }: { children: React.React
         )}
 
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "0 8px 10px" }}>
+          <NavLink href="/account">Change password</NavLink>
+          <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 8px" }}>
             <div
               style={{
                 width: 28, height: 28, borderRadius: "50%", flex: "0 0 28px",

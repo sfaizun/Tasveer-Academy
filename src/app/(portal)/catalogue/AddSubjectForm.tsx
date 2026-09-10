@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useRef, useEffect, useState } from "react";
 import { addSubject } from "./actions";
+import Req from "@/components/Req";
 
 const selStyle: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "10px 12px",
@@ -30,12 +31,12 @@ export default function AddSubjectForm({
     <form ref={formRef} action={action} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
       <input type="hidden" name="programme_id" value={programmeId} />
       <div className="field" style={{ minWidth: 180, flex: "1 1 180px" }}>
-        <label className="lbl">Subject name</label>
+        <label className="lbl">Subject name<Req /></label>
         <input name="name" type="text" required />
       </div>
       {needsLevel && (
         <div className="field" style={{ minWidth: 120 }}>
-          <label className="lbl">Level</label>
+          <label className="lbl">Level<Req /></label>
           <select style={selStyle} name="level" value={level} onChange={(e) => setLevel(e.target.value)} required>
             <option value="">Choose…</option>
             <option value="as">AS</option>

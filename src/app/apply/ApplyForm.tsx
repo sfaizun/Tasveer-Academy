@@ -56,14 +56,24 @@ function Field({
   label,
   children,
   hint,
+  required,
 }: {
   label: string;
   children: React.ReactNode;
   hint?: string;
+  required?: boolean;
 }) {
   return (
     <div className="field">
-      <label className="lbl">{label}</label>
+      <label className="lbl">
+        {label}
+        {required && (
+          <span aria-hidden="true" style={{ color: "var(--coral)" }}>
+            {" "}
+            *
+          </span>
+        )}
+      </label>
       {children}
       {hint && <div className="sub">{hint}</div>}
     </div>
@@ -277,10 +287,17 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
             >
               {result.ref}
             </div>
-            <p className="sub" style={{ fontSize: 12.5 }}>
+            <p className="sub" style={{ fontSize: 12.5, marginBottom: 22 }}>
               Bring the student&apos;s photo and any required documents on your next visit to the
               academy. Admission fee and first month&apos;s fee are collected on approval.
             </p>
+            <a
+              href="/login"
+              className="btn ghost"
+              style={{ justifyContent: "center", padding: "10px 15px", textDecoration: "none" }}
+            >
+              ← Back to portal
+            </a>
           </div>
         </div>
       </main>
@@ -302,15 +319,18 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
           <ThemeToggle />
         </div>
 
-        <p className="sub" style={{ marginBottom: 22, fontSize: 13.5 }}>
+        <p className="sub" style={{ marginBottom: 6, fontSize: 13.5 }}>
           Fill this in to apply for admission. The academy will review your application and get
           in touch to confirm your seat. No account or sign-in is needed to submit.
         </p>
+        <p className="sub" style={{ marginBottom: 22, fontSize: 12.5 }}>
+          Fields marked <span style={{ color: "var(--coral)" }}>*</span> are required.
+        </p>
 
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
-          <Section title="Visit &amp; programme">
+          <Section title="Visit & Programme">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
-              <Field label="Date of visit">
+              <Field label="Date of visit" required>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -325,7 +345,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
               <Field label="Previous registration number" hint="If re-admitting, optional">
                 <input type="text" value={previousRegNo} onChange={(e) => setPreviousRegNo(e.target.value)} />
               </Field>
-              <Field label="Programme">
+              <Field label="Programme" required>
                 <select
                   style={selStyle}
                   value={programme}
@@ -343,7 +363,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   <option value="a_level">A Level (Edexcel)</option>
                 </select>
               </Field>
-              <Field label="Enrolment start month">
+              <Field label="Enrolment start month" required>
                 <input
                   type="text"
                   inputMode="numeric"
@@ -360,9 +380,9 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
             </div>
           </Section>
 
-          <Section title="Student details">
+          <Section title="Student Details">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
-              <Field label="Full name">
+              <Field label="Full name" required>
                 <input
                   type="text"
                   required
@@ -389,7 +409,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setStudent({ ...student, nationality: e.target.value })}
                 />
               </Field>
-              <Field label="Student WhatsApp / mobile" hint="A delivery address for class notices">
+              <Field label="Student WhatsApp / mobile" hint="A delivery address for class notices" required>
                 <input
                   type="text"
                   required
@@ -425,9 +445,9 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
             </div>
           </Section>
 
-          <Section title="Guardian details">
+          <Section title="Guardian Details">
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
-              <Field label="Guardian full name">
+              <Field label="Guardian full name" required>
                 <input
                   type="text"
                   required
@@ -462,7 +482,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setGuardian({ ...guardian, mother_name: e.target.value })}
                 />
               </Field>
-              <Field label="Guardian WhatsApp / mobile" hint="This is the portal login once enrolled">
+              <Field label="Guardian WhatsApp / mobile" hint="This is the portal login once enrolled" required>
                 <input
                   type="text"
                   required
@@ -532,8 +552,8 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
           </Section>
 
           {programme === "junior" && (
-            <Section title="Class level">
-              <Field label="Class">
+            <Section title="Class Level">
+              <Field label="Class" required>
                 <select
                   style={selStyle}
                   value={classLevelCode}
@@ -576,7 +596,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                       alignItems: "end",
                     }}
                   >
-                    <Field label={`Subject ${i + 1}`}>
+                    <Field label={`Subject ${i + 1}`} required={i === 0}>
                       <select
                         style={selStyle}
                         value={row.subjectId}
@@ -594,7 +614,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                         ))}
                       </select>
                     </Field>
-                    <Field label="Teacher">
+                    <Field label="Teacher" required={i === 0}>
                       <select
                         style={selStyle}
                         value={row.teacherId}
@@ -631,7 +651,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
           )}
 
           {programme && (
-            <Section title="Fee summary" sub="Indicative — the academy confirms the exact first invoice on approval">
+            <Section title="Fee Summary" sub="Indicative — the academy confirms the exact first invoice on approval">
               <div className="tblwrap">
                 <table>
                   <tbody>

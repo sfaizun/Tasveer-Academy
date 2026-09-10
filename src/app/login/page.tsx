@@ -4,6 +4,7 @@ import { useSearchParams } from "next/navigation";
 import { Suspense } from "react";
 import { signIn } from "./actions";
 import ThemeToggle from "@/components/ThemeToggle";
+import Req from "@/components/Req";
 
 function LoginForm() {
   const params = useSearchParams();
@@ -14,11 +15,11 @@ function LoginForm() {
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <input type="hidden" name="next" value={next} />
       <div className="field">
-        <label className="lbl" htmlFor="email">Email</label>
+        <label className="lbl" htmlFor="email">Email<Req /></label>
         <input id="email" name="email" type="email" autoComplete="email" required autoFocus />
       </div>
       <div className="field">
-        <label className="lbl" htmlFor="password">Password</label>
+        <label className="lbl" htmlFor="password">Password<Req /></label>
         <input id="password" name="password" type="password" autoComplete="current-password" required />
       </div>
       {state?.error && (

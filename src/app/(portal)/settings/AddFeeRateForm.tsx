@@ -1,6 +1,7 @@
 "use client";
 import { useActionState, useRef, useEffect } from "react";
 import { addFeeRate } from "./actions";
+import Req from "@/components/Req";
 
 const selStyle: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "10px 12px",
@@ -24,7 +25,7 @@ export default function AddFeeRateForm({ options }: { options: { value: string; 
     <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 12 }}>
         <div className="field">
-          <label className="lbl">Rate</label>
+          <label className="lbl">Rate<Req /></label>
           <select style={selStyle} name="target" required defaultValue="">
             <option value="" disabled>Choose…</option>
             {options.map((o) => (
@@ -33,11 +34,11 @@ export default function AddFeeRateForm({ options }: { options: { value: string; 
           </select>
         </div>
         <div className="field">
-          <label className="lbl">New amount (৳)</label>
+          <label className="lbl">New amount (৳)<Req /></label>
           <input type="number" name="amount" min="0" step="1" required />
         </div>
         <div className="field">
-          <label className="lbl">Effective from</label>
+          <label className="lbl">Effective from<Req /></label>
           <input type="date" name="effective_from" defaultValue={todayISO()} required />
         </div>
         <div className="field">
@@ -52,6 +53,7 @@ export default function AddFeeRateForm({ options }: { options: { value: string; 
       </div>
       <div className="sub">
         This adds a new dated rate — it never overwrites the old one, so the history stays intact.
+        Fields marked <span style={{ color: "var(--coral)" }}>*</span> are required.
       </div>
       {state?.error && <div className="sub" style={{ color: "var(--crit)" }}>{state.error}</div>}
     </form>
