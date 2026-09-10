@@ -37,6 +37,8 @@ export default async function PortalLayout({ children }: { children: React.React
 
         <div className="navlbl">Overview</div>
         <NavLink href="/dashboard">Dashboard</NavLink>
+        <NavLink href="/roster">Roster</NavLink>
+        <NavLink href="/announcements">Announcements</NavLink>
 
         {isAdmin && (
           <>

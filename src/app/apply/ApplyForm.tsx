@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { submitApplication, type ApplicationPayload } from "./actions";
 
@@ -106,6 +106,19 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ ref: string } | null>(null);
+  const [slow, setSlow] = useState(false);
+
+  // If a submission is still pending after a few seconds, say so rather than
+  // leaving the button reading "Submitting…" with nothing else to go on —
+  // a dropped response shouldn't look identical to a healthy slow connection.
+  useEffect(() => {
+    if (!pending) {
+      setSlow(false);
+      return;
+    }
+    const t = setTimeout(() => setSlow(true), 6000);
+    return () => clearTimeout(t);
+  }, [pending]);
 
   const [visitDate, setVisitDate] = useState(todayISO());
   const [previousRegNo, setPreviousRegNo] = useState("");
@@ -711,6 +724,13 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
           <button className="btn" type="submit" disabled={pending} style={{ justifyContent: "center", padding: "12px 15px" }}>
             {pending ? "Submitting…" : "Submit application"}
           </button>
+          {slow && (
+            <div className="sub" role="status" style={{ textAlign: "center" }}>
+              Still working — please don&apos;t close this tab or submit again. If your
+              connection is slow this can take a little while, and your application may
+              already be received even if this message doesn&apos;t change right away.
+            </div>
+          )}
         </form>
 
         <p className="sub" style={{ textAlign: "center", marginTop: 18 }}>
