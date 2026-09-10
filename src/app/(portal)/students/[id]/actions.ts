@@ -93,6 +93,64 @@ export async function setStudentStatus(_prev: State, formData: FormData): Promis
   return { ok: true };
 }
 
+export async function addEnrolment(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const subjectId = String(formData.get("subject_id") ?? "");
+  const teacherId = String(formData.get("teacher_id") ?? "");
+  const fromMonth = String(formData.get("from_month") ?? "").trim();
+
+  if (!studentId) return { error: "Missing student." };
+  if (!subjectId) return { error: "Choose a subject." };
+  if (!teacherId) return { error: "Choose a teacher." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_add_enrolment", {
+    p_student_id: studentId,
+    p_subject_id: subjectId,
+    p_teacher_id: teacherId,
+    p_from_month: fromMonth ? `${fromMonth}-01` : null,
+  });
+
+  if (error) return { error: "Could not add the subject — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
+}
+
+export async function setEnrolmentEnd(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const enrolmentId = String(formData.get("enrolment_id") ?? "");
+  const toMonth = String(formData.get("to_month") ?? "").trim();
+
+  if (!enrolmentId) return { error: "Missing subject." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_enrolment_end", {
+    p_enrolment_id: enrolmentId,
+    p_to_month: toMonth ? `${toMonth}-01` : null,
+  });
+
+  if (error) return { error: "Could not update the end month — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
+}
+
+export async function removeEnrolment(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const enrolmentId = String(formData.get("enrolment_id") ?? "");
+
+  if (!enrolmentId) return { error: "Missing subject." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_remove_enrolment", { p_enrolment_id: enrolmentId });
+
+  if (error) return { error: "Could not remove the subject — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
+}
+
 export async function voidPayment(_prev: State, formData: FormData): Promise<State> {
   const paymentId = String(formData.get("payment_id") ?? "");
   const studentId = String(formData.get("student_id") ?? "");

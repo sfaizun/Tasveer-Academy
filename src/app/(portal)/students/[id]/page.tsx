@@ -5,6 +5,8 @@ import { taka, fmtDate } from "@/lib/format";
 import PaymentForm from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
+import EnrolmentsPanel from "./EnrolmentsPanel";
+import InvoicesList from "./InvoicesList";
 
 export const dynamic = "force-dynamic";
 
@@ -17,15 +19,6 @@ function StatusChip({ status, map }: { status: string; map: Record<string, { cls
     </span>
   );
 }
-
-const invoiceStatusMap: Record<string, { cls: string; label: string }> = {
-  draft: { cls: "due", label: "Draft" },
-  unpaid: { cls: "due", label: "Unpaid" },
-  partly_paid: { cls: "part", label: "Partly paid" },
-  paid: { cls: "paid", label: "Paid" },
-  waived: { cls: "past", label: "Waived" },
-  void: { cls: "over", label: "Void" },
-};
 
 const studentStatusMap: Record<string, { cls: string; label: string }> = {
   applicant: { cls: "due", label: "Applicant" },
@@ -49,7 +42,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       supabase
         .from("student")
         .select(
-          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, programme(name, code), class_level(name)"
+          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, programme_id, programme(name, code), class_level(name)"
         )
         .eq("id", id)
         .maybeSingle(),
@@ -76,6 +69,20 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
 
   const isOwner = !!me?.is_owner;
   const isAdmin = me?.role === "admin";
+  const s: any = student;
+  const isSubjectBased = s.programme?.code === "o_level" || s.programme?.code === "a_level";
+
+  const [{ data: subjects }, { data: teachers }, { data: teacherSubjects }] = isSubjectBased
+    ? await Promise.all([
+        supabase
+          .from("subject")
+          .select("id, name, level, programme(code, name)")
+          .eq("programme_id", s.programme_id)
+          .eq("active", true),
+        supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
+        supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
+      ])
+    : [{ data: [] }, { data: [] }, { data: [] }];
 
   const outstanding = (invoices ?? [])
     .filter((i: any) => i.status !== "void" && i.status !== "waived")
@@ -84,8 +91,6 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const openInvoices = (invoices ?? [])
     .filter((i: any) => (i.status === "unpaid" || i.status === "partly_paid") && Number(i.balance) > 0)
     .map((i: any) => ({ id: i.id, invoice_no: i.invoice_no, billing_month: i.billing_month, balance: Number(i.balance) }));
-
-  const s: any = student;
 
   return (
     <>
@@ -158,7 +163,16 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           </div>
         )}
 
-        {(enrolments ?? []).length > 0 && (
+        {isSubjectBased ? (
+          <EnrolmentsPanel
+            studentId={id}
+            enrolments={(enrolments ?? []) as any}
+            subjects={(subjects ?? []) as any}
+            teachers={(teachers ?? []) as any}
+            teacherSubjects={(teacherSubjects ?? []) as any}
+            canEdit={isAdmin}
+          />
+        ) : (enrolments ?? []).length > 0 ? (
           <div className="panel">
             <div className="phead"><div className="ptitle">Enrolments</div></div>
             <div className="tblwrap">
@@ -179,44 +193,9 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
               </table>
             </div>
           </div>
-        )}
+        ) : null}
 
-        <div className="panel">
-          <div className="phead">
-            <div className="ptitle">Invoices</div>
-            <div className="spacer" />
-            <div className="sub">Outstanding: <b style={{ color: outstanding > 0 ? "var(--crit)" : "var(--ok)" }}>{taka(outstanding)}</b></div>
-          </div>
-          <div className="tblwrap">
-            <table>
-              <thead>
-                <tr><th>Invoice</th><th>Month</th><th>Due</th><th className="n">Net</th><th className="n">Discount</th><th className="n">Paid</th><th className="n">Balance</th><th className="n">Status</th></tr>
-              </thead>
-              <tbody>
-                {(invoices ?? []).map((inv: any) => (
-                  <tr key={inv.id}>
-                    <td className="mono"><b>{inv.invoice_no}</b></td>
-                    <td className="mono sub">{fmtDate(inv.billing_month)}</td>
-                    <td className="mono sub">{fmtDate(inv.due_on)}</td>
-                    <td className="n mono">{taka(inv.net)}</td>
-                    <td className="n mono">{Number(inv.discount) > 0 ? taka(inv.discount) : <span className="sub">—</span>}</td>
-                    <td className="n mono">{taka(inv.paid)}</td>
-                    <td className="n mono">{taka(inv.balance)}</td>
-                    <td className="n">
-                      <StatusChip status={inv.status} map={invoiceStatusMap} />
-                      {Number(inv.discount) > 0 && (
-                        <div className="sub" style={{ marginTop: 3 }}>Discounted</div>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                {(invoices ?? []).length === 0 && (
-                  <tr><td colSpan={8} className="sub">No invoices yet — the monthly billing run will generate one, or run one from Billing.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <InvoicesList invoices={(invoices ?? []) as any} outstanding={outstanding} />
 
         {isAdmin && (
           <div className="panel">
