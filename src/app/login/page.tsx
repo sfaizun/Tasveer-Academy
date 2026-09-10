@@ -72,6 +72,13 @@ export default function LoginPage() {
         </div>
 
         <p className="sub" style={{ textAlign: "center", marginTop: 18 }}>
+          New here?{" "}
+          <a href="/apply" style={{ fontWeight: 600 }}>
+            Apply for admission
+          </a>
+        </p>
+
+        <p className="sub" style={{ textAlign: "center", marginTop: 10 }}>
           105/A (2nd &amp; 3rd Floor), Kakrail, Dhaka 1000
         </p>
       </div>

@@ -1,38 +1,87 @@
 import { createClient } from "@/lib/supabase/server";
 import { taka } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
+import AddFeeRateForm from "./AddFeeRateForm";
 
 export const dynamic = "force-dynamic";
+
+function groupKey(r: { kind: string; programme_id: string; level: string | null; class_level_id: string | null }) {
+  return `${r.kind}|${r.programme_id}|${r.level ?? ""}|${r.class_level_id ?? ""}`;
+}
 
 export default async function Settings() {
   const supabase = await createClient();
 
-  const [{ data: rates }, { data: settings }] = await Promise.all([
-    supabase
-      .from("fee_rate")
-      .select("id, kind, level, amount, effective_from, note, programme(name, code), class_level(name, sort_order)")
-      .order("effective_from", { ascending: false }),
-    supabase.from("app_setting").select("key, value, description").order("key"),
-  ]);
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
-  const tuition = ((rates ?? []) as any[]).filter((r) => r.kind === "tuition" && !r.class_level);
-  const junior = ((rates ?? []) as any[])
-    .filter((r) => r.class_level)
+  const [{ data: me }, { data: rates }, { data: settings }, { data: programmes }, { data: classLevels }] =
+    await Promise.all([
+      supabase.from("app_user").select("is_owner").eq("auth_id", user?.id ?? "").maybeSingle(),
+      supabase
+        .from("fee_rate")
+        .select(
+          "id, kind, level, programme_id, class_level_id, amount, effective_from, note, programme(name, code), class_level(name, sort_order)"
+        )
+        .order("effective_from", { ascending: false }),
+      supabase.from("app_setting").select("key, value, description").order("key"),
+      supabase.from("programme").select("id, code, name").order("code"),
+      supabase.from("class_level").select("id, code, name, sort_order").order("sort_order"),
+    ]);
+
+  const today = new Date().toISOString().slice(0, 10);
+  const allRates = (rates ?? []) as any[];
+
+  // Latest row per group whose effective_from has arrived is the "current" rate.
+  const currentByGroup = new Map<string, any>();
+  for (const r of allRates) {
+    if (r.effective_from > today) continue;
+    const key = groupKey(r);
+    const existing = currentByGroup.get(key);
+    if (!existing || r.effective_from > existing.effective_from) currentByGroup.set(key, r);
+  }
+  const current = Array.from(currentByGroup.values());
+  const admission = current.filter((r) => r.kind === "admission");
+  const tuition = current.filter((r) => r.kind === "tuition" && !r.class_level_id);
+  const junior = current
+    .filter((r) => r.kind === "tuition" && r.class_level_id)
     .sort((a, b) => a.class_level.sort_order - b.class_level.sort_order);
-  const admission = ((rates ?? []) as any[]).filter((r) => r.kind === "admission");
+
+  const progByCode = new Map((programmes ?? []).map((p: any) => [p.code, p]));
+  const oLevel = progByCode.get("o_level");
+  const aLevel = progByCode.get("a_level");
+  const junior_ = progByCode.get("junior");
+
+  const options: { value: string; label: string }[] = [];
+  if (oLevel) {
+    options.push({ value: `admission|${oLevel.id}||`, label: "Admission fee (one time)" });
+    options.push({ value: `tuition|${oLevel.id}||`, label: "O Level — per subject/month" });
+  }
+  if (aLevel) {
+    options.push({ value: `tuition|${aLevel.id}|as|`, label: "A Level AS — per subject/month" });
+    options.push({ value: `tuition|${aLevel.id}|a2|`, label: "A Level A2 — per subject/month" });
+  }
+  if (junior_) {
+    for (const c of classLevels ?? []) {
+      options.push({ value: `tuition|${junior_.id}||${c.id}`, label: `Junior — ${c.name} (monthly)` });
+    }
+  }
+
+  const isOwner = !!me?.is_owner;
 
   return (
     <>
       <header className="top">
         <h1>Fees &amp; settings</h1>
-        <div className="sub">Owner only. Rates are never edited in place: a change is a new row.</div>
+        <div className="sub">Owner only to change. Rates are never edited in place: a change is a new dated row.</div>
         <div className="spacer" />
         <ThemeToggle />
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div className="panel">
-          <div className="phead"><div className="ptitle">Tuition and admission</div></div>
+          <div className="phead"><div className="ptitle">Tuition and admission — current</div></div>
           <div className="tblwrap">
             <table>
               <thead>
@@ -62,7 +111,7 @@ export default async function Settings() {
 
         <div className="panel">
           <div className="phead">
-            <div className="ptitle">Junior monthly rates</div>
+            <div className="ptitle">Junior monthly rates — current</div>
             <div className="sub">Flat per student, by class level</div>
           </div>
           <div className="tblwrap">
@@ -78,6 +127,48 @@ export default async function Settings() {
                         ? <span className="st paid"><span className="dot" />Set</span>
                         : <span className="st past"><span className="dot" />Awaiting amount</span>}
                     </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {isOwner && (
+          <div className="panel">
+            <div className="phead">
+              <div className="ptitle">Change a rate</div>
+              <div className="sub">Owner only</div>
+            </div>
+            <div style={{ padding: 18 }}>
+              <AddFeeRateForm options={options} />
+            </div>
+          </div>
+        )}
+
+        <div className="panel">
+          <div className="phead">
+            <div className="ptitle">Rate history</div>
+            <div className="sub">Every rate ever set, newest first</div>
+          </div>
+          <div className="tblwrap">
+            <table>
+              <thead>
+                <tr><th>Fee</th><th className="n">Amount</th><th>Effective from</th><th>Note</th></tr>
+              </thead>
+              <tbody>
+                {allRates.map((r) => (
+                  <tr key={r.id}>
+                    <td>
+                      {r.kind === "admission"
+                        ? "Admission fee"
+                        : r.class_level
+                        ? `Junior — ${r.class_level.name}`
+                        : `${r.programme?.name}${r.level ? ` (${r.level.toUpperCase()})` : ""}`}
+                    </td>
+                    <td className="n mono">{taka(r.amount)}</td>
+                    <td className="mono sub">{r.effective_from}{r.effective_from > today ? " (upcoming)" : ""}</td>
+                    <td className="sub">{r.note ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
