@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { signOut } from "../login/actions";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavLink from "@/components/NavLink";
+import Logo from "@/components/Logo";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient();
@@ -24,7 +25,7 @@ export default async function PortalLayout({ children }: { children: React.React
     <div className="shell">
       <nav className="side">
         <div className="brand">
-          <div className="mark">TA</div>
+          <Logo size={32} />
           <div>
             <div style={{ fontWeight: 700, fontSize: 14, color: "var(--ink)", lineHeight: 1.15 }}>
               Tasveer Academy

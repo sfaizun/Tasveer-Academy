@@ -5,6 +5,7 @@ import { Suspense } from "react";
 import { signIn } from "./actions";
 import ThemeToggle from "@/components/ThemeToggle";
 import Req from "@/components/Req";
+import Logo from "@/components/Logo";
 
 function LoginForm() {
   const params = useSearchParams();
@@ -51,7 +52,7 @@ export default function LoginPage() {
     >
       <div style={{ width: "100%", maxWidth: 396 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 11, marginBottom: 26 }}>
-          <div className="mark" style={{ width: 40, height: 40, flex: "0 0 40px", fontSize: 14 }}>TA</div>
+          <Logo size={40} />
           <div>
             <div style={{ fontSize: 17, fontWeight: 700, color: "var(--ink)", letterSpacing: "-.01em" }}>
               Tasveer Academy
