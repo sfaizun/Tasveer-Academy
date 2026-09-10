@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { taka } from "@/lib/format";
 
 export type StudentRow = {
   id: string;
@@ -12,7 +13,16 @@ export type StudentRow = {
   created_at: string;
   programme?: { name: string } | null;
   class_level?: { name: string } | null;
+  invoice?: { balance: number; status: string }[] | null;
 };
+
+function duesOf(s: StudentRow) {
+  const invoices = s.invoice ?? [];
+  const outstanding = invoices
+    .filter((i) => i.status !== "void" && i.status !== "waived")
+    .reduce((sum, i) => sum + Number(i.balance || 0), 0);
+  return outstanding;
+}
 
 const STATUS_OPTIONS = [
   { value: "applicant", label: "Applicant" },
@@ -93,30 +103,41 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
               <th>Programme / class</th>
               <th>Contact</th>
               <th>Admitted</th>
+              <th className="n">Dues</th>
               <th className="n">Status</th>
             </tr>
           </thead>
           <tbody>
-            {filtered.map((s) => (
-              <tr key={s.id}>
-                <td className="mono"><b>{s.reg_no}</b></td>
-                <td><b>{s.full_name}</b></td>
-                <td>{[s.programme?.name, s.class_level?.name].filter(Boolean).join(" — ") || "—"}</td>
-                <td className="sub">{[s.phone, s.email].filter(Boolean).join(" · ") || "—"}</td>
-                <td className="mono sub">{s.admitted_on ?? "—"}</td>
-                <td className="n"><StatusChip status={s.status} /></td>
-              </tr>
-            ))}
+            {filtered.map((s) => {
+              const dues = duesOf(s);
+              return (
+                <tr key={s.id}>
+                  <td className="mono"><a href={`/students/${s.id}`}><b>{s.reg_no}</b></a></td>
+                  <td><a href={`/students/${s.id}`}><b>{s.full_name}</b></a></td>
+                  <td>{[s.programme?.name, s.class_level?.name].filter(Boolean).join(" — ") || "—"}</td>
+                  <td className="sub">{[s.phone, s.email].filter(Boolean).join(" · ") || "—"}</td>
+                  <td className="mono sub">{s.admitted_on ?? "—"}</td>
+                  <td className="n mono">
+                    {dues > 0 ? (
+                      <span className="st due"><span className="dot" />{taka(dues)}</span>
+                    ) : (
+                      <span className="sub">—</span>
+                    )}
+                  </td>
+                  <td className="n"><StatusChip status={s.status} /></td>
+                </tr>
+              );
+            })}
             {filtered.length === 0 && students.length > 0 && (
               <tr>
-                <td colSpan={6} className="sub">No students match this filter.</td>
+                <td colSpan={7} className="sub">No students match this filter.</td>
               </tr>
             )}
             {students.length === 0 && (
               <tr>
-                <td colSpan={6} className="sub">
-                  No students yet. Turning an approved application into a student record isn&apos;t
-                  automated yet — see <a href="/applications">Applications</a> for submitted forms.
+                <td colSpan={7} className="sub">
+                  No students yet — approve a submitted form on the <a href="/applications">Applications</a> page
+                  to create one.
                 </td>
               </tr>
             )}

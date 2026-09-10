@@ -44,6 +44,9 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/applications">Applications</NavLink>
             <NavLink href="/students">Students</NavLink>
 
+            <div className="navlbl">Billing</div>
+            <NavLink href="/billing">Billing run</NavLink>
+
             <div className="navlbl">Academy</div>
             <NavLink href="/catalogue">Subjects &amp; teachers</NavLink>
             <NavLink href="/settings">Fees &amp; settings</NavLink>

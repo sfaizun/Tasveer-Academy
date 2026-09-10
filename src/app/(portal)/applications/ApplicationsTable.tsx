@@ -78,7 +78,13 @@ function ReviewForm({ appId, currentStatus }: { appId: string; currentStatus: st
         {pending ? "Saving…" : "Update status"}
       </button>
       {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
-      {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Updated.</span>}
+      {state?.ok && !state.studentId && <span className="sub" style={{ color: "var(--ok)" }}>Updated.</span>}
+      {state?.ok && state.studentId && (
+        <span className="sub" style={{ color: "var(--ok)" }}>
+          Approved — student record, guardian, enrolments and the first invoice were created.{" "}
+          <a href="/students">View in Students →</a>
+        </span>
+      )}
     </form>
   );
 }
@@ -195,6 +201,12 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
 
       <div>
         <div className="ptitle" style={{ marginBottom: 8 }}>Update status</div>
+        {app.status !== "approved" && (
+          <div className="sub" style={{ marginBottom: 8 }}>
+            Setting this to Approved creates the student, guardian, sibling and enrolment
+            records and generates the first invoice — it can&apos;t be undone from here.
+          </div>
+        )}
         <ReviewForm appId={app.id} currentStatus={app.status} />
       </div>
     </div>
