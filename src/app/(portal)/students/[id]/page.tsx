@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
-import { taka } from "@/lib/format";
+import { taka, fmtDate } from "@/lib/format";
 import PaymentForm from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
@@ -114,7 +114,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
             <div><div className="lbl">WhatsApp / mobile</div><div>{s.phone ?? "—"}</div></div>
             <div><div className="lbl">Email</div><div>{s.email ?? "—"}</div></div>
             <div><div className="lbl">School</div><div>{s.school_name ?? "—"}</div></div>
-            <div><div className="lbl">Admitted on</div><div className="mono">{s.admitted_on ?? "—"}</div></div>
+            <div><div className="lbl">Admitted on</div><div className="mono">{fmtDate(s.admitted_on)}</div></div>
           </div>
           {isAdmin && (
             <div style={{ padding: "0 18px 18px" }}>
@@ -169,8 +169,8 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                     <tr key={e.id}>
                       <td>{e.subject?.name}{e.level ? ` (${String(e.level).toUpperCase()})` : ""}</td>
                       <td className="sub">{e.teacher?.full_name}</td>
-                      <td className="mono sub">{e.from_month}</td>
-                      <td className="mono sub">{e.to_month ?? "—"}</td>
+                      <td className="mono sub">{fmtDate(e.from_month)}</td>
+                      <td className="mono sub">{e.to_month ? fmtDate(e.to_month) : "—"}</td>
                       <td className="n mono">{taka(e.rate_applied)}</td>
                       <td className="n sub">{e.status}</td>
                     </tr>
@@ -196,8 +196,8 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                 {(invoices ?? []).map((inv: any) => (
                   <tr key={inv.id}>
                     <td className="mono"><b>{inv.invoice_no}</b></td>
-                    <td className="mono sub">{inv.billing_month}</td>
-                    <td className="mono sub">{inv.due_on}</td>
+                    <td className="mono sub">{fmtDate(inv.billing_month)}</td>
+                    <td className="mono sub">{fmtDate(inv.due_on)}</td>
                     <td className="n mono">{taka(inv.net)}</td>
                     <td className="n mono">{Number(inv.discount) > 0 ? taka(inv.discount) : <span className="sub">—</span>}</td>
                     <td className="n mono">{taka(inv.paid)}</td>

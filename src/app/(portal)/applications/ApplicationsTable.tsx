@@ -1,6 +1,6 @@
 "use client";
 import { Fragment, useActionState, useMemo, useState } from "react";
-import { taka } from "@/lib/format";
+import { taka, fmtDate, fmtDateTime } from "@/lib/format";
 import { setApplicationStatus } from "./actions";
 
 export type ApplicationRow = {
@@ -48,13 +48,6 @@ function StatusChip({ status }: { status: string }) {
 
 function programmeName(code: string) {
   return code === "junior" ? "Junior" : code === "o_level" ? "O Level" : code === "a_level" ? "A Level" : code;
-}
-
-function fmtDateTime(iso: string | null) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit",
-  });
 }
 
 function ReviewForm({ appId, currentStatus }: { appId: string; currentStatus: string }) {
@@ -109,7 +102,7 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "16px 18px", background: "var(--tint)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
-        <Detail label="Visit date" value={p.visit_date} />
+        <Detail label="Visit date" value={p.visit_date ? fmtDate(p.visit_date) : p.visit_date} />
         <Detail label="Programme" value={programmeName(p.programme_code)} />
         <Detail
           label={p.programme_code === "junior" ? "Class" : "Start month"}
@@ -172,7 +165,7 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
                   <tr key={i}>
                     <td>{s.subject_name}{s.level ? ` (${String(s.level).toUpperCase()})` : ""}</td>
                     <td>{s.teacher_name}</td>
-                    <td className="mono sub">{s.from_month}</td>
+                    <td className="mono sub">{fmtDate(s.from_month)}</td>
                     <td className="n mono">{taka(s.monthly_fee)}</td>
                   </tr>
                 ))}

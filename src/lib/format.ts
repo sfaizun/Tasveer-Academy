@@ -16,11 +16,51 @@ export function monthName(iso: string) {
   });
 }
 
+const MONTH_ABBR = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"];
+
+/** House date format: 10-SEP-2026. Accepts a plain "YYYY-MM-DD" (or the date part of an
+ * ISO timestamp) and formats it directly from the string — no Date object, so there's no
+ * timezone shift risk for a date-only value like a due date or billing month. */
+export function fmtDate(input: string | null | undefined): string {
+  if (!input) return "—";
+  const m = input.slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return input;
+  const [, y, mo, d] = m;
+  const mi = Number(mo) - 1;
+  if (mi < 0 || mi > 11) return input;
+  return `${d}-${MONTH_ABBR[mi]}-${y}`;
+}
+
+/** House date+time format in Asia/Dhaka wall-clock time: 10-SEP-2026, 3:45 PM. */
+export function fmtDateTime(iso: string | null | undefined): string {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const datePart = fmtDate(`${get("year")}-${get("month")}-${get("day")}`);
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Dhaka" });
+  return `${datePart}, ${time}`;
+}
+
 export function dhakaToday() {
-  return new Date().toLocaleDateString("en-GB", {
-    weekday: "long", day: "numeric", month: "long", year: "numeric",
-    timeZone: "Asia/Dhaka",
-  });
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  const weekday = new Date().toLocaleDateString("en-GB", { weekday: "long", timeZone: "Asia/Dhaka" });
+  return `${weekday}, ${fmtDate(`${get("year")}-${get("month")}-${get("day")}`)}`;
+}
+
+/** Today's date in Asia/Dhaka as YYYY-MM-DD, for date-input max attributes and server checks. */
+export function dhakaTodayISO() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit",
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return `${get("year")}-${get("month")}-${get("day")}`;
 }
 
 export function currentBillingMonth() {

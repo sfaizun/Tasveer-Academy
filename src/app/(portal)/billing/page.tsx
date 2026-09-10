@@ -1,6 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
-import { taka, currentBillingMonth } from "@/lib/format";
+import { taka, currentBillingMonth, fmtDate } from "@/lib/format";
 import RunBillingForm from "./RunBillingForm";
 
 export const dynamic = "force-dynamic";
@@ -73,8 +73,8 @@ export default async function BillingPage() {
                           {inv.student?.full_name} <span className="sub mono">({inv.student?.reg_no})</span>
                         </a>
                       </td>
-                      <td className="mono sub">{inv.billing_month}</td>
-                      <td className="mono sub">{inv.due_on}</td>
+                      <td className="mono sub">{fmtDate(inv.billing_month)}</td>
+                      <td className="mono sub">{fmtDate(inv.due_on)}</td>
                       <td className="n mono">{taka(inv.net)}</td>
                       <td className="n mono">{taka(inv.paid)}</td>
                       <td className="n mono">{taka(inv.balance)}</td>

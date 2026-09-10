@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { taka } from "@/lib/format";
+import { taka, fmtDate } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 import AddFeeRateForm from "./AddFeeRateForm";
 
@@ -95,7 +95,7 @@ export default async function Settings() {
                     <td><b>Admission fee — {r.programme?.name ?? "—"}</b></td>
                     <td>Per student, one time</td>
                     <td className="n mono"><b>{taka(r.amount)}</b></td>
-                    <td className="mono sub">{r.effective_from}</td>
+                    <td className="mono sub">{fmtDate(r.effective_from)}</td>
                   </tr>
                 ))}
                 {tuition.map((r) => (
@@ -103,7 +103,7 @@ export default async function Settings() {
                     <td><b>{r.programme?.name}{r.level ? ` (${r.level.toUpperCase()})` : ""}</b></td>
                     <td>Per subject, per month</td>
                     <td className="n mono"><b>{taka(r.amount)}</b></td>
-                    <td className="mono sub">{r.effective_from}</td>
+                    <td className="mono sub">{fmtDate(r.effective_from)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -169,7 +169,7 @@ export default async function Settings() {
                         : `${r.programme?.name}${r.level ? ` (${r.level.toUpperCase()})` : ""}`}
                     </td>
                     <td className="n mono">{taka(r.amount)}</td>
-                    <td className="mono sub">{r.effective_from}{r.effective_from > today ? " (upcoming)" : ""}</td>
+                    <td className="mono sub">{fmtDate(r.effective_from)}{r.effective_from > today ? " (upcoming)" : ""}</td>
                     <td className="sub">{r.note ?? "—"}</td>
                   </tr>
                 ))}

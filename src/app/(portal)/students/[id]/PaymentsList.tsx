@@ -1,6 +1,6 @@
 "use client";
 import { Fragment, useActionState, useState } from "react";
-import { taka } from "@/lib/format";
+import { taka, fmtDate, dhakaTodayISO } from "@/lib/format";
 import { editPayment, voidPayment } from "./actions";
 
 export type PaymentRow = {
@@ -41,7 +41,7 @@ function EditForm({ studentId, payment }: { studentId: string; payment: PaymentR
           <option value="bank">Bank</option>
           <option value="card">Card</option>
         </select>
-        <input style={inputStyle} type="date" name="received_on" defaultValue={payment.received_on} />
+        <input style={inputStyle} type="date" name="received_on" defaultValue={payment.received_on} max={dhakaTodayISO()} />
         <input style={inputStyle} type="text" name="note" defaultValue={payment.note ?? ""} placeholder="Note" />
       </div>
       <input style={inputStyle} type="text" name="reason" placeholder="Reason for this correction (required)" required />
@@ -105,7 +105,7 @@ export default function PaymentsList({
               <Fragment key={p.id}>
                 <tr>
                   <td className="mono"><b>{p.receipt_no}</b></td>
-                  <td className="mono sub">{p.received_on}</td>
+                  <td className="mono sub">{fmtDate(p.received_on)}</td>
                   <td className="sub">{p.method}</td>
                   <td className="n mono">{taka(p.amount)}</td>
                   <td className="n"><StatusChip status={p.status} /></td>

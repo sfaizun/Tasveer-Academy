@@ -12,13 +12,7 @@ export function targetLabel(target: any | null | undefined, scope: string) {
   return "—";
 }
 
-export function fmtDhaka(iso: string | null | undefined) {
-  if (!iso) return "—";
-  return new Date(iso).toLocaleString("en-GB", {
-    day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit",
-    timeZone: "Asia/Dhaka",
-  });
-}
+export { fmtDateTime as fmtDhaka } from "@/lib/format";
 
 /** For a <input type="datetime-local"> defaultValue, in Asia/Dhaka wall-clock time. */
 export function toLocalInput(iso: string | null | undefined) {

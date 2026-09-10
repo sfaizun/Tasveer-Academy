@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { taka } from "@/lib/format";
+import { taka, fmtDate } from "@/lib/format";
 
 export type StudentRow = {
   id: string;
@@ -116,7 +116,7 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
                   <td><a href={`/students/${s.id}`}><b>{s.full_name}</b></a></td>
                   <td>{[s.programme?.name, s.class_level?.name].filter(Boolean).join(" — ") || "—"}</td>
                   <td className="sub">{[s.phone, s.email].filter(Boolean).join(" · ") || "—"}</td>
-                  <td className="mono sub">{s.admitted_on ?? "—"}</td>
+                  <td className="mono sub">{fmtDate(s.admitted_on)}</td>
                   <td className="n mono">
                     {dues > 0 ? (
                       <span className="st due"><span className="dot" />{taka(dues)}</span>
