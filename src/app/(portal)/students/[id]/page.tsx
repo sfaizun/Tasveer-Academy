@@ -81,6 +81,10 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
     .filter((i: any) => i.status !== "void" && i.status !== "waived")
     .reduce((sum: number, i: any) => sum + Number(i.balance || 0), 0);
 
+  const openInvoices = (invoices ?? [])
+    .filter((i: any) => (i.status === "unpaid" || i.status === "partly_paid") && Number(i.balance) > 0)
+    .map((i: any) => ({ id: i.id, invoice_no: i.invoice_no, billing_month: i.billing_month, balance: Number(i.balance) }));
+
   const s: any = student;
 
   return (
@@ -186,7 +190,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           <div className="tblwrap">
             <table>
               <thead>
-                <tr><th>Invoice</th><th>Month</th><th>Due</th><th className="n">Net</th><th className="n">Paid</th><th className="n">Balance</th><th className="n">Status</th></tr>
+                <tr><th>Invoice</th><th>Month</th><th>Due</th><th className="n">Net</th><th className="n">Discount</th><th className="n">Paid</th><th className="n">Balance</th><th className="n">Status</th></tr>
               </thead>
               <tbody>
                 {(invoices ?? []).map((inv: any) => (
@@ -195,13 +199,19 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                     <td className="mono sub">{inv.billing_month}</td>
                     <td className="mono sub">{inv.due_on}</td>
                     <td className="n mono">{taka(inv.net)}</td>
+                    <td className="n mono">{Number(inv.discount) > 0 ? taka(inv.discount) : <span className="sub">—</span>}</td>
                     <td className="n mono">{taka(inv.paid)}</td>
                     <td className="n mono">{taka(inv.balance)}</td>
-                    <td className="n"><StatusChip status={inv.status} map={invoiceStatusMap} /></td>
+                    <td className="n">
+                      <StatusChip status={inv.status} map={invoiceStatusMap} />
+                      {Number(inv.discount) > 0 && (
+                        <div className="sub" style={{ marginTop: 3 }}>Discounted</div>
+                      )}
+                    </td>
                   </tr>
                 ))}
                 {(invoices ?? []).length === 0 && (
-                  <tr><td colSpan={7} className="sub">No invoices yet — the monthly billing run will generate one, or run one from Billing.</td></tr>
+                  <tr><td colSpan={8} className="sub">No invoices yet — the monthly billing run will generate one, or run one from Billing.</td></tr>
                 )}
               </tbody>
             </table>
@@ -212,7 +222,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           <div className="panel">
             <div className="phead"><div className="ptitle">Record a payment</div></div>
             <div style={{ padding: 18 }}>
-              <PaymentForm studentId={id} outstanding={outstanding} />
+              <PaymentForm studentId={id} outstanding={outstanding} openInvoices={openInvoices} />
             </div>
           </div>
         )}

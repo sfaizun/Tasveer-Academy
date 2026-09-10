@@ -165,16 +165,6 @@ export default function AccountsAdmin({
         </div>
       </div>
 
-      <div className="panel" style={{ borderLeft: "3px solid var(--amber, var(--line))" }}>
-        <div style={{ padding: 16 }}>
-          <div className="sub">
-            Guardian logins aren&apos;t available here yet — a guardian account currently doesn&apos;t
-            get linked to their child&apos;s record automatically, so creating one would sign in to an
-            empty portal. Ask to have this wired up before using guardian accounts.
-          </div>
-        </div>
-      </div>
-
       <div className="panel">
         <div className="phead">
           <div className="ptitle">Existing accounts</div>

@@ -1,6 +1,7 @@
 "use client";
-import { useActionState, useRef, useEffect } from "react";
+import { useActionState, useRef, useEffect, useState } from "react";
 import { recordPayment } from "./actions";
+import { taka } from "@/lib/format";
 import Req from "@/components/Req";
 
 const inputStyle: React.CSSProperties = {
@@ -13,12 +14,26 @@ function todayISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-export default function PaymentForm({ studentId, outstanding }: { studentId: string; outstanding: number }) {
+export type OpenInvoice = { id: string; invoice_no: string; billing_month: string; balance: number };
+
+export default function PaymentForm({
+  studentId,
+  outstanding,
+  openInvoices,
+}: {
+  studentId: string;
+  outstanding: number;
+  openInvoices: OpenInvoice[];
+}) {
   const [state, action, pending] = useActionState(recordPayment, null);
   const formRef = useRef<HTMLFormElement>(null);
+  const [withDiscount, setWithDiscount] = useState(false);
 
   useEffect(() => {
-    if (state?.ok) formRef.current?.reset();
+    if (state?.ok) {
+      formRef.current?.reset();
+      setWithDiscount(false);
+    }
   }, [state]);
 
   return (
@@ -56,6 +71,50 @@ export default function PaymentForm({ studentId, outstanding }: { studentId: str
           <input style={inputStyle} type="text" name="note" placeholder="e.g. paid by father" />
         </div>
       </div>
+
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: openInvoices.length ? "pointer" : "not-allowed" }}>
+        <input
+          type="checkbox"
+          checked={withDiscount}
+          disabled={!openInvoices.length}
+          onChange={(e) => setWithDiscount(e.target.checked)}
+        />
+        Apply a discount on this payment
+      </label>
+
+      {withDiscount && (
+        <div
+          style={{
+            display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12,
+            padding: 12, borderRadius: 8, background: "var(--tint)", border: "1px solid var(--line)",
+          }}
+        >
+          <div className="field">
+            <label className="lbl">Invoice<Req /></label>
+            <select style={inputStyle} name="discount_invoice_id" required defaultValue="">
+              <option value="" disabled>Choose…</option>
+              {openInvoices.map((inv) => (
+                <option key={inv.id} value={inv.id}>
+                  {inv.invoice_no} — {inv.billing_month} (balance {taka(inv.balance)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label className="lbl">Discount amount (৳)<Req /></label>
+            <input style={inputStyle} type="number" name="discount_amount" min="1" step="1" required />
+          </div>
+          <div className="field" style={{ gridColumn: "span 2" }}>
+            <label className="lbl">Reason for discount<Req /></label>
+            <input style={inputStyle} type="text" name="discount_note" placeholder="e.g. sibling discount, hardship" required />
+          </div>
+          <div className="sub" style={{ gridColumn: "1 / -1" }}>
+            The discounted amount is recorded on the invoice — the invoice will show as fully paid
+            once the payment plus the discount cover its balance.
+          </div>
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button className="btn" type="submit" disabled={pending}>
           {pending ? "Recording…" : "Record payment"}

@@ -166,7 +166,7 @@ function AddSlotForm({
 
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button className="btn" type="submit" disabled={pending} style={{ alignSelf: "flex-start" }}>
-          {pending ? "Adding…" : "+ Add to roster"}
+          {pending ? "Adding…" : "+ Add to schedule"}
         </button>
         {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
         {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Added.</span>}
@@ -249,7 +249,7 @@ export default function RosterAdmin({
     <>
       <div className="panel">
         <div className="phead">
-          <div className="ptitle">Add to roster</div>
+          <div className="ptitle">Add to schedule</div>
           <div className="sub">Only admin can add, edit or remove a slot.</div>
         </div>
         <div style={{ padding: 16 }}>
@@ -299,7 +299,7 @@ export default function RosterAdmin({
                           <form action={deleteClassSlot} style={{ marginTop: 12 }}>
                             <input type="hidden" name="id" value={s.id} />
                             <button className="btn ghost" type="submit" style={{ fontSize: 12, color: "var(--crit)" }}>
-                              Remove from roster
+                              Remove from schedule
                             </button>
                           </form>
                         </td>

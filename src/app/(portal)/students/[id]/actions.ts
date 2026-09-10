@@ -10,10 +10,20 @@ export async function recordPayment(_prev: State, formData: FormData): Promise<S
   const method = String(formData.get("method") ?? "cash");
   const received_on = String(formData.get("received_on") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
+  const discount_invoice_id = String(formData.get("discount_invoice_id") ?? "").trim() || null;
+  const discountRaw = String(formData.get("discount_amount") ?? "").trim();
+  const discount_note = String(formData.get("discount_note") ?? "").trim();
 
   const amount = Number(amountRaw);
   if (!studentId) return { error: "Missing student." };
   if (!amountRaw || Number.isNaN(amount) || amount <= 0) return { error: "Enter a valid amount." };
+
+  const discount_amount = discountRaw ? Number(discountRaw) : null;
+  if (discountRaw && (Number.isNaN(discount_amount) || (discount_amount as number) <= 0)) {
+    return { error: "Enter a valid discount amount." };
+  }
+  if (discount_amount && !discount_invoice_id) return { error: "Choose which invoice the discount applies to." };
+  if (discount_amount && !discount_note) return { error: "Add a short note for the discount." };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_record_payment", {
@@ -22,6 +32,9 @@ export async function recordPayment(_prev: State, formData: FormData): Promise<S
     p_method: method,
     p_received_on: received_on || null,
     p_note: note || null,
+    p_discount_invoice_id: discount_invoice_id,
+    p_discount_amount: discount_amount,
+    p_discount_note: discount_note || null,
   });
 
   if (error) return { error: "Could not record the payment — " + error.message };

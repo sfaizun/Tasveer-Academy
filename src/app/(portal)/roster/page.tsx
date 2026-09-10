@@ -64,7 +64,7 @@ export default async function RosterPage() {
   return (
     <>
       <header className="top">
-        <h1>Roster</h1>
+        <h1>Class Schedule</h1>
         <div className="sub">Weekly class timing — {isAdmin ? "admin managed" : "read only"}</div>
         <div className="spacer" />
         <ThemeToggle />
