@@ -19,6 +19,7 @@ export default async function PortalLayout({ children }: { children: React.React
   if (!me) redirect("/no-access");
 
   const isAdmin = me.role === "admin";
+  const isTeacher = me.role === "teacher";
   const initials = me.full_name.split(" ").map((p: string) => p[0]).slice(0, 2).join("");
 
   return (
@@ -39,7 +40,7 @@ export default async function PortalLayout({ children }: { children: React.React
         <div className="navlbl">Overview</div>
         <NavLink href="/dashboard">Dashboard</NavLink>
         <NavLink href="/roster">Class Schedule</NavLink>
-        <NavLink href="/announcements">Announcements</NavLink>
+        {(isAdmin || isTeacher) && <NavLink href="/announcements">Announcements</NavLink>}
         <NavLink href="/reports">Reports</NavLink>
 
         {isAdmin && (

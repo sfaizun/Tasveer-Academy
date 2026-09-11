@@ -46,6 +46,13 @@ export default function MyAnnouncements({ announcements }: { announcements: any[
                   <UrgencyChip urgency={a.urgency} />
                 </div>
                 <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, marginBottom: 6 }}>{a.body}</div>
+                {(a.announcement_attachment ?? [])[0]?.file_path && (
+                  <img
+                    src={(a.announcement_attachment ?? [])[0].file_path}
+                    alt=""
+                    style={{ maxWidth: "100%", maxHeight: 360, borderRadius: 8, display: "block", marginBottom: 8 }}
+                  />
+                )}
                 <div className="sub">
                   Posted {fmtDhaka(a.published_at)}
                   {a.expires_at ? ` · visible until ${fmtDhaka(a.expires_at)}` : ""}

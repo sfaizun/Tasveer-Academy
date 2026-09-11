@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 
 const ANN_SELECT =
   "id, title, body, urgency, scope, status, publish_at, expires_at, published_at, " +
-  "announcement_target(class_group_id, class_level_id, class_group(subject(name, level), batch_name), class_level(name, programme(name)))";
+  "announcement_target(class_group_id, class_level_id, class_group(subject(name, level), batch_name), class_level(name, programme(name))), " +
+  "announcement_attachment(id, file_path, filename)";
 
 export default async function Dashboard() {
   const supabase = await createClient();

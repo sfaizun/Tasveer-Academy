@@ -20,6 +20,48 @@ function toIso(local: string) {
   return new Date(local + ":00+06:00").toISOString();
 }
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+function readImage(formData: FormData): File | null {
+  const image = formData.get("image");
+  if (!(image instanceof File) || image.size === 0) return null;
+  return image;
+}
+
+function validateImage(image: File | null): string | null {
+  if (!image) return null;
+  if (!image.type.startsWith("image/")) return "The attached file isn't an image.";
+  if (image.size > MAX_IMAGE_BYTES) return "The image is larger than 5 MB — please use a smaller one.";
+  return null;
+}
+
+/** Best-effort: upload the image and link it to the announcement. Never fails the caller. */
+async function attachImage(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  announcementId: string,
+  image: File
+) {
+  const ext = (image.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+  const path = `${announcementId}/${crypto.randomUUID()}.${ext}`;
+
+  const { error: upErr } = await supabase.storage
+    .from("announcement-images")
+    .upload(path, image, { contentType: image.type || undefined, upsert: false });
+  if (upErr) {
+    console.error("announcement image upload failed:", upErr.message);
+    return;
+  }
+
+  const { data: pub } = supabase.storage.from("announcement-images").getPublicUrl(path);
+  const { error: attachErr } = await supabase.from("announcement_attachment").insert({
+    announcement_id: announcementId,
+    file_path: pub.publicUrl,
+    filename: image.name,
+    size_bytes: image.size,
+  });
+  if (attachErr) console.error("announcement_attachment insert failed:", attachErr.message);
+}
+
 /** Admin: create and publish an announcement immediately (or scope it academy-wide). */
 export async function createAnnouncement(_prev: State, formData: FormData): Promise<State> {
   const title = String(formData.get("title") ?? "").trim();
@@ -32,10 +74,14 @@ export async function createAnnouncement(_prev: State, formData: FormData): Prom
   const class_level_id = String(formData.get("class_level_id") ?? "").trim() || null;
   const expiresLocal = String(formData.get("expires_at") ?? "").trim();
 
+  const image = readImage(formData);
+  const imageError = validateImage(image);
+
   if (!title) return { error: "Enter a title." };
   if (!body) return { error: "Enter the announcement text." };
   if (targetType === "class_group" && (!subject_id || !teacher_id)) return { error: "Choose a subject and teacher." };
   if (targetType === "class_level" && !class_level_id) return { error: "Choose a junior class." };
+  if (imageError) return { error: imageError };
 
   const supabase = await createClient();
   const authorId = await myAppUserId(supabase);
@@ -86,6 +132,8 @@ export async function createAnnouncement(_prev: State, formData: FormData): Prom
     }
   }
 
+  if (image) await attachImage(supabase, ann.id, image);
+
   revalidatePath("/announcements");
   revalidatePath("/dashboard");
   return { ok: true };
@@ -110,11 +158,15 @@ export async function submitAnnouncementRequest(_prev: State, formData: FormData
   const publishLocal = String(formData.get("publish_at") ?? "").trim();
   const expiresLocal = String(formData.get("expires_at") ?? "").trim();
 
+  const image = readImage(formData);
+  const imageError = validateImage(image);
+
   if (!title) return { error: "Enter a title." };
   if (!body) return { error: "Enter the announcement text." };
   if (!subject_id) return { error: "Choose which of your subjects this is for." };
   if (!publishLocal) return { error: "Choose when this should start showing." };
   if (!expiresLocal) return { error: "Choose how long it should stay visible." };
+  if (imageError) return { error: imageError };
 
   const publish_at = toIso(publishLocal);
   const expires_at = toIso(expiresLocal);
@@ -160,6 +212,8 @@ export async function submitAnnouncementRequest(_prev: State, formData: FormData
     await supabase.from("announcement").delete().eq("id", ann.id);
     return { error: "Could not attach the class — " + targetErr.message };
   }
+
+  if (image) await attachImage(supabase, ann.id, image);
 
   revalidatePath("/announcements");
   return { ok: true };

@@ -69,6 +69,11 @@ function CreateForm({
         <label className="lbl">Message<Req /></label>
         <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} name="body" required />
       </div>
+      <div className="field">
+        <label className="lbl">Image (optional)</label>
+        <input style={inputStyle} type="file" name="image" accept="image/*" />
+        <div className="sub" style={{ marginTop: 4 }}>Up to 5 MB — JPEG, PNG, WebP, or GIF.</div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
         <div className="field">
           <label className="lbl">Audience<Req /></label>
@@ -210,6 +215,13 @@ export default function AdminAnnouncements({
                   <span className="sub">{targetLabel((r.announcement_target ?? [])[0] ?? null, r.scope)}</span>
                 </div>
                 <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, marginBottom: 6 }}>{r.body}</div>
+                {(r.announcement_attachment ?? [])[0]?.file_path && (
+                  <img
+                    src={(r.announcement_attachment ?? [])[0].file_path}
+                    alt=""
+                    style={{ maxWidth: "100%", maxHeight: 320, borderRadius: 8, display: "block", marginBottom: 8 }}
+                  />
+                )}
                 <div className="sub" style={{ marginBottom: 10 }}>
                   Requested window: {fmtDhaka(r.publish_at)} – {fmtDhaka(r.expires_at)}
                 </div>
@@ -253,6 +265,13 @@ export default function AdminAnnouncements({
                       <tr>
                         <td colSpan={4} style={{ padding: "12px 16px", background: "var(--tint)" }}>
                           <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, marginBottom: 8 }}>{a.body}</div>
+                          {(a.announcement_attachment ?? [])[0]?.file_path && (
+                            <img
+                              src={(a.announcement_attachment ?? [])[0].file_path}
+                              alt=""
+                              style={{ maxWidth: "100%", maxHeight: 320, borderRadius: 8, display: "block", marginBottom: 8 }}
+                            />
+                          )}
                           <div className="sub" style={{ marginBottom: 10 }}>
                             {a.published_at ? `Published ${fmtDhaka(a.published_at)}` : "Not yet published"}
                             {a.expires_at ? ` · visible until ${fmtDhaka(a.expires_at)}` : ""}

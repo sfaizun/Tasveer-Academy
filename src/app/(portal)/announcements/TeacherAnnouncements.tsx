@@ -59,6 +59,11 @@ function RequestForm({ subjects }: { subjects: Subject[] }) {
         <label className="lbl">Message<Req /></label>
         <textarea style={{ ...inputStyle, minHeight: 80, resize: "vertical" }} name="body" required />
       </div>
+      <div className="field">
+        <label className="lbl">Image (optional)</label>
+        <input style={inputStyle} type="file" name="image" accept="image/*" />
+        <div className="sub" style={{ marginTop: 4 }}>Up to 5 MB — JPEG, PNG, WebP, or GIF.</div>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 10 }}>
         <div className="field">
           <label className="lbl">Share from<Req /></label>
