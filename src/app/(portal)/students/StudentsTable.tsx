@@ -1,6 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { taka, fmtDate } from "@/lib/format";
+import ExportCsvButton from "@/components/ExportCsvButton";
 
 export type StudentRow = {
   id: string;
@@ -93,6 +94,21 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
+        <ExportCsvButton
+          filename="students"
+          headers={["Reg. no.", "Name", "Programme", "Class", "Phone", "Email", "Admitted on", "Dues", "Status"]}
+          rows={filtered.map((s) => [
+            s.reg_no,
+            s.full_name,
+            s.programme?.name ?? "",
+            s.class_level?.name ?? "",
+            s.phone ?? "",
+            s.email ?? "",
+            s.admitted_on ?? "",
+            duesOf(s),
+            s.status,
+          ])}
+        />
       </div>
       <div className="tblwrap">
         <table>
