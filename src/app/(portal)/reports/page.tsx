@@ -1,8 +1,10 @@
 import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
-import { taka, fmtDate, monthName } from "@/lib/format";
+import { taka, fmtDate, monthName, dhakaTodayISO } from "@/lib/format";
 import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
 import ExportCsvButton from "@/components/ExportCsvButton";
+import CashFinanceReports from "./CashFinanceReports";
+import TeacherWorkloadReport from "./TeacherWorkloadReport";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +13,13 @@ const monthInputStyle: React.CSSProperties = {
   fontSize: 13, background: "var(--paper)", color: "var(--ink)", fontFamily: "inherit",
 };
 
-/** GET-submitted month filter — no client JS needed, just a plain form against this same page. */
-function MonthFilter({ month }: { month: string | null }) {
+/** GET-submitted month filter — no client JS needed, just a plain form against this same page.
+ * Carries the daily-cash panel's date along as a hidden field so changing the month doesn't
+ * reset it. */
+function MonthFilter({ month, cashDate }: { month: string | null; cashDate?: string }) {
   return (
     <form method="GET" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+      {cashDate && <input type="hidden" name="cash_date" value={cashDate} />}
       <label className="lbl" style={{ margin: 0 }}>Month</label>
       <input type="month" name="month" defaultValue={month ?? ""} style={monthInputStyle} />
       <button className="btn ghost" type="submit" style={{ fontSize: 12, padding: "8px 12px" }}>
@@ -49,12 +54,14 @@ type AcademySummary = { total_received: number; total_due: number; total_gross: 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string }>;
+  searchParams: Promise<{ month?: string; cash_date?: string }>;
 }) {
   const sp = await searchParams;
   const month = typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : null;
   const monthDate = month ? `${month}-01` : null;
   const fileTag = month ?? "all-time";
+  const today = dhakaTodayISO();
+  const cashDate = typeof sp.cash_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.cash_date) ? sp.cash_date : today;
 
   const supabase = await createClient();
   const {
@@ -107,7 +114,7 @@ export default async function ReportsPage({
 
         <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div className="panel" style={{ padding: 16 }}>
-            <MonthFilter month={month} />
+            <MonthFilter month={month} cashDate={cashDate} />
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
@@ -117,6 +124,10 @@ export default async function ReportsPage({
             <Tile label="Discounts given" value={taka(s?.total_discount ?? 0)} />
             <Tile label="Active students" value={String(s?.active_students ?? 0)} />
           </div>
+
+          <CashFinanceReports supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} today={today} />
+
+          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>By student / subject / teacher</div>
 
           <div className="panel">
             <div className="phead">
@@ -170,6 +181,8 @@ export default async function ReportsPage({
             </div>
           </div>
 
+          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Teachers</div>
+
           <div className="panel">
             <div className="phead">
               <div className="ptitle">By teacher</div>
@@ -185,15 +198,18 @@ export default async function ReportsPage({
               <ReportBars rows={teacherBars} emptyLabel="No O/A Level enrolments billed to a teacher yet." />
             </div>
           </div>
+
+          <TeacherWorkloadReport supabase={supabase} />
         </div>
       </>
     );
   }
 
   if (isTeacher) {
-    const [byTeacher, bySubject] = await Promise.all([
+    const [byTeacher, bySubject, { data: myTeacherRow }] = await Promise.all([
       supabase.rpc("fn_report_by_teacher", { p_month: monthDate }),
       supabase.rpc("fn_report_by_subject", { p_month: monthDate }),
+      supabase.from("teacher").select("id").eq("app_user_id", me!.id).maybeSingle(),
     ]);
 
     const own: TeacherRow | undefined = (byTeacher.data ?? [])[0];
@@ -239,6 +255,15 @@ export default async function ReportsPage({
               <ReportBars rows={subjectBars} emptyLabel="No billing on your subjects yet." />
             </div>
           </div>
+
+          {myTeacherRow?.id && (
+            <TeacherWorkloadReport
+              supabase={supabase}
+              onlyTeacherId={myTeacherRow.id}
+              title="Your workload"
+              subtitle="Your active classes, enrolled students, and scheduled weekly hours"
+            />
+          )}
         </div>
       </>
     );
