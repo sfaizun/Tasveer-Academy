@@ -1,6 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { myStudentIds } from "./receipts";
 
 type State = { error?: string; ok?: boolean } | null;
 
@@ -73,6 +74,7 @@ export async function createAnnouncement(_prev: State, formData: FormData): Prom
   const batch = String(formData.get("batch") ?? "").trim() || "A";
   const class_level_id = String(formData.get("class_level_id") ?? "").trim() || null;
   const expiresLocal = String(formData.get("expires_at") ?? "").trim();
+  const requires_ack = formData.get("requires_ack") === "1";
 
   const image = readImage(formData);
   const imageError = validateImage(image);
@@ -108,6 +110,7 @@ export async function createAnnouncement(_prev: State, formData: FormData): Prom
       title,
       body,
       urgency,
+      requires_ack,
       status: "published",
       publish_at: new Date().toISOString(),
       published_at: new Date().toISOString(),
@@ -137,6 +140,28 @@ export async function createAnnouncement(_prev: State, formData: FormData): Prom
   revalidatePath("/announcements");
   revalidatePath("/dashboard");
   return { ok: true };
+}
+
+/** Student/guardian: acknowledge an announcement that requires it. Recorded against every
+ * one of the viewer's own students (a guardian with more than one ward acknowledges for
+ * all of them at once — there's only one "I've seen this" click in the UI). */
+export async function acknowledgeAnnouncement(formData: FormData) {
+  const id = String(formData.get("id") ?? "");
+  if (!id) return;
+  const supabase = await createClient();
+  const studentIds = await myStudentIds(supabase);
+  if (studentIds.length === 0) return;
+
+  const now = new Date().toISOString();
+  await supabase
+    .from("announcement_receipt")
+    .upsert(
+      studentIds.map((student_id) => ({ announcement_id: id, student_id, acknowledged_at: now })),
+      { onConflict: "announcement_id,student_id" }
+    );
+
+  revalidatePath("/announcements");
+  revalidatePath("/dashboard");
 }
 
 /** Admin: take an announcement already live back down. */

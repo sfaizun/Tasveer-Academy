@@ -5,6 +5,9 @@ import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
 import ExportCsvButton from "@/components/ExportCsvButton";
 import CashFinanceReports from "./CashFinanceReports";
 import TeacherWorkloadReport from "./TeacherWorkloadReport";
+import AnnouncementReachReport from "./AnnouncementReachReport";
+import UserAccessReport from "./UserAccessReport";
+import ActivityAuditReport from "./ActivityAuditReport";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +57,7 @@ type AcademySummary = { total_received: number; total_due: number; total_gross: 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; cash_date?: string }>;
+  searchParams: Promise<{ month?: string; cash_date?: string; ann_id?: string; entity?: string }>;
 }) {
   const sp = await searchParams;
   const month = typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : null;
@@ -62,6 +65,8 @@ export default async function ReportsPage({
   const fileTag = month ?? "all-time";
   const today = dhakaTodayISO();
   const cashDate = typeof sp.cash_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.cash_date) ? sp.cash_date : today;
+  const annId = typeof sp.ann_id === "string" && sp.ann_id ? sp.ann_id : undefined;
+  const entity = typeof sp.entity === "string" && sp.entity ? sp.entity : null;
 
   const supabase = await createClient();
   const {
@@ -200,6 +205,16 @@ export default async function ReportsPage({
           </div>
 
           <TeacherWorkloadReport supabase={supabase} />
+
+          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Communications</div>
+
+          <AnnouncementReachReport supabase={supabase} selectedId={annId} month={month} cashDate={cashDate} />
+
+          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Operational / admin</div>
+
+          <UserAccessReport supabase={supabase} />
+
+          <ActivityAuditReport supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} entity={entity} />
         </div>
       </>
     );

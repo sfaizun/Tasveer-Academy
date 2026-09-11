@@ -3,11 +3,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 import AdminAnnouncements from "./AdminAnnouncements";
 import TeacherAnnouncements from "./TeacherAnnouncements";
 import MyAnnouncements from "./MyAnnouncements";
+import { markSeenAndGetAcks } from "./receipts";
 
 export const dynamic = "force-dynamic";
 
 const ANN_SELECT =
-  "id, title, body, urgency, scope, status, publish_at, expires_at, published_at, created_at, decision_note, " +
+  "id, title, body, urgency, scope, status, requires_ack, publish_at, expires_at, published_at, created_at, decision_note, " +
   "announcement_target(class_group_id, class_level_id, class_group(subject(name, level), batch_name), class_level(name, programme(name))), " +
   "announcement_attachment(id, file_path, filename)";
 
@@ -105,6 +106,8 @@ export default async function AnnouncementsPage() {
     .eq("status", "published")
     .order("published_at", { ascending: false });
 
+  const acknowledgedIds = await markSeenAndGetAcks(supabase, (published ?? []).map((a: any) => a.id));
+
   return (
     <>
       <header className="top">
@@ -114,7 +117,7 @@ export default async function AnnouncementsPage() {
         <ThemeToggle />
       </header>
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <MyAnnouncements announcements={(published ?? []) as any[]} />
+        <MyAnnouncements announcements={(published ?? []) as any[]} acknowledgedIds={acknowledgedIds} />
       </div>
     </>
   );

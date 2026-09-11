@@ -144,6 +144,10 @@ function CreateForm({
           <input style={inputStyle} type="datetime-local" name="expires_at" />
         </div>
       </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+        <input type="checkbox" name="requires_ack" value="1" />
+        Require students to acknowledge they&apos;ve read this
+      </label>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button className="btn" type="submit" disabled={pending} style={{ alignSelf: "flex-start" }}>
           {pending ? "Publishing…" : "Publish now"}

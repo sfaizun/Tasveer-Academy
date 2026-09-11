@@ -4,11 +4,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 import AdminDashboard from "./AdminDashboard";
 import TeacherDashboard from "./TeacherDashboard";
 import MyAnnouncements from "../announcements/MyAnnouncements";
+import { markSeenAndGetAcks } from "../announcements/receipts";
 
 export const dynamic = "force-dynamic";
 
 const ANN_SELECT =
-  "id, title, body, urgency, scope, status, publish_at, expires_at, published_at, " +
+  "id, title, body, urgency, scope, status, requires_ack, publish_at, expires_at, published_at, " +
   "announcement_target(class_group_id, class_level_id, class_group(subject(name, level), batch_name), class_level(name, programme(name))), " +
   "announcement_attachment(id, file_path, filename)";
 
@@ -36,6 +37,8 @@ export default async function Dashboard() {
     .eq("status", "published")
     .order("published_at", { ascending: false });
 
+  const acknowledgedIds = await markSeenAndGetAcks(supabase, (announcements ?? []).map((a: any) => a.id));
+
   return (
     <>
       <header className="top">
@@ -53,7 +56,7 @@ export default async function Dashboard() {
         </div>
         <div>
           <div className="lbl" style={{ margin: "4px 0 10px" }}>Announcements</div>
-          <MyAnnouncements announcements={(announcements ?? []) as any[]} />
+          <MyAnnouncements announcements={(announcements ?? []) as any[]} acknowledgedIds={acknowledgedIds} />
         </div>
       </div>
     </>

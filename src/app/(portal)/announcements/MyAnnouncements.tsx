@@ -1,11 +1,21 @@
 import { fmtDhaka, isCurrentlyVisible, targetLabel } from "./shared";
+import { acknowledgeAnnouncement } from "./actions";
 
 function UrgencyChip({ urgency }: { urgency: string }) {
   if (urgency === "urgent") return <span className="st over"><span className="dot" />Urgent</span>;
   return <span className="st due"><span className="dot" />Notice</span>;
 }
 
-export default function MyAnnouncements({ announcements }: { announcements: any[] }) {
+export default function MyAnnouncements({
+  announcements,
+  acknowledgedIds,
+}: {
+  announcements: any[];
+  /** Ids of announcements the signed-in student/guardian has already acknowledged —
+   * omit (or pass undefined) when acknowledgment tracking doesn't apply, e.g. no
+   * student link was found for this account. */
+  acknowledgedIds?: Set<string>;
+}) {
   const visible = announcements.filter((a) => isCurrentlyVisible(a.publish_at, a.expires_at));
 
   const groups = new Map<string, { label: string; rows: any[] }>();
@@ -57,6 +67,20 @@ export default function MyAnnouncements({ announcements }: { announcements: any[
                   Posted {fmtDhaka(a.published_at)}
                   {a.expires_at ? ` · visible until ${fmtDhaka(a.expires_at)}` : ""}
                 </div>
+                {a.requires_ack && (
+                  acknowledgedIds?.has(a.id) ? (
+                    <div style={{ marginTop: 8 }}>
+                      <span className="st paid"><span className="dot" />Acknowledged</span>
+                    </div>
+                  ) : (
+                    <form action={acknowledgeAnnouncement} style={{ marginTop: 8 }}>
+                      <input type="hidden" name="id" value={a.id} />
+                      <button className="btn" type="submit" style={{ fontSize: 12, padding: "6px 12px" }}>
+                        I&apos;ve read this — Acknowledge
+                      </button>
+                    </form>
+                  )
+                )}
               </div>
             ))}
           </div>
