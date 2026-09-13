@@ -11,9 +11,14 @@
   --age1:#f2b3a9; --age2:#cf5849; --age3:#8c2018;
   --sr-raised:#2a5fa0; --sr-coll:#d24a3d;
   --grid:#f0e8e1; --axis:#e0d6cd;
-  --sans:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-  --serif:"Instrument Serif",Georgia,"Times New Roman",serif;
-  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  /* "Noto Sans Bengali" sits before the Latin system fallbacks in every stack so the
+     Bengali Taka sign (৳) and any Bengali text always have a real glyph to fall back to —
+     Instrument Sans/Serif and IBM Plex Mono don't cover Bengali script at all, and relying
+     on the visitor's OS to happen to have a Bengali font installed rendered as a bare
+     question mark for some users instead of ৳. */
+  --sans:"Instrument Sans","Noto Sans Bengali",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --serif:"Instrument Serif","Noto Sans Bengali",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono","Noto Sans Bengali",ui-monospace,SFMono-Regular,Menlo,monospace;
   color-scheme: light;
 }
 /* Dark is a designed palette, not an inversion. */
