@@ -5,6 +5,7 @@ import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
 import ExportCsvButton from "@/components/ExportCsvButton";
 import CashFinanceReports from "./CashFinanceReports";
 import TeacherWorkloadReport from "./TeacherWorkloadReport";
+import TeacherStudentPaymentsReport from "./TeacherStudentPaymentsReport";
 import AnnouncementReachReport from "./AnnouncementReachReport";
 import UserAccessReport from "./UserAccessReport";
 import ActivityAuditReport from "./ActivityAuditReport";
@@ -206,6 +207,15 @@ export default async function ReportsPage({
 
           <TeacherWorkloadReport supabase={supabase} />
 
+          <TeacherStudentPaymentsReport
+            supabase={supabase}
+            monthDate={monthDate}
+            showTeacherColumn
+            linkStudents
+            title="Student payments by subject"
+            subtitle="Every O/A Level class, expandable to each enrolled student's billing and payments"
+          />
+
           <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Communications</div>
 
           <AnnouncementReachReport supabase={supabase} selectedId={annId} month={month} cashDate={cashDate} />
@@ -277,6 +287,15 @@ export default async function ReportsPage({
               onlyTeacherId={myTeacherRow.id}
               title="Your workload"
               subtitle="Your active classes, enrolled students, and scheduled weekly hours"
+            />
+          )}
+
+          {myTeacherRow?.id && (
+            <TeacherStudentPaymentsReport
+              supabase={supabase}
+              monthDate={monthDate}
+              title="Your students' payments"
+              subtitle="Expand a subject you teach to see each enrolled student's billing and payments"
             />
           )}
         </div>

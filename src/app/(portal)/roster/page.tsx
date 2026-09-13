@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import RosterAdmin from "./RosterAdmin";
 import { WEEKDAYS, fmtTime } from "./shared";
+import { myStudentIds } from "../announcements/receipts";
 
 export const dynamic = "force-dynamic";
 
@@ -32,8 +33,9 @@ export default async function RosterPage() {
     .maybeSingle();
 
   const isAdmin = me?.role === "admin";
+  const isStudentOrGuardian = me?.role === "student" || me?.role === "guardian";
 
-  const [{ data: slots }, adminData] = await Promise.all([
+  const [{ data: slots }, adminData, myScope] = await Promise.all([
     supabase
       .from("class_slot")
       .select(
@@ -56,16 +58,42 @@ export default async function RosterPage() {
           supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
         ])
       : Promise.resolve(null),
+    // A student/guardian only ever sees the classes they're actually enrolled in — every
+    // active O/A Level class_group from their enrolments, plus their own class_level for
+    // Junior (which has no per-subject class_group at all).
+    isStudentOrGuardian
+      ? (async () => {
+          const studentIds = await myStudentIds(supabase);
+          if (studentIds.length === 0) return { classGroupIds: new Set<string>(), classLevelIds: new Set<string>() };
+          const [{ data: enrolments }, { data: students }] = await Promise.all([
+            supabase.from("enrolment").select("class_group_id").eq("status", "active").in("student_id", studentIds),
+            supabase.from("student").select("class_level_id").in("id", studentIds),
+          ]);
+          return {
+            classGroupIds: new Set(((enrolments ?? []) as any[]).map((e) => e.class_group_id).filter(Boolean)),
+            classLevelIds: new Set(((students ?? []) as any[]).map((s) => s.class_level_id).filter(Boolean)),
+          };
+        })()
+      : Promise.resolve(null),
   ]);
 
-  const rows = (slots ?? []) as any[];
+  let rows = (slots ?? []) as any[];
+  if (isStudentOrGuardian && myScope) {
+    rows = rows.filter(
+      (r) =>
+        (r.class_group_id && myScope.classGroupIds.has(r.class_group_id)) ||
+        (r.class_level_id && myScope.classLevelIds.has(r.class_level_id))
+    );
+  }
   const byDay = WEEKDAYS.map((_, wd) => rows.filter((r) => r.weekday === wd));
 
   return (
     <>
       <header className="top">
         <h1>Class Schedule</h1>
-        <div className="sub">Weekly class timing — {isAdmin ? "admin managed" : "read only"}</div>
+        <div className="sub">
+          Weekly class timing — {isAdmin ? "admin managed" : isStudentOrGuardian ? "your enrolled classes only" : "read only"}
+        </div>
         <div className="spacer" />
         <ThemeToggle />
       </header>

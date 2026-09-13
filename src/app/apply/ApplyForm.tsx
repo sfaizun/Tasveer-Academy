@@ -189,6 +189,20 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     return 0;
   }, [programme, selectedClassLevel, subjectRows, catalogue.subjects]);
 
+  // Admission fee is charged per subject for O Level / A Level (one unit of the admission
+  // rate for every subject enrolled at admission); Junior has no subject concept, so it
+  // stays a single flat charge per student.
+  const enrolledSubjectCount = useMemo(
+    () => subjectRows.filter((r) => r.subjectId).length,
+    [subjectRows]
+  );
+  const admissionFeeTotal = useMemo(() => {
+    if (programme === "o_level" || programme === "a_level") {
+      return catalogue.admissionFee * enrolledSubjectCount;
+    }
+    return catalogue.admissionFee;
+  }, [programme, catalogue.admissionFee, enrolledSubjectCount]);
+
   const firstMonthEstimate = useMemo(() => {
     if (!programme || monthlyTotal === 0) return 0;
     if (startMonth === monthISO(visitDate)) {
@@ -254,7 +268,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
         .map((r) => ({ full_name: r.fullName, class_name: r.className, school_name: r.schoolName })),
       subjects: subjectsPayload,
       fee_summary: {
-        admission_fee: catalogue.admissionFee,
+        admission_fee: admissionFeeTotal,
         monthly_total: monthlyTotal,
         first_month_estimate: firstMonthEstimate,
         note:
@@ -669,8 +683,15 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                 <table>
                   <tbody>
                     <tr>
-                      <td>Admission fee (one time)</td>
-                      <td className="n mono">{taka(catalogue.admissionFee)}</td>
+                      <td>
+                        Admission fee (one time)
+                        {(programme === "o_level" || programme === "a_level") && enrolledSubjectCount > 0 && (
+                          <div className="sub" style={{ fontSize: 12 }}>
+                            {taka(catalogue.admissionFee)} × {enrolledSubjectCount} subject{enrolledSubjectCount === 1 ? "" : "s"}
+                          </div>
+                        )}
+                      </td>
+                      <td className="n mono">{taka(admissionFeeTotal)}</td>
                     </tr>
                     <tr>
                       <td>Monthly fee</td>

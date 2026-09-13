@@ -93,7 +93,7 @@ export default async function Settings() {
                 {admission.map((r) => (
                   <tr key={r.id}>
                     <td><b>Admission fee — {r.programme?.name ?? "—"}</b></td>
-                    <td>Per student, one time</td>
+                    <td>{r.programme?.code === "junior" ? "Per student, one time" : "Per subject, one time"}</td>
                     <td className="n mono"><b>{taka(r.amount)}</b></td>
                     <td className="mono sub">{fmtDate(r.effective_from)}</td>
                   </tr>
