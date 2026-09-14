@@ -76,6 +76,12 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   if (payload.programme_code !== "junior" && payload.subjects.length > 10) {
     return { ok: false, error: "A maximum of 10 subjects can be added." };
   }
+  if (payload.programme_code !== "junior") {
+    const subjectIds = payload.subjects.map((s) => s.subject_id);
+    if (new Set(subjectIds).size !== subjectIds.length) {
+      return { ok: false, error: "Each subject can only be selected once." };
+    }
+  }
   if (!payload.declaration_accepted) {
     return { ok: false, error: "Please accept the declaration to submit." };
   }

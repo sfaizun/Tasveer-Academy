@@ -48,11 +48,6 @@ function newKey() {
 function taka(n: number) {
   return "৳" + n.toLocaleString("en-BD", { maximumFractionDigits: 0 });
 }
-function daysInMonth(yyyyMM: string) {
-  const [y, m] = yyyyMM.split("-").map(Number);
-  return new Date(y, m, 0).getDate();
-}
-
 function Field({
   label,
   children,
@@ -214,16 +209,11 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     return catalogue.admissionFee;
   }, [programme, catalogue.admissionFee, enrolledSubjectCount]);
 
-  const firstMonthEstimate = useMemo(() => {
-    if (!programme || monthlyTotal === 0) return 0;
-    if (startMonth === monthISO(visitDate)) {
-      const dim = daysInMonth(startMonth);
-      const dayOfMonth = Number(visitDate.slice(8, 10));
-      const remaining = dim - dayOfMonth + 1;
-      return Math.round((monthlyTotal * remaining) / dim);
-    }
-    return monthlyTotal;
-  }, [programme, monthlyTotal, startMonth, visitDate]);
+  // Shown as the full month's fee, not reduced for a mid-month start — the academy's
+  // actual first invoice may still be pro-rated by calendar days, but this indicative
+  // summary shouldn't show a smaller number than what a full month actually costs
+  // (decision, 14 Sep 2026).
+  const firstMonthEstimate = monthlyTotal;
 
   function validateClient(): string | null {
     if (!student.full_name.trim()) return "Enter the student's full name.";
@@ -236,6 +226,8 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
       const valid = subjectRows.filter((r) => r.subjectId);
       if (valid.length === 0) return "Add at least one subject.";
       if (!isMock && valid.some((r) => !r.teacherId)) return "Choose a teacher for every subject row.";
+      const subjectIds = valid.map((r) => r.subjectId);
+      if (new Set(subjectIds).size !== subjectIds.length) return "Each subject can only be selected once.";
     }
     if (!accepted) return "Please accept the declaration to submit.";
     return null;
@@ -645,6 +637,12 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
             >
               {subjectRows.map((row, i) => {
                 const chosen = catalogue.subjects.find((s) => s.id === row.subjectId);
+                // A subject already picked in another row is hidden here, so the same
+                // subject can't be selected twice (decision, 14 Sep 2026).
+                const takenElsewhere = new Set(
+                  subjectRows.filter((r) => r.key !== row.key && r.subjectId).map((r) => r.subjectId)
+                );
+                const rowOptions = subjectOptions.filter((s) => s.id === row.subjectId || !takenElsewhere.has(s.id));
                 return (
                   <div
                     key={row.key}
@@ -666,7 +664,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                         }
                       >
                         <option value="">Choose…</option>
-                        {subjectOptions.map((s) => (
+                        {rowOptions.map((s) => (
                           <option key={s.id} value={s.id}>
                             {subjectLabel(s)}
                           </option>
@@ -747,15 +745,15 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                     ) : (
                       <>
                         <tr>
-                          <td>Monthly fee</td>
+                          <td>Monthly fee ({startMonth}, full month)</td>
                           <td className="n mono">{taka(monthlyTotal)}</td>
                         </tr>
                         <tr>
                           <td>
-                            <b>Estimated first month ({startMonth}, pro-rated)</b>
+                            <b>Total due on approval</b>
                           </td>
                           <td className="n mono">
-                            <b>{taka(firstMonthEstimate)}</b>
+                            <b>{taka(admissionFeeTotal + monthlyTotal)}</b>
                           </td>
                         </tr>
                       </>
