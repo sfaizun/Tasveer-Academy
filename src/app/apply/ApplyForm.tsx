@@ -209,9 +209,9 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     return catalogue.admissionFee;
   }, [programme, catalogue.admissionFee, enrolledSubjectCount]);
 
-  // Shown as the full month's fee, not reduced for a mid-month start — the academy's
-  // actual first invoice may still be pro-rated by calendar days, but this indicative
-  // summary shouldn't show a smaller number than what a full month actually costs
+  // Always the full month's fee — the academy no longer pro-rates a student's first
+  // month by calendar days for a mid-month start; a reduced first-month charge, if one
+  // is ever needed, is applied afterwards by admin as a manual discount instead
   // (decision, 14 Sep 2026).
   const firstMonthEstimate = monthlyTotal;
 
@@ -278,7 +278,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
         mock_fee: mockFeeTotal,
         note: isMock
           ? "Indicative only. Mock exam candidates pay the admission fee and the flat mock exam fee once, on approval — no monthly billing."
-          : "Indicative only. The academy generates the actual first invoice on approval, pro-rated by calendar days.",
+          : "Indicative only. The academy generates the actual first invoice on approval, charging the full month's fee (not pro-rated).",
       },
       declaration_accepted: accepted,
     };

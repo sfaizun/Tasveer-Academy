@@ -31,8 +31,10 @@ export default function RunBillingForm({ defaultMonth }: { defaultMonth: string 
       )}
       <div className="sub">
         Idempotent — running the same month again never creates a duplicate invoice. Only bills
-        active students / active enrolments whose billing has already started; the first, prorated
-        month is created automatically when an application is approved.
+        active students / active enrolments whose billing has already started; the first month
+        (a full month's fee, never pro-rated) is created automatically when an application is
+        approved. If a reduced first-month charge is ever needed, add it as a manual discount
+        on that invoice instead.
       </div>
     </form>
   );

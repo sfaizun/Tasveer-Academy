@@ -226,8 +226,11 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
             </>
           ) : (
             <>
-              <Detail label="Monthly fee" value={taka(fee.monthly_total ?? 0)} />
-              <Detail label="First month estimate" value={taka(fee.first_month_estimate ?? 0)} />
+              <Detail label="Monthly fee (full month)" value={taka(fee.monthly_total ?? 0)} />
+              <Detail
+                label="Total due on approval"
+                value={taka((fee.admission_fee ?? 0) + (fee.monthly_total ?? 0))}
+              />
             </>
           )}
         </div>
