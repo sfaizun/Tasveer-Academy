@@ -389,12 +389,14 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
               <Field label="Programme" required>
                 <select
                   style={selStyle}
-                  value={programme}
+                  value={programme ? `${programme}${mockOnly ? "_mock" : ""}` : ""}
                   onChange={(e) => {
-                    const v = e.target.value as ProgrammeCode;
+                    const raw = e.target.value;
+                    const mock = raw.endsWith("_mock");
+                    const v = (mock ? raw.slice(0, -"_mock".length) : raw) as ProgrammeCode;
                     setProgramme(v);
                     setClassLevelCode("");
-                    setMockOnly(false);
+                    setMockOnly(mock);
                     setSubjectRows([{ key: newKey(), subjectId: "", teacherId: "", fromMonth: startMonth }]);
                   }}
                   required
@@ -402,7 +404,9 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   <option value="">Choose…</option>
                   <option value="junior">Junior (STD I–VIII)</option>
                   <option value="o_level">O Level (Edexcel)</option>
+                  <option value="o_level_mock">O Level — Mock Exam Only</option>
                   <option value="a_level">A Level (Edexcel)</option>
+                  <option value="a_level_mock">A Level — Mock Exam Only</option>
                 </select>
               </Field>
               {!isMock && (
@@ -422,19 +426,12 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                 </Field>
               )}
             </div>
-            {isMockEligible && (
-              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, color: "var(--body)" }}>
-                <input
-                  type="checkbox"
-                  checked={mockOnly}
-                  onChange={(e) => setMockOnly(e.target.checked)}
-                  style={{ marginTop: 3 }}
-                />
-                <span>
-                  Mock exam only — sitting {programme === "o_level" ? "O Level" : "A Level"} mock
-                  exams in chosen subjects, not enrolling in regular tuition classes.
-                </span>
-              </label>
+            {isMock && (
+              <div className="sub" style={{ fontSize: 12.5 }}>
+                Mock exam only — sitting {programme === "o_level" ? "O Level" : "A Level"} mock
+                exams in chosen subjects below, not enrolling in regular tuition classes. No
+                teacher assignment or monthly billing.
+              </div>
             )}
           </Section>
 
