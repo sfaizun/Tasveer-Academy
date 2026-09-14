@@ -11,7 +11,8 @@ export async function addFeeRate(_prev: State, formData: FormData): Promise<Stat
   const note = String(formData.get("note") ?? "").trim();
 
   const [kind, programme_id, level, class_level_id] = target.split("|");
-  if (!kind || !programme_id) return { error: "Choose which rate this is for." };
+  // programme_id can be blank: the mock exam fee is global (same rate for O and A Level).
+  if (!kind) return { error: "Choose which rate this is for." };
 
   const amount = Number(amountRaw);
   if (!amountRaw || Number.isNaN(amount) || amount < 0) return { error: "Enter a valid amount." };
@@ -24,7 +25,7 @@ export async function addFeeRate(_prev: State, formData: FormData): Promise<Stat
 
   const { error } = await supabase.from("fee_rate").insert({
     kind,
-    programme_id,
+    programme_id: programme_id || null,
     level: level || null,
     class_level_id: class_level_id || null,
     amount,

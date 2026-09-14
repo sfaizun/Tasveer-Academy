@@ -12,6 +12,7 @@ export type StudentRow = {
   status: string;
   admitted_on: string | null;
   created_at: string;
+  enrolment_type?: string;
   programme?: { name: string } | null;
   class_level?: { name: string } | null;
   invoice?: { balance: number; status: string }[] | null;
@@ -130,7 +131,17 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
                 <tr key={s.id}>
                   <td className="mono"><a href={`/students/${s.id}`}><b>{s.reg_no}</b></a></td>
                   <td><a href={`/students/${s.id}`}><b>{s.full_name}</b></a></td>
-                  <td>{[s.programme?.name, s.class_level?.name].filter(Boolean).join(" — ") || "—"}</td>
+                  <td>
+                    {[s.programme?.name, s.class_level?.name].filter(Boolean).join(" — ") || "—"}
+                    {s.enrolment_type === "mock_only" && (
+                      <span
+                        className="chip"
+                        style={{ marginLeft: 8, fontSize: 10.5, padding: "2px 7px", color: "var(--blue)", borderColor: "var(--blue-soft)", background: "var(--blue-soft)" }}
+                      >
+                        Mock exam
+                      </span>
+                    )}
+                  </td>
                   <td className="sub">{[s.phone, s.email].filter(Boolean).join(" · ") || "—"}</td>
                   <td className="mono sub">{fmtDate(s.admitted_on)}</td>
                   <td className="n mono">

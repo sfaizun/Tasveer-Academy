@@ -50,6 +50,17 @@ function programmeName(code: string) {
   return code === "junior" ? "Junior" : code === "o_level" ? "O Level" : code === "a_level" ? "A Level" : code;
 }
 
+function MockBadge() {
+  return (
+    <span
+      className="chip"
+      style={{ fontSize: 11, padding: "3px 8px", color: "var(--blue)", borderColor: "var(--blue-soft)", background: "var(--blue-soft)" }}
+    >
+      Mock exam only
+    </span>
+  );
+}
+
 function ReviewForm({ appId, currentStatus }: { appId: string; currentStatus: string }) {
   const [state, action, pending] = useActionState(setApplicationStatus, null);
 
@@ -103,11 +114,21 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
     <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "16px 18px", background: "var(--tint)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
         <Detail label="Visit date" value={p.visit_date ? fmtDate(p.visit_date) : p.visit_date} />
-        <Detail label="Programme" value={programmeName(p.programme_code)} />
         <Detail
-          label={p.programme_code === "junior" ? "Class" : "Start month"}
-          value={p.programme_code === "junior" ? p.class_level_code : p.start_month}
+          label="Programme"
+          value={
+            <span style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              {programmeName(p.programme_code)}
+              {p.mock_only && <MockBadge />}
+            </span>
+          }
         />
+        {!p.mock_only && (
+          <Detail
+            label={p.programme_code === "junior" ? "Class" : "Start month"}
+            value={p.programme_code === "junior" ? p.class_level_code : p.start_month}
+          />
+        )}
         <Detail label="Previous reg. no." value={p.previous_reg_no} />
       </div>
 
@@ -154,22 +175,41 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
 
       {subjects.length > 0 && (
         <div>
-          <div className="ptitle" style={{ marginBottom: 8 }}>Subjects</div>
+          <div className="ptitle" style={{ marginBottom: 8 }}>
+            {p.mock_only ? "Mock exam subjects" : "Subjects"}
+          </div>
           <div className="tblwrap">
             <table>
-              <thead>
-                <tr><th>Subject</th><th>Teacher</th><th>From</th><th className="n">Fee/month</th></tr>
-              </thead>
-              <tbody>
-                {subjects.map((s: any, i: number) => (
-                  <tr key={i}>
-                    <td>{s.subject_name}{s.level ? ` (${String(s.level).toUpperCase()})` : ""}</td>
-                    <td>{s.teacher_name}</td>
-                    <td className="mono sub">{fmtDate(s.from_month)}</td>
-                    <td className="n mono">{taka(s.monthly_fee)}</td>
-                  </tr>
-                ))}
-              </tbody>
+              {p.mock_only ? (
+                <>
+                  <thead>
+                    <tr><th>Subject</th></tr>
+                  </thead>
+                  <tbody>
+                    {subjects.map((s: any, i: number) => (
+                      <tr key={i}>
+                        <td>{s.subject_name}{s.level ? ` (${String(s.level).toUpperCase()})` : ""}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              ) : (
+                <>
+                  <thead>
+                    <tr><th>Subject</th><th>Teacher</th><th>From</th><th className="n">Fee/month</th></tr>
+                  </thead>
+                  <tbody>
+                    {subjects.map((s: any, i: number) => (
+                      <tr key={i}>
+                        <td>{s.subject_name}{s.level ? ` (${String(s.level).toUpperCase()})` : ""}</td>
+                        <td>{s.teacher_name}</td>
+                        <td className="mono sub">{fmtDate(s.from_month)}</td>
+                        <td className="n mono">{taka(s.monthly_fee)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </>
+              )}
             </table>
           </div>
         </div>
@@ -179,8 +219,17 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
         <div className="ptitle" style={{ marginBottom: 8 }}>Fee summary (indicative)</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 14 }}>
           <Detail label="Admission fee" value={taka(fee.admission_fee ?? 0)} />
-          <Detail label="Monthly fee" value={taka(fee.monthly_total ?? 0)} />
-          <Detail label="First month estimate" value={taka(fee.first_month_estimate ?? 0)} />
+          {p.mock_only ? (
+            <>
+              <Detail label="Mock exam fee" value={taka(fee.mock_fee ?? 0)} />
+              <Detail label="Total due on approval" value={taka((fee.admission_fee ?? 0) + (fee.mock_fee ?? 0))} />
+            </>
+          ) : (
+            <>
+              <Detail label="Monthly fee" value={taka(fee.monthly_total ?? 0)} />
+              <Detail label="First month estimate" value={taka(fee.first_month_estimate ?? 0)} />
+            </>
+          )}
         </div>
       </div>
 
@@ -196,8 +245,11 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
         <div className="ptitle" style={{ marginBottom: 8 }}>Update status</div>
         {app.status !== "approved" && (
           <div className="sub" style={{ marginBottom: 8 }}>
-            Setting this to Approved creates the student, guardian, sibling and enrolment
-            records and generates the first invoice — it can&apos;t be undone from here.
+            Setting this to Approved creates the student, guardian and sibling records{" "}
+            {app.payload?.mock_only
+              ? "and the mock exam subject registrations"
+              : "and subject enrolments"}
+            , and generates the first invoice — it can&apos;t be undone from here.
           </div>
         )}
         <ReviewForm appId={app.id} currentStatus={app.status} />
@@ -254,7 +306,12 @@ export default function ApplicationsTable({ applications }: { applications: Appl
                     <td className="mono"><b>{app.ref_no}</b></td>
                     <td className="sub">{fmtDateTime(app.submitted_at ?? app.created_at)}</td>
                     <td><b>{p.student?.full_name ?? "—"}</b></td>
-                    <td>{programmeName(p.programme_code)}</td>
+                    <td>
+                      <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        {programmeName(p.programme_code)}
+                        {p.mock_only && <MockBadge />}
+                      </span>
+                    </td>
                     <td className="sub">{p.guardian?.phone ?? "—"}</td>
                     <td className="n"><StatusChip status={app.status} /></td>
                     <td className="n">

@@ -25,6 +25,10 @@ export default async function ApplyPage() {
   const admissionFeeRow = (catalogueRaw.fee_rates ?? []).find((r: any) => r.kind === "admission");
   const admissionFee = admissionFeeRow ? Number(admissionFeeRow.amount) : 0;
 
+  // Flat mock exam fee, same for O Level and A Level (decision, 14 Sep 2026).
+  const mockFeeRow = (catalogueRaw.fee_rates ?? []).find((r: any) => r.kind === "mock");
+  const mockFee = mockFeeRow ? Number(mockFeeRow.amount) : 5000;
+
   const juniorFeeByClassLevel = new Map<string, number>();
   const subjectFeeByProgLevel = new Map<string, number>();
   for (const r of (catalogueRaw.fee_rates ?? []) as any[]) {
@@ -42,6 +46,7 @@ export default async function ApplyPage() {
 
   const catalogue: CatalogueData = {
     admissionFee,
+    mockFee,
     classLevels: (catalogueRaw.class_levels ?? []).map((c: any) => ({
       id: c.id,
       code: c.code,

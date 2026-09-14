@@ -7,6 +7,7 @@ export type ApplicationPayload = {
   programme_code: "junior" | "o_level" | "a_level";
   class_level_code: string | null;
   start_month: string;
+  mock_only: boolean;
   student: {
     full_name: string;
     gender: string;
@@ -39,6 +40,7 @@ export type ApplicationPayload = {
     admission_fee: number;
     monthly_total: number;
     first_month_estimate: number;
+    mock_fee?: number;
     note: string;
   };
   declaration_accepted: boolean;

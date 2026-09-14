@@ -42,7 +42,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       supabase
         .from("student")
         .select(
-          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, programme_id, programme(name, code), class_level(name)"
+          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, programme_id, enrolment_type, programme(name, code), class_level(name)"
         )
         .eq("id", id)
         .maybeSingle(),
@@ -71,6 +71,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const isAdmin = me?.role === "admin";
   const s: any = student;
   const isSubjectBased = s.programme?.code === "o_level" || s.programme?.code === "a_level";
+  const isMockOnly = s.enrolment_type === "mock_only";
 
   const [{ data: subjects }, { data: teachers }, { data: teacherSubjects }] = isSubjectBased
     ? await Promise.all([
@@ -84,6 +85,13 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       ])
     : [{ data: [] }, { data: [] }, { data: [] }];
 
+  const { data: mockSubjects } = isMockOnly
+    ? await supabase
+        .from("mock_registration")
+        .select("subject_id, subject(name, level)")
+        .eq("student_id", id)
+    : { data: [] };
+
   const outstanding = (invoices ?? [])
     .filter((i: any) => i.status !== "void" && i.status !== "waived")
     .reduce((sum: number, i: any) => sum + Number(i.balance || 0), 0);
@@ -96,9 +104,17 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
     <>
       <header className="top">
         <h1>{s.full_name}</h1>
-        <div className="sub">
+        <div className="sub" style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {s.reg_no} · {s.programme?.name}
           {s.class_level?.name ? ` — ${s.class_level.name}` : ""}
+          {isMockOnly && (
+            <span
+              className="chip"
+              style={{ fontSize: 11, padding: "3px 8px", color: "var(--blue)", borderColor: "var(--blue-soft)", background: "var(--blue-soft)" }}
+            >
+              Mock exam candidate
+            </span>
+          )}
         </div>
         <div className="spacer" />
         <ThemeToggle />
@@ -159,6 +175,30 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
                   <li key={i}>{sib.full_name}{sib.class_name ? ` — ${sib.class_name}` : ""}{sib.school_name ? `, ${sib.school_name}` : ""}</li>
                 ))}
               </ul>
+            </div>
+          </div>
+        )}
+
+        {isMockOnly && (
+          <div className="panel">
+            <div className="phead">
+              <div className="ptitle">Mock exam subjects</div>
+              <div className="sub">Sitting mocks only — no ongoing class, teacher or monthly billing</div>
+            </div>
+            <div className="tblwrap">
+              <table>
+                <thead><tr><th>Subject</th></tr></thead>
+                <tbody>
+                  {(mockSubjects ?? []).map((r: any, i: number) => (
+                    <tr key={i}>
+                      <td>{r.subject?.name}{r.subject?.level ? ` (${String(r.subject.level).toUpperCase()})` : ""}</td>
+                    </tr>
+                  ))}
+                  {(mockSubjects ?? []).length === 0 && (
+                    <tr><td className="sub">No mock subjects on record.</td></tr>
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
         )}

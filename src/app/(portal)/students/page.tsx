@@ -10,7 +10,7 @@ export default async function StudentsPage() {
   const { data } = await supabase
     .from("student")
     .select(
-      "id, reg_no, full_name, phone, email, status, admitted_on, created_at, programme(name), class_level(name), invoice(balance, status)"
+      "id, reg_no, full_name, phone, email, status, admitted_on, created_at, enrolment_type, programme(name), class_level(name), invoice(balance, status)"
     )
     .order("created_at", { ascending: false });
 

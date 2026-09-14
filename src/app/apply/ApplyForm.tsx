@@ -5,6 +5,7 @@ import { submitApplication, type ApplicationPayload } from "./actions";
 
 export type CatalogueData = {
   admissionFee: number;
+  mockFee: number;
   classLevels: { id: string; code: string; name: string; monthlyFee: number }[];
   subjects: {
     id: string;
@@ -125,6 +126,11 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   const [programme, setProgramme] = useState<ProgrammeCode>("");
   const [startMonth, setStartMonth] = useState(monthISO(todayISO()));
   const [classLevelCode, setClassLevelCode] = useState("");
+  // Mock-only candidates (O/A Level) come just to sit mock exams in chosen subjects —
+  // no ongoing class, no teacher, no monthly billing, only a one-time invoice.
+  const [mockOnly, setMockOnly] = useState(false);
+  const isMockEligible = programme === "o_level" || programme === "a_level";
+  const isMock = isMockEligible && mockOnly;
 
   const [student, setStudent] = useState({
     full_name: "",
@@ -179,6 +185,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   }
 
   const monthlyTotal = useMemo(() => {
+    if (isMock) return 0; // mock candidates have no ongoing class, so nothing recurs monthly
     if (programme === "junior") return selectedClassLevel?.monthlyFee ?? 0;
     if (programme === "o_level" || programme === "a_level") {
       return subjectRows.reduce((sum, row) => {
@@ -187,7 +194,11 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
       }, 0);
     }
     return 0;
-  }, [programme, selectedClassLevel, subjectRows, catalogue.subjects]);
+  }, [isMock, programme, selectedClassLevel, subjectRows, catalogue.subjects]);
+
+  // Flat, one-time mock exam fee — same whether the candidate is sitting O Level or
+  // A Level mocks, and regardless of how many subjects (decision, 14 Sep 2026).
+  const mockFeeTotal = isMock ? catalogue.mockFee : 0;
 
   // Admission fee is charged per subject for O Level / A Level (one unit of the admission
   // rate for every subject enrolled at admission); Junior has no subject concept, so it
@@ -224,7 +235,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     if (programme !== "junior") {
       const valid = subjectRows.filter((r) => r.subjectId);
       if (valid.length === 0) return "Add at least one subject.";
-      if (valid.some((r) => !r.teacherId)) return "Choose a teacher for every subject row.";
+      if (!isMock && valid.some((r) => !r.teacherId)) return "Choose a teacher for every subject row.";
     }
     if (!accepted) return "Please accept the declaration to submit.";
     return null;
@@ -261,6 +272,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
       programme_code: programme as "junior" | "o_level" | "a_level",
       class_level_code: programme === "junior" ? classLevelCode : null,
       start_month: startMonth,
+      mock_only: isMock,
       student,
       guardian,
       siblings: siblings
@@ -271,8 +283,10 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
         admission_fee: admissionFeeTotal,
         monthly_total: monthlyTotal,
         first_month_estimate: firstMonthEstimate,
-        note:
-          "Indicative only. The academy generates the actual first invoice on approval, pro-rated by calendar days.",
+        mock_fee: mockFeeTotal,
+        note: isMock
+          ? "Indicative only. Mock exam candidates pay the admission fee and the flat mock exam fee once, on approval — no monthly billing."
+          : "Indicative only. The academy generates the actual first invoice on approval, pro-rated by calendar days.",
       },
       declaration_accepted: accepted,
     };
@@ -380,6 +394,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                     const v = e.target.value as ProgrammeCode;
                     setProgramme(v);
                     setClassLevelCode("");
+                    setMockOnly(false);
                     setSubjectRows([{ key: newKey(), subjectId: "", teacherId: "", fromMonth: startMonth }]);
                   }}
                   required
@@ -390,21 +405,37 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   <option value="a_level">A Level (Edexcel)</option>
                 </select>
               </Field>
-              <Field label="Enrolment start month" required>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="YYYY-MM"
-                  value={startMonth}
-                  onChange={(e) => {
-                    setStartMonth(e.target.value);
-                    setSubjectRows((rows) => rows.map((r) => (r.fromMonth ? r : { ...r, fromMonth: e.target.value })));
-                  }}
-                  onFocus={(e) => (e.target.type = "month")}
-                  required
-                />
-              </Field>
+              {!isMock && (
+                <Field label="Enrolment start month" required>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="YYYY-MM"
+                    value={startMonth}
+                    onChange={(e) => {
+                      setStartMonth(e.target.value);
+                      setSubjectRows((rows) => rows.map((r) => (r.fromMonth ? r : { ...r, fromMonth: e.target.value })));
+                    }}
+                    onFocus={(e) => (e.target.type = "month")}
+                    required
+                  />
+                </Field>
+              )}
             </div>
+            {isMockEligible && (
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", fontSize: 13.5, color: "var(--body)" }}>
+                <input
+                  type="checkbox"
+                  checked={mockOnly}
+                  onChange={(e) => setMockOnly(e.target.checked)}
+                  style={{ marginTop: 3 }}
+                />
+                <span>
+                  Mock exam only — sitting {programme === "o_level" ? "O Level" : "A Level"} mock
+                  exams in chosen subjects, not enrolling in regular tuition classes.
+                </span>
+              </label>
+            )}
           </Section>
 
           <Section title="Student Details">
@@ -606,10 +637,14 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
 
           {(programme === "o_level" || programme === "a_level") && (
             <Section
-              title="Subjects"
-              sub={`${programme === "o_level" ? "O Level" : "A Level"} — up to 10 subjects, ${taka(
-                subjectOptions[0]?.monthlyFee ?? 0
-              )}/subject/month varies by level`}
+              title={isMock ? "Mock Exam Subjects" : "Subjects"}
+              sub={
+                isMock
+                  ? `${programme === "o_level" ? "O Level" : "A Level"} — up to 10 subjects to sit mocks in, no teacher assignment needed`
+                  : `${programme === "o_level" ? "O Level" : "A Level"} — up to 10 subjects, ${taka(
+                      subjectOptions[0]?.monthlyFee ?? 0
+                    )}/subject/month varies by level`
+              }
             >
               {subjectRows.map((row, i) => {
                 const chosen = catalogue.subjects.find((s) => s.id === row.subjectId);
@@ -618,7 +653,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                     key={row.key}
                     style={{
                       display: "grid",
-                      gridTemplateColumns: "2fr 2fr 1fr auto",
+                      gridTemplateColumns: isMock ? "1fr auto" : "2fr 2fr 1fr auto",
                       gap: 10,
                       alignItems: "end",
                     }}
@@ -641,28 +676,32 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                         ))}
                       </select>
                     </Field>
-                    <Field label="Teacher" required={i === 0}>
-                      <select
-                        style={selStyle}
-                        value={row.teacherId}
-                        onChange={(e) =>
-                          setSubjectRows((rows) =>
-                            rows.map((r) => (r.key === row.key ? { ...r, teacherId: e.target.value } : r))
-                          )
-                        }
-                        disabled={!chosen}
-                      >
-                        <option value="">Choose…</option>
-                        {chosen?.teachers.map((t) => (
-                          <option key={t.id} value={t.id}>
-                            {t.name}
-                          </option>
-                        ))}
-                      </select>
-                    </Field>
-                    <Field label="Fee/month">
-                      <input type="text" readOnly value={chosen ? taka(chosen.monthlyFee) : "—"} />
-                    </Field>
+                    {!isMock && (
+                      <>
+                        <Field label="Teacher" required={i === 0}>
+                          <select
+                            style={selStyle}
+                            value={row.teacherId}
+                            onChange={(e) =>
+                              setSubjectRows((rows) =>
+                                rows.map((r) => (r.key === row.key ? { ...r, teacherId: e.target.value } : r))
+                              )
+                            }
+                            disabled={!chosen}
+                          >
+                            <option value="">Choose…</option>
+                            {chosen?.teachers.map((t) => (
+                              <option key={t.id} value={t.id}>
+                                {t.name}
+                              </option>
+                            ))}
+                          </select>
+                        </Field>
+                        <Field label="Fee/month">
+                          <input type="text" readOnly value={chosen ? taka(chosen.monthlyFee) : "—"} />
+                        </Field>
+                      </>
+                    )}
                     <button type="button" className="btn ghost" onClick={() => removeSubjectRow(row.key)}>
                       Remove
                     </button>
@@ -693,18 +732,37 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                       </td>
                       <td className="n mono">{taka(admissionFeeTotal)}</td>
                     </tr>
-                    <tr>
-                      <td>Monthly fee</td>
-                      <td className="n mono">{taka(monthlyTotal)}</td>
-                    </tr>
-                    <tr>
-                      <td>
-                        <b>Estimated first month ({startMonth}, pro-rated)</b>
-                      </td>
-                      <td className="n mono">
-                        <b>{taka(firstMonthEstimate)}</b>
-                      </td>
-                    </tr>
+                    {isMock ? (
+                      <>
+                        <tr>
+                          <td>Mock exam fee (flat, one time)</td>
+                          <td className="n mono">{taka(mockFeeTotal)}</td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <b>Total due on approval</b>
+                          </td>
+                          <td className="n mono">
+                            <b>{taka(admissionFeeTotal + mockFeeTotal)}</b>
+                          </td>
+                        </tr>
+                      </>
+                    ) : (
+                      <>
+                        <tr>
+                          <td>Monthly fee</td>
+                          <td className="n mono">{taka(monthlyTotal)}</td>
+                        </tr>
+                        <tr>
+                          <td>
+                            <b>Estimated first month ({startMonth}, pro-rated)</b>
+                          </td>
+                          <td className="n mono">
+                            <b>{taka(firstMonthEstimate)}</b>
+                          </td>
+                        </tr>
+                      </>
+                    )}
                   </tbody>
                 </table>
               </div>

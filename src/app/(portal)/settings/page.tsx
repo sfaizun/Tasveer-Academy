@@ -43,6 +43,7 @@ export default async function Settings() {
   }
   const current = Array.from(currentByGroup.values());
   const admission = current.filter((r) => r.kind === "admission");
+  const mock = current.filter((r) => r.kind === "mock");
   const tuition = current.filter((r) => r.kind === "tuition" && !r.class_level_id);
   const junior = current
     .filter((r) => r.kind === "tuition" && r.class_level_id)
@@ -68,6 +69,10 @@ export default async function Settings() {
     for (const c of classLevels ?? []) {
       options.push({ value: `tuition|${junior_.id}||${c.id}`, label: `Junior — ${c.name} (monthly)` });
     }
+  }
+  if (oLevel || aLevel) {
+    // Global — same flat rate whether the candidate sits O Level or A Level mocks.
+    options.push({ value: `mock|||`, label: "Mock exam fee — O/A Level (flat, one time)" });
   }
 
   const isOwner = !!me?.is_owner;
@@ -102,6 +107,14 @@ export default async function Settings() {
                   <tr key={r.id}>
                     <td><b>{r.programme?.name}{r.level ? ` (${r.level.toUpperCase()})` : ""}</b></td>
                     <td>Per subject, per month</td>
+                    <td className="n mono"><b>{taka(r.amount)}</b></td>
+                    <td className="mono sub">{fmtDate(r.effective_from)}</td>
+                  </tr>
+                ))}
+                {mock.map((r) => (
+                  <tr key={r.id}>
+                    <td><b>Mock exam fee — O/A Level</b></td>
+                    <td>Flat per student, one time (same for O and A Level)</td>
                     <td className="n mono"><b>{taka(r.amount)}</b></td>
                     <td className="mono sub">{fmtDate(r.effective_from)}</td>
                   </tr>
@@ -164,6 +177,8 @@ export default async function Settings() {
                     <td>
                       {r.kind === "admission"
                         ? `Admission fee — ${r.programme?.name ?? "—"}`
+                        : r.kind === "mock"
+                        ? "Mock exam fee — O/A Level"
                         : r.class_level
                         ? `Junior — ${r.class_level.name}`
                         : `${r.programme?.name}${r.level ? ` (${r.level.toUpperCase()})` : ""}`}
