@@ -8,7 +8,6 @@ import TeacherWorkloadReport from "./TeacherWorkloadReport";
 import TeacherStudentPaymentsReport from "./TeacherStudentPaymentsReport";
 import AnnouncementReachReport from "./AnnouncementReachReport";
 import UserAccessReport from "./UserAccessReport";
-import ActivityAuditReport from "./ActivityAuditReport";
 
 export const dynamic = "force-dynamic";
 
@@ -18,43 +17,23 @@ const monthInputStyle: React.CSSProperties = {
 };
 
 /** GET-submitted month filter — no client JS needed, just a plain form against this same page.
- * Carries the daily-cash panel's date and the current tab along as hidden fields so changing
- * the month doesn't reset either. */
-function MonthFilter({ month, cashDate, tab }: { month: string | null; cashDate?: string; tab?: "audit" }) {
+ * Carries the daily-cash panel's date along as a hidden field so changing the month doesn't
+ * reset it. */
+function MonthFilter({ month, cashDate }: { month: string | null; cashDate?: string }) {
   return (
     <form method="GET" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
       {cashDate && <input type="hidden" name="cash_date" value={cashDate} />}
-      {tab && <input type="hidden" name="tab" value={tab} />}
       <label className="lbl" style={{ margin: 0 }}>Month</label>
       <input type="month" name="month" defaultValue={month ?? ""} style={monthInputStyle} />
       <button className="btn ghost" type="submit" style={{ fontSize: 12, padding: "8px 12px" }}>
         Filter
       </button>
       {month && (
-        <a className="btn ghost" href={tab ? `/reports?tab=${tab}` : "/reports"} style={{ fontSize: 12, padding: "8px 12px" }}>
+        <a className="btn ghost" href="/reports" style={{ fontSize: 12, padding: "8px 12px" }}>
           All time
         </a>
       )}
     </form>
-  );
-}
-
-/** Admin-only tab strip: the main report suite vs. the activity / audit log, which now
- * lives on its own tab instead of sitting at the bottom of one long scroll. A plain link
- * pair (like the month filter, no client JS) carrying the current month along so switching
- * tabs doesn't lose it. */
-function ReportTabs({ active, month }: { active: "overview" | "audit"; month: string | null }) {
-  const qs = month ? `?month=${month}` : "";
-  const auditQs = month ? `?tab=audit&month=${month}` : "?tab=audit";
-  return (
-    <div style={{ display: "flex", gap: 8 }}>
-      <a className={active === "overview" ? "btn" : "btn ghost"} href={`/reports${qs}`} style={{ fontSize: 13, padding: "9px 16px" }}>
-        Overview
-      </a>
-      <a className={active === "audit" ? "btn" : "btn ghost"} href={`/reports${auditQs}`} style={{ fontSize: 13, padding: "9px 16px" }}>
-        Activity / audit log
-      </a>
-    </div>
   );
 }
 
@@ -78,7 +57,7 @@ type AcademySummary = { total_received: number; total_due: number; total_gross: 
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; cash_date?: string; ann_id?: string; entity?: string; tab?: string }>;
+  searchParams: Promise<{ month?: string; cash_date?: string; ann_id?: string }>;
 }) {
   const sp = await searchParams;
   const month = typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : null;
@@ -87,8 +66,6 @@ export default async function ReportsPage({
   const today = dhakaTodayISO();
   const cashDate = typeof sp.cash_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.cash_date) ? sp.cash_date : today;
   const annId = typeof sp.ann_id === "string" && sp.ann_id ? sp.ann_id : undefined;
-  const entity = typeof sp.entity === "string" && sp.entity ? sp.entity : null;
-  const tab: "overview" | "audit" = sp.tab === "audit" ? "audit" : "overview";
 
   const supabase = await createClient();
   const {
@@ -103,29 +80,6 @@ export default async function ReportsPage({
 
   const isAdmin = me?.role === "admin";
   const isTeacher = me?.role === "teacher";
-
-  if (isAdmin && tab === "audit") {
-    return (
-      <>
-        <header className="top">
-          <h1>Reports</h1>
-          <div className="sub">Activity / audit log</div>
-          <div className="spacer" />
-          <ThemeToggle />
-        </header>
-
-        <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <ReportTabs active="audit" month={month} />
-
-          <div className="panel" style={{ padding: 16 }}>
-            <MonthFilter month={month} tab="audit" />
-          </div>
-
-          <ActivityAuditReport supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} entity={entity} />
-        </div>
-      </>
-    );
-  }
 
   if (isAdmin) {
     const [byStudent, bySubject, byTeacher, summary] = await Promise.all([
@@ -163,8 +117,6 @@ export default async function ReportsPage({
         </header>
 
         <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <ReportTabs active="overview" month={month} />
-
           <div className="panel" style={{ padding: 16 }}>
             <MonthFilter month={month} cashDate={cashDate} />
           </div>
@@ -271,8 +223,8 @@ export default async function ReportsPage({
           <UserAccessReport supabase={supabase} />
 
           <div className="sub">
-            Looking for the activity / audit log? It now has its own tab —{" "}
-            <a href={month ? `/reports?tab=audit&month=${month}` : "/reports?tab=audit"}>open Activity / audit log</a>.
+            Looking for the activity / audit log? It now has its own page in the sidebar —{" "}
+            <a href="/audit-log">open Audit log</a>.
           </div>
         </div>
       </>

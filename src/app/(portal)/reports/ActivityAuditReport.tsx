@@ -45,14 +45,12 @@ export default async function ActivityAuditReport({
   month,
   monthDate,
   fileTag,
-  cashDate,
   entity,
 }: {
   supabase: Supabase;
   month: string | null;
   monthDate: string | null;
   fileTag: string;
-  cashDate?: string;
   entity: string | null;
 }) {
   let q = supabase
@@ -80,8 +78,8 @@ export default async function ActivityAuditReport({
   }));
 
   return (
-    <details className="panel collapsible" open>
-      <summary className="phead" style={{ flexWrap: "wrap" }}>
+    <div className="panel">
+      <div className="phead" style={{ flexWrap: "wrap" }}>
         <div className="ptitle">Activity / audit log</div>
         <div className="sub">
           {month ? `Changes in ${monthName(monthDate!)}` : "Most recent 200 changes"}
@@ -102,11 +100,10 @@ export default async function ActivityAuditReport({
             r.reason ?? "",
           ])}
         />
-      </summary>
+      </div>
       <div style={{ padding: "0 16px 16px" }}>
         <form method="GET" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {month && <input type="hidden" name="month" value={month} />}
-          {cashDate && <input type="hidden" name="cash_date" value={cashDate} />}
           <label className="lbl" style={{ margin: 0 }}>Entity</label>
           <select name="entity" defaultValue={entity ?? ""} style={selectStyle}>
             <option value="">All</option>
@@ -118,7 +115,7 @@ export default async function ActivityAuditReport({
           {entity && (
             <a
               className="btn ghost"
-              href={month ? `/reports?month=${month}` : "/reports"}
+              href={month ? `/audit-log?month=${month}` : "/audit-log"}
               style={{ fontSize: 12, padding: "8px 12px" }}
             >
               Clear
@@ -159,6 +156,6 @@ export default async function ActivityAuditReport({
           Showing the most recent 200 — narrow with the month filter above or the entity filter to see older activity.
         </div>
       )}
-    </details>
+    </div>
   );
 }
