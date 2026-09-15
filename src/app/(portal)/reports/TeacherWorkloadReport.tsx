@@ -49,8 +49,8 @@ export default async function TeacherWorkloadReport({
   const totalHours = rows.reduce((s, r) => s + r.hours, 0);
 
   return (
-    <div className="panel">
-      <div className="phead">
+    <details className="panel collapsible" open>
+      <summary className="phead">
         <div className="ptitle">{title}</div>
         <div className="sub">{subtitle}</div>
         <div className="spacer" />
@@ -59,7 +59,7 @@ export default async function TeacherWorkloadReport({
           headers={["Teacher", "Active classes", "Enrolled students", "Weekly hours"]}
           rows={rows.map((r) => [r.full_name, r.classes, r.students, Number(r.hours.toFixed(1))])}
         />
-      </div>
+      </summary>
       <div className="tblwrap">
         <table>
           <thead>
@@ -91,6 +91,6 @@ export default async function TeacherWorkloadReport({
           {onlyTeacherId ? "" : " across the academy"}
         </div>
       )}
-    </div>
+    </details>
   );
 }

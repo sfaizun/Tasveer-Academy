@@ -173,8 +173,8 @@ export default async function CashFinanceReports({
     <>
       <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Cash &amp; finance</div>
 
-      <div className="panel">
-        <div className="phead">
+      <details className="panel collapsible" open>
+        <summary className="phead">
           <div className="ptitle">Revenue by programme</div>
           <div className="sub">O Level / A Level / Junior split</div>
           <div className="spacer" />
@@ -183,14 +183,14 @@ export default async function CashFinanceReports({
             headers={["Programme", "Received", "Due"]}
             rows={programmeRows.map((r) => [r.name, r.received, r.due])}
           />
-        </div>
+        </summary>
         <div style={{ padding: 18 }}>
           <ReportBars rows={programmeBars} emptyLabel="No billing yet." />
         </div>
-      </div>
+      </details>
 
-      <div className="panel">
-        <div className="phead">
+      <details className="panel collapsible" open>
+        <summary className="phead">
           <div className="ptitle">Discounts &amp; waivers</div>
           <div className="sub">
             {discounts.length} given{month ? ` in ${monthName(monthDate!)}` : ""} · {taka(totalDiscount)} total
@@ -209,7 +209,7 @@ export default async function CashFinanceReports({
               String(d.created_at).slice(0, 10),
             ])}
           />
-        </div>
+        </summary>
         {discounts.length > 0 ? (
           <div className="tblwrap">
             <table>
@@ -236,10 +236,10 @@ export default async function CashFinanceReports({
         ) : (
           <div style={{ padding: 18 }} className="sub">No discounts {month ? "in this month" : "given yet"}.</div>
         )}
-      </div>
+      </details>
 
-      <div className="panel">
-        <div className="phead" style={{ flexWrap: "wrap" }}>
+      <details className="panel collapsible" open>
+        <summary className="phead" style={{ flexWrap: "wrap" }}>
           <div className="ptitle">Daily cash collection</div>
           <div className="sub">{fmtDate(cashDate)} — {taka(totalCash)} collected</div>
           <div className="spacer" />
@@ -248,7 +248,7 @@ export default async function CashFinanceReports({
             headers={["Receipt", "Student", "Reg. no.", "Method", "Amount", "Note"]}
             rows={cash.map((p) => [p.receipt_no, p.student?.full_name ?? "", p.student?.reg_no ?? "", METHOD_LABEL[p.method] ?? p.method, Number(p.amount), p.note ?? ""])}
           />
-        </div>
+        </summary>
         <div style={{ padding: "0 16px 16px" }}>
           <CashDateFilter cashDate={cashDate} month={month} />
         </div>
@@ -280,10 +280,10 @@ export default async function CashFinanceReports({
         ) : (
           <div style={{ padding: "0 16px 18px" }} className="sub">No payments received on this date.</div>
         )}
-      </div>
+      </details>
 
-      <div className="panel">
-        <div className="phead">
+      <details className="panel collapsible" open>
+        <summary className="phead">
           <div className="ptitle">Aging / overdue dues</div>
           <div className="sub">As of {fmtDate(today)} — {openInvoices.length} open invoice{openInvoices.length === 1 ? "" : "s"}</div>
           <div className="spacer" />
@@ -292,7 +292,7 @@ export default async function CashFinanceReports({
             headers={["Student", "Reg. no.", "Invoice", "Billing month", "Due date", "Days overdue", "Balance"]}
             rows={sortedAging.map((r) => [r.student?.full_name ?? "", r.student?.reg_no ?? "", r.invoice_no, r.billing_month, r.due_on, r.daysLate, Number(r.balance)])}
           />
-        </div>
+        </summary>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10, padding: "16px" }}>
           <div className="panel" style={{ padding: "10px 14px", background: "var(--tint)" }}>
             <div className="lbl">Not yet due</div>
@@ -341,10 +341,10 @@ export default async function CashFinanceReports({
         ) : (
           <div style={{ padding: "0 16px 18px" }} className="sub">Nothing outstanding right now.</div>
         )}
-      </div>
+      </details>
 
-      <div className="panel">
-        <div className="phead">
+      <details className="panel collapsible" open>
+        <summary className="phead">
           <div className="ptitle">Revenue forecast</div>
           <div className="sub">Expected vs collected for {monthName(forecastMonth)} — based on active enrolments and rates, not just issued invoices</div>
           <div className="spacer" />
@@ -353,7 +353,7 @@ export default async function CashFinanceReports({
             headers={["Student", "Reg. no.", "Programme", "Expected", "Collected", "Gap"]}
             rows={forecastRows.map((r) => [r.full_name, r.reg_no, r.programme, r.expected, r.collected, r.gap])}
           />
-        </div>
+        </summary>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 14, padding: "0 16px 16px" }}>
           <div className="panel" style={{ padding: "10px 14px", background: "var(--tint)" }}>
             <div className="lbl">Expected</div>
@@ -390,7 +390,7 @@ export default async function CashFinanceReports({
         ) : (
           <div style={{ padding: "0 16px 18px" }} className="sub">Everyone billable this month is fully paid up so far.</div>
         )}
-      </div>
+      </details>
     </>
   );
 }

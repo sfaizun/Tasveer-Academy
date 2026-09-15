@@ -59,7 +59,7 @@ export default async function ActivityAuditReport({
     .from("audit_log")
     .select("id, entity, entity_id, action, field, old_value, new_value, reason, actor_id, actor_role, occurred_at")
     .order("occurred_at", { ascending: false })
-    .limit(300);
+    .limit(200);
 
   if (monthDate) {
     const [y, mo] = month!.split("-").map(Number);
@@ -80,11 +80,11 @@ export default async function ActivityAuditReport({
   }));
 
   return (
-    <div className="panel">
-      <div className="phead" style={{ flexWrap: "wrap" }}>
+    <details className="panel collapsible" open>
+      <summary className="phead" style={{ flexWrap: "wrap" }}>
         <div className="ptitle">Activity / audit log</div>
         <div className="sub">
-          {month ? `Changes in ${monthName(monthDate!)}` : "Most recent 300 changes"}
+          {month ? `Changes in ${monthName(monthDate!)}` : "Most recent 200 changes"}
           {entity ? ` — ${ENTITY_LABEL[entity] ?? entity} only` : ""}
         </div>
         <div className="spacer" />
@@ -102,7 +102,7 @@ export default async function ActivityAuditReport({
             r.reason ?? "",
           ])}
         />
-      </div>
+      </summary>
       <div style={{ padding: "0 16px 16px" }}>
         <form method="GET" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           {month && <input type="hidden" name="month" value={month} />}
@@ -154,11 +154,11 @@ export default async function ActivityAuditReport({
           </tbody>
         </table>
       </div>
-      {rows.length === 300 && (
+      {rows.length === 200 && (
         <div className="sub" style={{ padding: "0 16px 16px" }}>
-          Showing the most recent 300 — narrow with the month filter above or the entity filter to see older activity.
+          Showing the most recent 200 — narrow with the month filter above or the entity filter to see older activity.
         </div>
       )}
-    </div>
+    </details>
   );
 }

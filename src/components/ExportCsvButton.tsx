@@ -37,7 +37,12 @@ export default function ExportCsvButton({
       type="button"
       className="btn ghost"
       style={{ fontSize: 12, padding: "6px 10px" }}
-      onClick={handleClick}
+      onClick={(e) => {
+        // Some callers place this inside a <summary> (a collapsible report panel's
+        // header) — stop the click from also toggling that panel open/closed.
+        e.stopPropagation();
+        handleClick();
+      }}
       disabled={rows.length === 0}
     >
       {label}

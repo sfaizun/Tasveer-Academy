@@ -88,8 +88,8 @@ export default async function TeacherStudentPaymentsReport({
   );
 
   return (
-    <div className="panel">
-      <div className="phead">
+    <details className="panel collapsible" open>
+      <summary className="phead">
         <div className="ptitle">{title}</div>
         <div className="sub">{subtitle}</div>
         <div className="spacer" />
@@ -107,12 +107,12 @@ export default async function TeacherStudentPaymentsReport({
             Number(r.balance),
           ])}
         />
-      </div>
+      </summary>
       <SubjectPaymentsAccordion groups={subjectGroups} showTeacherColumn={showTeacherColumn} linkStudents={linkStudents} />
       <div className="sub" style={{ padding: "0 16px 14px" }}>
         A subject&apos;s &ldquo;Paid&rdquo; is its share of each invoice&apos;s total payment, split by that
         subject line&apos;s portion of the invoice — a payment settles a whole invoice, not one subject on it.
       </div>
-    </div>
+    </details>
   );
 }

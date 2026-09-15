@@ -32,8 +32,8 @@ export default async function UserAccessReport({ supabase }: { supabase: Supabas
   const studentsGap = (studentsNoLogin ?? []).length;
 
   return (
-    <div className="panel">
-      <div className="phead">
+    <details className="panel collapsible" open>
+      <summary className="phead">
         <div className="ptitle">User access / login report</div>
         <div className="sub">
           {rows.length} account{rows.length === 1 ? "" : "s"} — {totalActive} active
@@ -53,7 +53,7 @@ export default async function UserAccessReport({ supabase }: { supabase: Supabas
             a.created_at ? String(a.created_at).slice(0, 10) : "",
           ])}
         />
-      </div>
+      </summary>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10, padding: "0 16px 16px" }}>
         {Array.from(byRole.entries()).map(([role, v]) => (
           <div key={role} className="panel" style={{ padding: "10px 14px", background: "var(--tint)" }}>
@@ -104,6 +104,6 @@ export default async function UserAccessReport({ supabase }: { supabase: Supabas
           don&apos;t have a login — give one from the <a href="/accounts">Accounts</a> page.
         </div>
       )}
-    </div>
+    </details>
   );
 }

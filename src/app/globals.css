@@ -94,6 +94,21 @@ h1{margin:0;font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.015
 .phead{display:flex;align-items:center;gap:10px;padding:13px 16px;border-bottom:1px solid var(--line2)}
 .ptitle{font-size:14px;font-weight:600;color:var(--ink)}
 
+/* Collapsible report panels — a plain <details>/<summary> pair (className="panel
+   collapsible" / "phead"), so a report shows just its title when collapsed with no
+   client JS involved. The disclosure triangle is drawn purely in CSS. */
+.panel.collapsible > summary{cursor:pointer;list-style:none}
+.panel.collapsible > summary::-webkit-details-marker{display:none}
+.panel.collapsible > summary::before{
+  content:""; width:0; height:0; flex:0 0 auto;
+  border-style:solid; border-width:4px 0 4px 6px;
+  border-color:transparent transparent transparent var(--muted);
+  transition:transform .15s ease;
+}
+.panel.collapsible[open] > summary::before{transform:rotate(90deg)}
+.panel.collapsible > summary:hover{background:var(--tint)}
+.panel.collapsible:not([open]) > summary{border-bottom:0}
+
 .btn{display:inline-flex;align-items:center;gap:7px;background:var(--coral);color:#fff;
      border:0;border-radius:6px;padding:9px 15px;font-size:13px;font-weight:600;cursor:pointer}
 .btn:hover{background:var(--coral-dk)}

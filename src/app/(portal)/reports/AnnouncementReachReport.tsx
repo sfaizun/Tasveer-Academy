@@ -104,8 +104,8 @@ export default async function AnnouncementReachReport({
     : [];
 
   return (
-    <div className="panel">
-      <div className="phead">
+    <details className="panel collapsible" open>
+      <summary className="phead">
         <div className="ptitle">Announcement reach &amp; acknowledgment</div>
         <div className="sub">Last {rows.length} published notice{rows.length === 1 ? "" : "s"} — who&apos;s actually seen and acknowledged each one</div>
         <div className="spacer" />
@@ -124,7 +124,7 @@ export default async function AnnouncementReachReport({
             r.requires_ack ? r.acked : "",
           ])}
         />
-      </div>
+      </summary>
       <div className="tblwrap">
         <table>
           <thead>
@@ -196,6 +196,6 @@ export default async function AnnouncementReachReport({
           )}
         </div>
       )}
-    </div>
+    </details>
   );
 }

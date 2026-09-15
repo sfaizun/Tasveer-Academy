@@ -161,14 +161,30 @@ function CreateForm({
 
 function DecideForm({ id }: { id: string }) {
   const [state, action, pending] = useActionState(decideAnnouncementRequest, null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const decisionRef = useRef<HTMLInputElement>(null);
+
+  // Two submit buttons sharing name="decision" with different `value`s relied on the
+  // browser including the clicked submitter's name/value pair in the form's FormData —
+  // that handoff wasn't happening here, so the server always saw a missing `decision` and
+  // rejected it ("Choose approve or decline.") no matter which button was clicked (bug
+  // report, 14 Sep 2026). Setting the hidden input's value directly before submitting
+  // sidesteps that entirely — the FormData always carries the right decision regardless of
+  // how the submit itself is triggered.
+  function submitWith(decision: "approve" | "decline") {
+    if (decisionRef.current) decisionRef.current.value = decision;
+    formRef.current?.requestSubmit();
+  }
+
   return (
-    <form action={action} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+    <form ref={formRef} action={action} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
       <input type="hidden" name="id" value={id} />
+      <input ref={decisionRef} type="hidden" name="decision" />
       <input style={{ ...inputStyle, minWidth: 200, flex: "1 1 200px" }} type="text" name="note" placeholder="Note (required to decline)" />
-      <button className="btn" type="submit" name="decision" value="approve" disabled={pending} style={{ fontSize: 12, padding: "8px 12px" }}>
+      <button className="btn" type="button" onClick={() => submitWith("approve")} disabled={pending} style={{ fontSize: 12, padding: "8px 12px" }}>
         Approve
       </button>
-      <button className="btn ghost" type="submit" name="decision" value="decline" disabled={pending} style={{ fontSize: 12, padding: "8px 12px", color: "var(--crit)" }}>
+      <button className="btn ghost" type="button" onClick={() => submitWith("decline")} disabled={pending} style={{ fontSize: 12, padding: "8px 12px", color: "var(--crit)" }}>
         Decline
       </button>
       {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
