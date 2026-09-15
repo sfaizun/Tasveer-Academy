@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import RosterAdmin from "./RosterAdmin";
 import { WEEKDAYS, fmtTime } from "./shared";
@@ -22,15 +23,7 @@ function slotLabel(row: any) {
 
 export default async function RosterPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("id, role")
-    .eq("auth_id", user?.id ?? "")
-    .maybeSingle();
+  const { me } = await getViewer();
 
   const isAdmin = me?.role === "admin";
   const isStudentOrGuardian = me?.role === "student" || me?.role === "guardian";

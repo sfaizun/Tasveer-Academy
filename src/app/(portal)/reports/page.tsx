@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import { taka, fmtDate, monthName, dhakaTodayISO } from "@/lib/format";
 import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
@@ -68,15 +69,7 @@ export default async function ReportsPage({
   const annId = typeof sp.ann_id === "string" && sp.ann_id ? sp.ann_id : undefined;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("id, full_name, role")
-    .eq("auth_id", user?.id ?? "")
-    .maybeSingle();
+  const { me } = await getViewer();
 
   const isAdmin = me?.role === "admin";
   const isTeacher = me?.role === "teacher";

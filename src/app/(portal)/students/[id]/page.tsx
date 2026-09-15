@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import { taka, fmtDate } from "@/lib/format";
 import PaymentForm from "./PaymentForm";
@@ -31,14 +32,10 @@ const studentStatusMap: Record<string, { cls: string; label: string }> = {
 export default async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
+  const { me } = await getViewer();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [{ data: me }, { data: student }, { data: guardians }, { data: siblings }, { data: enrolments }, { data: invoices }, { data: payments }] =
+  const [{ data: student }, { data: guardians }, { data: siblings }, { data: enrolments }, { data: invoices }, { data: payments }] =
     await Promise.all([
-      supabase.from("app_user").select("is_owner, role").eq("auth_id", user?.id ?? "").maybeSingle(),
       supabase
         .from("student")
         .select(

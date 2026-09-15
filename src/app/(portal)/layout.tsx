@@ -1,21 +1,13 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import { signOut } from "../login/actions";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavLink from "@/components/NavLink";
 import Logo from "@/components/Logo";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const { user, me } = await getViewer();
   if (!user) redirect("/login");
-
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("full_name, role, is_owner")
-    .eq("auth_id", user.id)
-    .maybeSingle();
-
   if (!me) redirect("/no-access");
 
   const isAdmin = me.role === "admin";

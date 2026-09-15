@@ -1,19 +1,11 @@
-import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import ChangePasswordForm from "./ChangePasswordForm";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("full_name, role, is_owner")
-    .eq("auth_id", user?.id ?? "")
-    .maybeSingle();
+  const { user, me } = await getViewer();
 
   return (
     <>

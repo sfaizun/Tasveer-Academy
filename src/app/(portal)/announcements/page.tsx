@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import AdminAnnouncements from "./AdminAnnouncements";
 import TeacherAnnouncements from "./TeacherAnnouncements";
@@ -14,15 +15,7 @@ const ANN_SELECT =
 
 export default async function AnnouncementsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("id, role, full_name")
-    .eq("auth_id", user?.id ?? "")
-    .maybeSingle();
+  const { me } = await getViewer();
 
   const isAdmin = me?.role === "admin";
   const isTeacher = me?.role === "teacher";

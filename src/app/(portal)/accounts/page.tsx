@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountsAdmin from "./AccountsAdmin";
 
@@ -7,15 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AccountsPage() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("role, is_owner")
-    .eq("auth_id", user?.id ?? "")
-    .maybeSingle();
+  const { me } = await getViewer();
 
   if (me?.role !== "admin") redirect("/dashboard");
 

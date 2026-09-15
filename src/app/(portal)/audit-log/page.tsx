@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import ActivityAuditReport from "../reports/ActivityAuditReport";
 
@@ -45,15 +46,7 @@ export default async function AuditLogPage({
   const entity = typeof sp.entity === "string" && sp.entity ? sp.entity : null;
 
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("role")
-    .eq("auth_id", user?.id ?? "")
-    .maybeSingle();
+  const { me } = await getViewer();
 
   if (me?.role !== "admin") redirect("/dashboard");
 

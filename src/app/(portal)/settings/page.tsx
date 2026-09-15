@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import { taka, fmtDate } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 import AddFeeRateForm from "./AddFeeRateForm";
@@ -11,14 +12,10 @@ function groupKey(r: { kind: string; programme_id: string; level: string | null;
 
 export default async function Settings() {
   const supabase = await createClient();
+  const { me } = await getViewer();
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const [{ data: me }, { data: rates }, { data: settings }, { data: programmes }, { data: classLevels }] =
+  const [{ data: rates }, { data: settings }, { data: programmes }, { data: classLevels }] =
     await Promise.all([
-      supabase.from("app_user").select("is_owner").eq("auth_id", user?.id ?? "").maybeSingle(),
       supabase
         .from("fee_rate")
         .select(

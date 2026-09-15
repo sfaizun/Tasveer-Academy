@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
 import { dhakaToday } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 import AdminDashboard from "./AdminDashboard";
@@ -15,15 +16,7 @@ const ANN_SELECT =
 
 export default async function Dashboard() {
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: me } = await supabase
-    .from("app_user")
-    .select("id, full_name, role")
-    .eq("auth_id", user?.id ?? "")
-    .maybeSingle();
+  const { me } = await getViewer();
 
   if (me?.role === "admin") return <AdminDashboard />;
   if (me?.role === "teacher") return <TeacherDashboard appUserId={me.id} fullName={me.full_name} />;
