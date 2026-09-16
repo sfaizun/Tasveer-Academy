@@ -557,10 +557,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
           <Section title="Siblings" sub="Optional — add any brothers or sisters also at the academy or elsewhere">
             {siblings.length === 0 && <div className="sub">No sibling rows added.</div>}
             {siblings.map((row) => (
-              <div
-                key={row.key}
-                style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr auto", gap: 10, alignItems: "end" }}
-              >
+              <div key={row.key} className="sib-row">
                 <Field label="Name">
                   <input
                     type="text"
@@ -644,15 +641,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                 );
                 const rowOptions = subjectOptions.filter((s) => s.id === row.subjectId || !takenElsewhere.has(s.id));
                 return (
-                  <div
-                    key={row.key}
-                    style={{
-                      display: "grid",
-                      gridTemplateColumns: isMock ? "1fr auto" : "2fr 2fr 1fr auto",
-                      gap: 10,
-                      alignItems: "end",
-                    }}
-                  >
+                  <div key={row.key} className={`subj-row${isMock ? " mock" : ""}`}>
                     <Field label={`Subject ${i + 1}`} required={i === 0}>
                       <select
                         style={selStyle}

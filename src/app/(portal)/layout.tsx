@@ -4,6 +4,7 @@ import { signOut } from "../login/actions";
 import ThemeToggle from "@/components/ThemeToggle";
 import NavLink from "@/components/NavLink";
 import Logo from "@/components/Logo";
+import PortalNav from "@/components/PortalNav";
 
 export default async function PortalLayout({ children }: { children: React.ReactNode }) {
   const { user, me } = await getViewer();
@@ -16,7 +17,7 @@ export default async function PortalLayout({ children }: { children: React.React
 
   return (
     <div className="shell">
-      <nav className="side">
+      <PortalNav>
         <div className="brand">
           <Logo size={32} />
           <div>
@@ -78,7 +79,7 @@ export default async function PortalLayout({ children }: { children: React.React
             </button>
           </form>
         </div>
-      </nav>
+      </PortalNav>
 
       <div className="main">{children}</div>
     </div>
