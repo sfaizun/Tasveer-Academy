@@ -20,10 +20,17 @@ export default async function AnnouncementsPage() {
   const isAdmin = me?.role === "admin";
   const isTeacher = me?.role === "teacher";
 
+  // Flip any "published" announcement whose "visible until" time has passed to
+  // "unpublished" before anyone's list is read, so an expired notice reads as taken
+  // down everywhere (admin's Active/Inactive split, the teacher/student feeds, and the
+  // dashboard panel) rather than lingering as "live" past its own end time.
+  await supabase.rpc("fn_expire_announcements");
+
   if (isAdmin) {
-    const [{ data: pending }, { data: recent }, { data: subjects }, { data: classLevels }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
+    const [{ data: pending }, { data: active }, { data: inactive }, { data: subjects }, { data: classLevels }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
       supabase.from("announcement").select(ANN_SELECT).eq("status", "pending_review").order("created_at"),
-      supabase.from("announcement").select(ANN_SELECT).neq("status", "pending_review").order("created_at", { ascending: false }).limit(40),
+      supabase.from("announcement").select(ANN_SELECT).eq("status", "published").order("published_at", { ascending: false }).limit(200),
+      supabase.from("announcement").select(ANN_SELECT).in("status", ["unpublished", "declined"]).order("created_at", { ascending: false }).limit(200),
       supabase.from("subject").select("id, name, level, programme:programme_id(code, name)").eq("active", true).order("name"),
       supabase.from("class_level").select("id, name, programme(code, name)").order("sort_order"),
       supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
@@ -41,7 +48,8 @@ export default async function AnnouncementsPage() {
         <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <AdminAnnouncements
             pending={(pending ?? []) as any[]}
-            recent={(recent ?? []) as any[]}
+            active={(active ?? []) as any[]}
+            inactive={(inactive ?? []) as any[]}
             subjects={(subjects ?? []) as any[]}
             classLevels={(classLevels ?? []) as any[]}
             teachers={(teachers ?? []) as any[]}

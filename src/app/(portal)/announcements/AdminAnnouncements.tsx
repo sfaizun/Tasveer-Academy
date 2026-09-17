@@ -192,23 +192,133 @@ function DecideForm({ id }: { id: string }) {
   );
 }
 
+const PAGE_SIZE = 10;
+
+/** One announcement row, with its expandable detail — shared by the Active and
+ * Inactive tables below. */
+function AnnouncementRow({ a, isOpen, onToggle }: { a: any; isOpen: boolean; onToggle: () => void }) {
+  return (
+    <Fragment>
+      <tr>
+        <td><b>{a.title}</b></td>
+        <td className="sub">{targetLabel((a.announcement_target ?? [])[0] ?? null, a.scope)}</td>
+        <td><StatusChip status={a.status} /></td>
+        <td className="n">
+          <button className="btn ghost" type="button" style={{ fontSize: 12, padding: "6px 10px" }} onClick={onToggle}>
+            {isOpen ? "Close" : "View"}
+          </button>
+        </td>
+      </tr>
+      {isOpen && (
+        <tr>
+          <td colSpan={4} style={{ padding: "12px 16px", background: "var(--tint)" }}>
+            <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, marginBottom: 8 }}>{a.body}</div>
+            {(a.announcement_attachment ?? [])[0]?.file_path && (
+              <img
+                src={(a.announcement_attachment ?? [])[0].file_path}
+                alt=""
+                style={{ maxWidth: "100%", maxHeight: 320, borderRadius: 8, display: "block", marginBottom: 8 }}
+              />
+            )}
+            <div className="sub" style={{ marginBottom: 10 }}>
+              {a.published_at ? `Published ${fmtDhaka(a.published_at)}` : "Not yet published"}
+              {a.expires_at ? ` · visible until ${fmtDhaka(a.expires_at)}` : ""}
+              {a.decision_note ? ` · note: "${a.decision_note}"` : ""}
+            </div>
+            {a.status === "published" && (
+              <form action={unpublishAnnouncement}>
+                <input type="hidden" name="id" value={a.id} />
+                <button className="btn ghost" type="submit" style={{ fontSize: 12, color: "var(--crit)" }}>
+                  Take down
+                </button>
+              </form>
+            )}
+          </td>
+        </tr>
+      )}
+    </Fragment>
+  );
+}
+
+/** Prev/Next pager for a client-paginated list — shown only once there's more than one page. */
+function Pager({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (p: number) => void }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, justifyContent: "flex-end", padding: "10px 16px" }}>
+      <button
+        className="btn ghost"
+        type="button"
+        style={{ fontSize: 12, padding: "6px 10px" }}
+        disabled={page <= 1}
+        onClick={() => onChange(page - 1)}
+      >
+        Prev
+      </button>
+      <span className="sub">Page {page} of {totalPages}</span>
+      <button
+        className="btn ghost"
+        type="button"
+        style={{ fontSize: 12, padding: "6px 10px" }}
+        disabled={page >= totalPages}
+        onClick={() => onChange(page + 1)}
+      >
+        Next
+      </button>
+    </div>
+  );
+}
+
+/** A paginated (10/page) announcements table with its own row-expand state. */
+function AnnouncementsTable({ items }: { items: any[] }) {
+  const [open, setOpen] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
+  const pageItems = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  return (
+    <>
+      <div className="tblwrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Audience</th>
+              <th>Status</th>
+              <th className="n"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {pageItems.map((a) => (
+              <AnnouncementRow key={a.id} a={a} isOpen={open === a.id} onToggle={() => setOpen(open === a.id ? null : a.id)} />
+            ))}
+            {items.length === 0 && (
+              <tr><td colSpan={4} className="sub">Nothing here yet.</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <Pager page={page} totalPages={totalPages} onChange={(p) => { setPage(p); setOpen(null); }} />
+    </>
+  );
+}
+
 export default function AdminAnnouncements({
   pending,
-  recent,
+  active,
+  inactive,
   subjects,
   classLevels,
   teachers,
   teacherSubjects,
 }: {
   pending: any[];
-  recent: any[];
+  active: any[];
+  inactive: any[];
   subjects: Subject[];
   classLevels: ClassLevel[];
   teachers: Teacher[];
   teacherSubjects: TeacherSubject[];
 }) {
-  const [open, setOpen] = useState<string | null>(null);
-
   return (
     <>
       <div className="panel">
@@ -254,70 +364,19 @@ export default function AdminAnnouncements({
 
       <div className="panel">
         <div className="phead">
-          <div className="ptitle">Recent</div>
+          <div className="ptitle">Active</div>
+          <div className="sub">{active.length} live</div>
         </div>
-        <div className="tblwrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Audience</th>
-                <th>Status</th>
-                <th className="n"></th>
-              </tr>
-            </thead>
-            <tbody>
-              {recent.map((a) => {
-                const isOpen = open === a.id;
-                return (
-                  <Fragment key={a.id}>
-                    <tr>
-                      <td><b>{a.title}</b></td>
-                      <td className="sub">{targetLabel((a.announcement_target ?? [])[0] ?? null, a.scope)}</td>
-                      <td><StatusChip status={a.status} /></td>
-                      <td className="n">
-                        <button className="btn ghost" type="button" style={{ fontSize: 12, padding: "6px 10px" }} onClick={() => setOpen(isOpen ? null : a.id)}>
-                          {isOpen ? "Close" : "View"}
-                        </button>
-                      </td>
-                    </tr>
-                    {isOpen && (
-                      <tr>
-                        <td colSpan={4} style={{ padding: "12px 16px", background: "var(--tint)" }}>
-                          <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, marginBottom: 8 }}>{a.body}</div>
-                          {(a.announcement_attachment ?? [])[0]?.file_path && (
-                            <img
-                              src={(a.announcement_attachment ?? [])[0].file_path}
-                              alt=""
-                              style={{ maxWidth: "100%", maxHeight: 320, borderRadius: 8, display: "block", marginBottom: 8 }}
-                            />
-                          )}
-                          <div className="sub" style={{ marginBottom: 10 }}>
-                            {a.published_at ? `Published ${fmtDhaka(a.published_at)}` : "Not yet published"}
-                            {a.expires_at ? ` · visible until ${fmtDhaka(a.expires_at)}` : ""}
-                            {a.decision_note ? ` · note: “${a.decision_note}”` : ""}
-                          </div>
-                          {a.status === "published" && (
-                            <form action={unpublishAnnouncement}>
-                              <input type="hidden" name="id" value={a.id} />
-                              <button className="btn ghost" type="submit" style={{ fontSize: 12, color: "var(--crit)" }}>
-                                Take down
-                              </button>
-                            </form>
-                          )}
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })}
-              {recent.length === 0 && (
-                <tr><td colSpan={4} className="sub">Nothing here yet.</td></tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+        <AnnouncementsTable items={active} />
       </div>
+
+      <details className="panel collapsible">
+        <summary className="phead">
+          <div className="ptitle">Inactive</div>
+          <div className="sub">{inactive.length} declined or taken down</div>
+        </summary>
+        <AnnouncementsTable items={inactive} />
+      </details>
     </>
   );
 }

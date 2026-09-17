@@ -24,6 +24,10 @@ export default async function Dashboard() {
   // Student / guardian: aggregate published announcements from every class they're
   // enrolled in (RLS on `announcement` already scopes this to the viewer's own classes
   // plus academy-wide notices — no extra filtering needed here).
+  // Flip any announcement whose "visible until" time has passed before reading, so an
+  // expired one never shows here as still live (see the Announcements page for the
+  // admin-facing Active/Inactive split of the same underlying status change).
+  await supabase.rpc("fn_expire_announcements");
   const { data: announcements } = await supabase
     .from("announcement")
     .select(ANN_SELECT)
