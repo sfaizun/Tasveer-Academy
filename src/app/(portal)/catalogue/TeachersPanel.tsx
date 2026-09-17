@@ -24,6 +24,13 @@ function subjectLabel(s: { name: string; level: string | null }) {
   return s.level ? `${s.name} (${s.level.toUpperCase()})` : s.name;
 }
 
+// Fixed display order for grouped subject dropdowns — O Level, then A Level, then Junior.
+const PROGRAMME_ORDER = ["O Level", "A Level", "Junior"];
+function programmeRank(name: string | undefined) {
+  const i = PROGRAMME_ORDER.indexOf(name ?? "");
+  return i === -1 ? PROGRAMME_ORDER.length : i;
+}
+
 export default function TeachersPanel({
   teachers,
   subjects,
@@ -103,7 +110,15 @@ export default function TeachersPanel({
               const mappedIds = new Set(activeMine.map((m) => m.subject_id));
               const options = subjects
                 .filter((s) => s.active && !mappedIds.has(s.id))
-                .map((s) => ({ id: s.id, label: `${s.programme?.name ?? ""} — ${subjectLabel(s)}` }));
+                .map((s) => ({
+                  id: s.id,
+                  label: subjectLabel(s),
+                  group: s.programme?.name ?? "Other",
+                }))
+                .sort((a, b) => {
+                  const g = programmeRank(a.group) - programmeRank(b.group);
+                  return g !== 0 ? g : a.label.localeCompare(b.label);
+                });
 
               return (
                 <tr key={t.id}>
