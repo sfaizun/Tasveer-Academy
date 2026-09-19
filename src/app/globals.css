@@ -182,3 +182,23 @@ input:focus{outline:2px solid var(--coral);outline-offset:0;border-color:var(--c
   .backdrop{position:fixed;inset:0;background:rgba(20,16,14,.45);z-index:19}
 }
 @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* Printing a page (e.g. the class schedule): keep only the actual content — no sidebar,
+   no hamburger/backdrop, no theme toggle, and no element explicitly marked .no-print
+   (filter bars, admin-only management panels, action buttons). Force a plain light
+   palette so it reads on paper regardless of the on-screen theme. */
+@media print{
+  :root,:root[data-theme="dark"]{
+    --paper:#ffffff; --ground:#ffffff; --tint:#f7f1ec; --tint2:#f2ebe4;
+    --ink:#000000; --body:#2b2622; --muted:#6b6058; --faint:#8a7f76;
+    --line:#c9beb4; --line2:#ddd4cb;
+  }
+  .side,.menu-btn,.backdrop,.no-print{display:none!important}
+  .shell{display:block}
+  .main{width:100%}
+  .content{padding:0}
+  .top{padding:0 0 12px;border-bottom:2px solid #000}
+  .panel{border:1px solid #999;break-inside:avoid;box-shadow:none}
+  table{break-inside:auto}
+  tr{break-inside:avoid}
+}

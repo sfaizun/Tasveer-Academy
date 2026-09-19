@@ -2,23 +2,39 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import RosterAdmin from "./RosterAdmin";
-import { WEEKDAYS, fmtTime } from "./shared";
+import ScheduleView from "./ScheduleView";
 import { myStudentIds } from "../announcements/receipts";
 
 export const dynamic = "force-dynamic";
 
-function slotLabel(row: any) {
+// Normalizes a class_slot row (which may point at either a subject class_group or a
+// junior class_level) into the flat shape ScheduleView needs — including a subjectId and
+// teacherId so the schedule can be filtered by either one.
+function slotInfo(row: any) {
   if (row.class_group) {
     const s = row.class_group.subject;
     const name = s?.name ?? "Subject";
     const level = s?.level ? ` (${String(s.level).toUpperCase()})` : "";
-    return { title: `${name}${level} — Batch ${row.class_group.batch_name}`, teacher: row.class_group.teacher?.full_name ?? "—" };
+    const subjectLabel = `${name}${level}`;
+    return {
+      title: `${subjectLabel} — Batch ${row.class_group.batch_name}`,
+      teacherId: row.class_group.teacher_id ?? row.class_group.teacher?.id ?? null,
+      teacherName: row.class_group.teacher?.full_name ?? "—",
+      subjectId: row.class_group.subject_id ?? s?.id ?? null,
+      subjectLabel,
+    };
   }
   if (row.class_level) {
     const prog = row.class_level.programme?.name ?? "";
-    return { title: `${row.class_level.name}${prog ? ` (${prog})` : ""}`, teacher: row.teacher?.full_name ?? "—" };
+    return {
+      title: `${row.class_level.name}${prog ? ` (${prog})` : ""}`,
+      teacherId: row.teacher_id ?? row.teacher?.id ?? null,
+      teacherName: row.teacher?.full_name ?? "—",
+      subjectId: null,
+      subjectLabel: null,
+    };
   }
-  return { title: "—", teacher: "—" };
+  return { title: "—", teacherId: null, teacherName: "—", subjectId: null, subjectLabel: null };
 }
 
 export default async function RosterPage() {
@@ -33,9 +49,9 @@ export default async function RosterPage() {
       .from("class_slot")
       .select(
         `id, weekday, start_time, end_time, room, capacity, class_group_id, class_level_id, teacher_id,
-         class_group(id, batch_name, subject(name, level), teacher(full_name)),
+         class_group(id, batch_name, subject_id, subject(id, name, level), teacher_id, teacher(id, full_name)),
          class_level(id, name, programme(code, name)),
-         teacher:teacher_id(full_name)`
+         teacher:teacher_id(id, full_name)`
       )
       .order("weekday")
       .order("start_time"),
@@ -78,7 +94,21 @@ export default async function RosterPage() {
         (r.class_level_id && myScope.classLevelIds.has(r.class_level_id))
     );
   }
-  const byDay = WEEKDAYS.map((_, wd) => rows.filter((r) => r.weekday === wd));
+  const scheduleRows = rows.map((r) => {
+    const info = slotInfo(r);
+    return {
+      id: r.id,
+      weekday: r.weekday,
+      start_time: r.start_time,
+      end_time: r.end_time,
+      room: r.room,
+      title: info.title,
+      teacherId: info.teacherId,
+      teacherName: info.teacherName,
+      subjectId: info.subjectId,
+      subjectLabel: info.subjectLabel,
+    };
+  });
 
   return (
     <>
@@ -88,73 +118,33 @@ export default async function RosterPage() {
           Weekly class timing — {isAdmin ? "admin managed" : isStudentOrGuardian ? "your enrolled classes only" : "read only"}
         </div>
         <div className="spacer" />
-        <ThemeToggle />
+        <span className="no-print"><ThemeToggle /></span>
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         {isAdmin && adminData && (
-          <RosterAdmin
-            slots={rows.map((r) => ({
-              id: r.id,
-              weekday: r.weekday,
-              start_time: r.start_time,
-              end_time: r.end_time,
-              room: r.room,
-              capacity: r.capacity,
-              teacher_id: r.teacher_id,
-              isJunior: !!r.class_level_id,
-              label: slotLabel(r).title,
-            }))}
-            subjects={(adminData[0].data ?? []) as any[]}
-            classLevels={(adminData[1].data ?? []) as any[]}
-            teachers={(adminData[2].data ?? []) as any[]}
-            teacherSubjects={(adminData[3].data ?? []) as any[]}
-          />
+          <div className="no-print">
+            <RosterAdmin
+              slots={rows.map((r) => ({
+                id: r.id,
+                weekday: r.weekday,
+                start_time: r.start_time,
+                end_time: r.end_time,
+                room: r.room,
+                capacity: r.capacity,
+                teacher_id: r.teacher_id,
+                isJunior: !!r.class_level_id,
+                label: slotInfo(r).title,
+              }))}
+              subjects={(adminData[0].data ?? []) as any[]}
+              classLevels={(adminData[1].data ?? []) as any[]}
+              teachers={(adminData[2].data ?? []) as any[]}
+              teacherSubjects={(adminData[3].data ?? []) as any[]}
+            />
+          </div>
         )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {WEEKDAYS.map((day, wd) => {
-            const dayRows = byDay[wd];
-            return (
-              <div className="panel" key={day}>
-                <div className="phead">
-                  <div className="ptitle">{day}</div>
-                  <div className="sub">{dayRows.length} class{dayRows.length === 1 ? "" : "es"}</div>
-                </div>
-                <div className="tblwrap">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Time</th>
-                        <th>Class</th>
-                        <th>Teacher</th>
-                        <th>Room</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dayRows.map((r) => {
-                        const { title, teacher } = slotLabel(r);
-                        return (
-                          <tr key={r.id}>
-                            <td className="mono">{fmtTime(r.start_time)} – {fmtTime(r.end_time)}</td>
-                            <td><b>{title}</b></td>
-                            <td className="sub">{teacher}</td>
-                            <td className="sub">{r.room ?? "—"}</td>
-                          </tr>
-                        );
-                      })}
-                      {dayRows.length === 0 && (
-                        <tr>
-                          <td colSpan={4} className="sub">No classes scheduled.</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <ScheduleView rows={scheduleRows} />
       </div>
     </>
   );

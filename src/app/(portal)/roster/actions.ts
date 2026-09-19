@@ -14,7 +14,7 @@ function parseCapacity(raw: string) {
 export async function addClassSlot(_prev: State, formData: FormData): Promise<State> {
   const targetType = String(formData.get("target_type") ?? "");
   const subject_id = String(formData.get("subject_id") ?? "").trim() || null;
-  const batch = String(formData.get("batch") ?? "").trim() || "A";
+  const batch = String(formData.get("batch") ?? "").trim() || "1";
   const class_level_id = String(formData.get("class_level_id") ?? "").trim() || null;
   const teacher_id = String(formData.get("teacher_id") ?? "").trim() || null;
   const weekday = Number(formData.get("weekday"));
