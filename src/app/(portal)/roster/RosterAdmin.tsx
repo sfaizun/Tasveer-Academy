@@ -247,21 +247,21 @@ export default function RosterAdmin({
 
   return (
     <>
-      <div className="panel">
-        <div className="phead">
+      <details className="panel collapsible" open>
+        <summary className="phead">
           <div className="ptitle">Add to schedule</div>
           <div className="sub">Only admin can add, edit or remove a slot.</div>
-        </div>
+        </summary>
         <div style={{ padding: 16 }}>
           <AddSlotForm subjects={subjects} teachers={teachers} teacherSubjects={teacherSubjects} classLevels={classLevels} />
         </div>
-      </div>
+      </details>
 
-      <div className="panel">
-        <div className="phead">
+      <details className="panel collapsible" open>
+        <summary className="phead">
           <div className="ptitle">Manage slots</div>
           <div className="sub">{sorted.length} total</div>
-        </div>
+        </summary>
         <div className="tblwrap">
           <table>
             <thead>
@@ -316,7 +316,7 @@ export default function RosterAdmin({
             </tbody>
           </table>
         </div>
-      </div>
+      </details>
     </>
   );
 }
