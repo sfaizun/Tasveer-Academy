@@ -8,6 +8,8 @@ import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
 import EnrolmentsPanel from "./EnrolmentsPanel";
 import InvoicesList from "./InvoicesList";
+import AdmissionFeePanel from "./AdmissionFeePanel";
+import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +41,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       supabase
         .from("student")
         .select(
-          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, programme_id, enrolment_type, programme(name, code), class_level(name)"
+          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, programme_id, class_level_id, enrolment_type, programme(name, code), class_level(name)"
         )
         .eq("id", id)
         .maybeSingle(),
@@ -47,7 +49,9 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       supabase.from("sibling").select("full_name, class_name, school_name").eq("student_id", id),
       supabase
         .from("enrolment")
-        .select("id, level, from_month, to_month, rate_applied, status, subject(name), teacher(full_name)")
+        .select(
+          "id, level, from_month, to_month, rate_applied, status, subject(id, name), teacher(id, full_name), class_group_id, class_group(batch_name), discount_pct, discount_amt, discount_reason"
+        )
         .eq("student_id", id)
         .order("from_month", { ascending: false }),
       supabase
@@ -70,7 +74,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const isSubjectBased = s.programme?.code === "o_level" || s.programme?.code === "a_level";
   const isMockOnly = s.enrolment_type === "mock_only";
 
-  const [{ data: subjects }, { data: teachers }, { data: teacherSubjects }] = isSubjectBased
+  const [{ data: subjects }, { data: teachers }, { data: teacherSubjects }, { data: classGroupsData }] = isSubjectBased
     ? await Promise.all([
         supabase
           .from("subject")
@@ -79,8 +83,9 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           .eq("active", true),
         supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
         supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
+        supabase.from("class_group").select("subject_id, teacher_id, batch_name"),
       ])
-    : [{ data: [] }, { data: [] }, { data: [] }];
+    : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
   const { data: mockSubjects } = isMockOnly
     ? await supabase
@@ -96,6 +101,78 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const openInvoices = (invoices ?? [])
     .filter((i: any) => (i.status === "unpaid" || i.status === "partly_paid") && Number(i.balance) > 0)
     .map((i: any) => ({ id: i.id, invoice_no: i.invoice_no, billing_month: i.billing_month, balance: Number(i.balance) }));
+
+  // Flattened for EnrolmentsPanel, which expects batch_name directly on the enrolment
+  // rather than nested under class_group.
+  const mappedEnrolments = (enrolments ?? []).map((e: any) => ({
+    id: e.id,
+    level: e.level,
+    from_month: e.from_month,
+    to_month: e.to_month,
+    rate_applied: e.rate_applied,
+    status: e.status,
+    subject: e.subject,
+    teacher: e.teacher,
+    batch_name: e.class_group?.batch_name ?? null,
+    discount_pct: e.discount_pct,
+    discount_amt: e.discount_amt,
+    discount_reason: e.discount_reason,
+  }));
+
+  // This student's actual weekly routine, built the same way as the main Class Schedule
+  // page: class_slot rows scoped to whichever class_groups their active subjects put them
+  // in (O/A Level), or their class_level (Junior/mock-only has no ongoing class at all).
+  const activeClassGroupIds = (enrolments ?? [])
+    .filter((e: any) => e.status === "active" && e.class_group_id)
+    .map((e: any) => e.class_group_id as string);
+
+  let routineRows: RoutineRow[] = [];
+  if (activeClassGroupIds.length > 0 || s.class_level_id) {
+    const orParts: string[] = [];
+    if (activeClassGroupIds.length > 0) orParts.push(`class_group_id.in.(${activeClassGroupIds.join(",")})`);
+    if (s.class_level_id) orParts.push(`class_level_id.eq.${s.class_level_id}`);
+    const { data: slots } = await supabase
+      .from("class_slot")
+      .select(
+        `id, weekday, start_time, end_time, room, class_group_id, class_level_id,
+         class_group(batch_name, subject(name, level), teacher(full_name)),
+         class_level(name, programme(name)),
+         teacher:teacher_id(full_name)`
+      )
+      .or(orParts.join(","))
+      .order("weekday")
+      .order("start_time");
+
+    routineRows = ((slots ?? []) as any[]).map((r) => {
+      if (r.class_group) {
+        const sub = r.class_group.subject;
+        const name = sub?.name ?? "Subject";
+        const level = sub?.level ? ` (${String(sub.level).toUpperCase()})` : "";
+        return {
+          id: r.id,
+          weekday: r.weekday,
+          start_time: r.start_time,
+          end_time: r.end_time,
+          room: r.room,
+          title: `${name}${level} — Batch ${r.class_group.batch_name}`,
+          teacherName: r.class_group.teacher?.full_name ?? "—",
+        };
+      }
+      if (r.class_level) {
+        const prog = r.class_level.programme?.name ?? "";
+        return {
+          id: r.id,
+          weekday: r.weekday,
+          start_time: r.start_time,
+          end_time: r.end_time,
+          room: r.room,
+          title: `${r.class_level.name}${prog ? ` (${prog})` : ""}`,
+          teacherName: r.teacher?.full_name ?? "—",
+        };
+      }
+      return { id: r.id, weekday: r.weekday, start_time: r.start_time, end_time: r.end_time, room: r.room, title: "—", teacherName: "—" };
+    });
+  }
 
   return (
     <>
@@ -114,10 +191,11 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           )}
         </div>
         <div className="spacer" />
-        <ThemeToggle />
+        <span className="no-print"><ThemeToggle /></span>
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      <div className="no-print" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <div className="panel">
           <div className="phead">
             <div className="ptitle">Student</div>
@@ -203,10 +281,11 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
         {isSubjectBased ? (
           <EnrolmentsPanel
             studentId={id}
-            enrolments={(enrolments ?? []) as any}
+            enrolments={mappedEnrolments}
             subjects={(subjects ?? []) as any}
             teachers={(teachers ?? []) as any}
             teacherSubjects={(teacherSubjects ?? []) as any}
+            classGroups={(classGroupsData ?? []) as any}
             canEdit={isAdmin}
           />
         ) : (enrolments ?? []).length > 0 ? (
@@ -232,6 +311,8 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           </div>
         ) : null}
 
+        {isAdmin && <AdmissionFeePanel studentId={id} invoices={(invoices ?? []) as any} />}
+
         <InvoicesList invoices={(invoices ?? []) as any} outstanding={outstanding} />
 
         {isAdmin && (
@@ -252,6 +333,9 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
             canVoid={isOwner}
           />
         </div>
+      </div>
+
+      {isAdmin && <StudentRoutine rows={routineRows} />}
       </div>
     </>
   );

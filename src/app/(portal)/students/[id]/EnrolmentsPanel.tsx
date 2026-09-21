@@ -2,7 +2,7 @@
 import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Req from "@/components/Req";
 import { taka, fmtDate, currentBillingMonth } from "@/lib/format";
-import { addEnrolment, removeEnrolment, setEnrolmentEnd } from "./actions";
+import { addEnrolment, removeEnrolment, setEnrolmentEnd, setEnrolmentClassGroup, setEnrolmentDiscount } from "./actions";
 import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 
 const inputStyle: React.CSSProperties = {
@@ -14,6 +14,7 @@ const inputStyle: React.CSSProperties = {
 type Subject = SubjectForGrouping;
 type Teacher = { id: string; full_name: string };
 type TeacherSubject = { teacher_id: string; subject_id: string };
+type ClassGroup = { subject_id: string; teacher_id: string; batch_name: string };
 export type Enrolment = {
   id: string;
   level: string | null;
@@ -21,30 +22,44 @@ export type Enrolment = {
   to_month: string | null;
   rate_applied: number;
   status: string;
-  subject: { name: string } | null;
-  teacher: { full_name: string } | null;
+  subject: { id: string; name: string } | null;
+  teacher: { id: string; full_name: string } | null;
+  batch_name: string | null;
+  discount_pct: number | null;
+  discount_amt: number | null;
+  discount_reason: string | null;
 };
+
+function discountLabel(e: Enrolment) {
+  if (e.discount_pct) return `${e.discount_pct}%${e.discount_reason ? ` — ${e.discount_reason}` : ""}`;
+  if (e.discount_amt) return `${taka(e.discount_amt)}/mo${e.discount_reason ? ` — ${e.discount_reason}` : ""}`;
+  return null;
+}
 
 function AddSubjectForm({
   studentId,
   subjects,
   teachers,
   teacherSubjects,
+  classGroups,
 }: {
   studentId: string;
   subjects: Subject[];
   teachers: Teacher[];
   teacherSubjects: TeacherSubject[];
+  classGroups: ClassGroup[];
 }) {
   const [state, action, pending] = useActionState(addEnrolment, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [subjectId, setSubjectId] = useState("");
+  const [teacherId, setTeacherId] = useState("");
   const currentMonth = useMemo(() => currentBillingMonth().slice(0, 7), []);
 
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
       setSubjectId("");
+      setTeacherId("");
     }
   }, [state]);
 
@@ -54,6 +69,15 @@ function AddSubjectForm({
     const ids = new Set(teacherSubjects.filter((ts) => ts.subject_id === subjectId).map((ts) => ts.teacher_id));
     return teachers.filter((t) => ids.has(t.id));
   }, [subjectId, teacherSubjects, teachers]);
+  const existingBatches = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          classGroups.filter((g) => g.subject_id === subjectId && g.teacher_id === teacherId).map((g) => g.batch_name)
+        )
+      ),
+    [classGroups, subjectId, teacherId]
+  );
 
   return (
     <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -80,7 +104,15 @@ function AddSubjectForm({
         </div>
         <div className="field">
           <label className="lbl">Teacher<Req /></label>
-          <select key={subjectId} style={inputStyle} name="teacher_id" required defaultValue="" disabled={!subjectId}>
+          <select
+            key={subjectId}
+            style={inputStyle}
+            name="teacher_id"
+            required
+            value={teacherId}
+            onChange={(e) => setTeacherId(e.target.value)}
+            disabled={!subjectId}
+          >
             <option value="" disabled>
               {subjectId ? (eligibleTeachers.length ? "Choose…" : "No teacher mapped to this subject") : "Choose a subject first"}
             </option>
@@ -88,6 +120,20 @@ function AddSubjectForm({
               <option key={t.id} value={t.id}>{t.full_name}</option>
             ))}
           </select>
+        </div>
+        <div className="field">
+          <label className="lbl">Batch</label>
+          <input style={inputStyle} type="text" name="batch" placeholder="1" list="existing-batches" />
+          <datalist id="existing-batches">
+            {existingBatches.map((b) => (
+              <option key={b} value={b} />
+            ))}
+          </datalist>
+          {existingBatches.length > 0 && (
+            <div className="sub" style={{ marginTop: 4 }}>
+              Existing batches for this subject/teacher: {existingBatches.join(", ")}
+            </div>
+          )}
         </div>
         <div className="field">
           <label className="lbl">Starting from</label>
@@ -103,8 +149,10 @@ function AddSubjectForm({
         {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Added.</span>}
       </div>
       <div className="sub">
-        If this month's bill has already been issued and isn't fully paid yet, the new subject's
-        fee is added to it right away. Otherwise it starts on the next monthly bill.
+        Pick an existing batch to put this student on the routine they&apos;ll actually attend, or type a
+        new batch name to start one. If this month&apos;s bill has already been issued and isn&apos;t
+        fully paid yet, the new subject&apos;s fee is added to it right away. Otherwise it starts on the
+        next monthly bill.
       </div>
     </form>
   );
@@ -161,12 +209,136 @@ function RemoveSubjectForm({ studentId, enrolment }: { studentId: string; enrolm
   );
 }
 
+// Moves this subject to a different teacher and/or batch — "editing" which class the
+// student is actually on, e.g. after a schedule clash, without touching billing history.
+function ChangeClassForm({
+  studentId,
+  enrolment,
+  teachers,
+  teacherSubjects,
+  classGroups,
+}: {
+  studentId: string;
+  enrolment: Enrolment;
+  teachers: Teacher[];
+  teacherSubjects: TeacherSubject[];
+  classGroups: ClassGroup[];
+}) {
+  const [state, action, pending] = useActionState(setEnrolmentClassGroup, null);
+  const [teacherId, setTeacherId] = useState(enrolment.teacher?.id ?? "");
+
+  const eligibleTeachers = useMemo(() => {
+    const subjectId = enrolment.subject?.id;
+    if (!subjectId) return teachers;
+    const ids = new Set(teacherSubjects.filter((ts) => ts.subject_id === subjectId).map((ts) => ts.teacher_id));
+    return teachers.filter((t) => ids.has(t.id));
+  }, [enrolment.subject?.id, teacherSubjects, teachers]);
+
+  const existingBatches = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          classGroups
+            .filter((g) => g.subject_id === enrolment.subject?.id && g.teacher_id === teacherId)
+            .map((g) => g.batch_name)
+        )
+      ),
+    [classGroups, enrolment.subject?.id, teacherId]
+  );
+
+  return (
+    <form action={action} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+      <input type="hidden" name="student_id" value={studentId} />
+      <input type="hidden" name="enrolment_id" value={enrolment.id} />
+      <label className="sub" style={{ whiteSpace: "nowrap" }}>Teacher:</label>
+      <select
+        style={{ ...inputStyle, width: "auto" }}
+        name="teacher_id"
+        value={teacherId}
+        onChange={(e) => setTeacherId(e.target.value)}
+      >
+        {eligibleTeachers.map((t) => (
+          <option key={t.id} value={t.id}>{t.full_name}</option>
+        ))}
+      </select>
+      <label className="sub" style={{ whiteSpace: "nowrap" }}>Batch:</label>
+      <input
+        style={{ ...inputStyle, width: 90 }}
+        type="text"
+        name="batch"
+        defaultValue={enrolment.batch_name ?? ""}
+        list={`existing-batches-${enrolment.id}`}
+      />
+      <datalist id={`existing-batches-${enrolment.id}`}>
+        {existingBatches.map((b) => (
+          <option key={b} value={b} />
+        ))}
+      </datalist>
+      <button className="btn ghost" type="submit" disabled={pending} style={{ fontSize: 12 }}>
+        {pending ? "Saving…" : "Move"}
+      </button>
+      {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+      {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Moved.</span>}
+    </form>
+  );
+}
+
+// Sets or clears a recurring monthly discount on this one subject — a percentage or a
+// fixed amount, applied automatically on every future bill (and to this month's, if it's
+// already issued and still open).
+function DiscountForm({ studentId, enrolment }: { studentId: string; enrolment: Enrolment }) {
+  const [state, action, pending] = useActionState(setEnrolmentDiscount, null);
+  const [kind, setKind] = useState<"pct" | "amt">(enrolment.discount_amt ? "amt" : "pct");
+
+  return (
+    <form action={action} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+      <input type="hidden" name="student_id" value={studentId} />
+      <input type="hidden" name="enrolment_id" value={enrolment.id} />
+      <label className="sub" style={{ whiteSpace: "nowrap" }}>Discount:</label>
+      <select
+        style={{ ...inputStyle, width: "auto" }}
+        name="discount_kind"
+        value={kind}
+        onChange={(e) => setKind(e.target.value as "pct" | "amt")}
+      >
+        <option value="pct">Percentage</option>
+        <option value="amt">Fixed amount / month</option>
+      </select>
+      <input
+        style={{ ...inputStyle, width: 100 }}
+        type="number"
+        name="discount_value"
+        min="0"
+        step="0.01"
+        placeholder={kind === "pct" ? "e.g. 10" : "e.g. 200"}
+        defaultValue={enrolment.discount_pct ?? enrolment.discount_amt ?? ""}
+      />
+      <input
+        style={{ ...inputStyle, width: 160 }}
+        type="text"
+        name="discount_reason"
+        placeholder="Reason (e.g. sibling)"
+        defaultValue={enrolment.discount_reason ?? ""}
+      />
+      <button className="btn ghost" type="submit" disabled={pending} style={{ fontSize: 12 }}>
+        {pending ? "Saving…" : "Save"}
+      </button>
+      {(enrolment.discount_pct || enrolment.discount_amt) && (
+        <span className="sub">Leave the value blank and save to clear the discount.</span>
+      )}
+      {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+      {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Saved.</span>}
+    </form>
+  );
+}
+
 export default function EnrolmentsPanel({
   studentId,
   enrolments,
   subjects,
   teachers,
   teacherSubjects,
+  classGroups,
   canEdit,
 }: {
   studentId: string;
@@ -174,6 +346,7 @@ export default function EnrolmentsPanel({
   subjects: Subject[];
   teachers: Teacher[];
   teacherSubjects: TeacherSubject[];
+  classGroups: ClassGroup[];
   canEdit: boolean;
 }) {
   const [open, setOpen] = useState<string | null>(null);
@@ -187,22 +360,25 @@ export default function EnrolmentsPanel({
         <table>
           <thead>
             <tr>
-              <th>Subject</th><th>Teacher</th><th>From</th><th>Till</th>
-              <th className="n">Rate / month</th><th className="n"></th>
+              <th>Subject</th><th>Teacher</th><th>Batch</th><th>From</th><th>Till</th>
+              <th className="n">Rate / month</th><th>Discount</th><th className="n"></th>
             </tr>
           </thead>
           <tbody>
             {enrolments.map((e) => {
               const ended = !!e.to_month && e.to_month < today;
               const isOpen = open === e.id;
+              const discount = discountLabel(e);
               return (
                 <Fragment key={e.id}>
                   <tr>
                     <td>{e.subject?.name}{e.level ? ` (${String(e.level).toUpperCase()})` : ""}</td>
                     <td className="sub">{e.teacher?.full_name}</td>
+                    <td className="mono sub">{e.batch_name ?? "—"}</td>
                     <td className="mono sub">{fmtDate(e.from_month)}</td>
                     <td className="mono sub">{e.to_month ? fmtDate(e.to_month) : "—"}</td>
                     <td className="n mono">{taka(e.rate_applied)}</td>
+                    <td className="sub">{discount ?? "—"}</td>
                     <td className="n">
                       {ended ? (
                         <span className="sub">Ended</span>
@@ -222,14 +398,33 @@ export default function EnrolmentsPanel({
                   </tr>
                   {isOpen && canEdit && (
                     <tr>
-                      <td colSpan={6} style={{ padding: "12px 16px", background: "var(--tint)" }}>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                          <EndSubjectForm studentId={studentId} enrolment={e} />
-                          <RemoveSubjectForm studentId={studentId} enrolment={e} />
-                          <div className="sub">
-                            "Remove subject" only works if this subject hasn't appeared on an
-                            invoice yet — once it's been billed, set an end month instead so the
-                            invoice history stays intact.
+                      <td colSpan={8} style={{ padding: "12px 16px", background: "var(--tint)" }}>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                          <div>
+                            <div className="lbl" style={{ marginBottom: 6 }}>Change class (teacher / batch)</div>
+                            <ChangeClassForm
+                              studentId={studentId}
+                              enrolment={e}
+                              teachers={teachers}
+                              teacherSubjects={teacherSubjects}
+                              classGroups={classGroups}
+                            />
+                          </div>
+                          <div>
+                            <div className="lbl" style={{ marginBottom: 6 }}>Subject discount</div>
+                            <DiscountForm studentId={studentId} enrolment={e} />
+                          </div>
+                          <div>
+                            <div className="lbl" style={{ marginBottom: 6 }}>End date</div>
+                            <EndSubjectForm studentId={studentId} enrolment={e} />
+                          </div>
+                          <div>
+                            <RemoveSubjectForm studentId={studentId} enrolment={e} />
+                            <div className="sub" style={{ marginTop: 6 }}>
+                              &ldquo;Remove subject&rdquo; only works if this subject hasn&apos;t appeared on an
+                              invoice yet — once it&apos;s been billed, set an end month instead so the invoice
+                              history stays intact.
+                            </div>
                           </div>
                         </div>
                       </td>
@@ -239,7 +434,7 @@ export default function EnrolmentsPanel({
               );
             })}
             {enrolments.length === 0 && (
-              <tr><td colSpan={6} className="sub">No subjects yet.</td></tr>
+              <tr><td colSpan={8} className="sub">No subjects yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -248,7 +443,13 @@ export default function EnrolmentsPanel({
       {canEdit && (
         <div style={{ padding: 16, borderTop: "1px solid var(--line)" }}>
           <div className="lbl" style={{ marginBottom: 8 }}>Add a subject</div>
-          <AddSubjectForm studentId={studentId} subjects={subjects} teachers={teachers} teacherSubjects={teacherSubjects} />
+          <AddSubjectForm
+            studentId={studentId}
+            subjects={subjects}
+            teachers={teachers}
+            teacherSubjects={teacherSubjects}
+            classGroups={classGroups}
+          />
         </div>
       )}
     </div>

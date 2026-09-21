@@ -8,20 +8,24 @@ import { myStudentIds } from "../announcements/receipts";
 export const dynamic = "force-dynamic";
 
 // Normalizes a class_slot row (which may point at either a subject class_group or a
-// junior class_level) into the flat shape ScheduleView needs — including a subjectId and
-// teacherId so the schedule can be filtered by either one.
+// junior class_level) into the flat shape ScheduleView needs — including a teacherId to
+// filter by teacher, and a subjectId/subjectLabel to filter by subject. A subject can run
+// as more than one batch (each its own class_group, its own teacher, its own routine), so
+// the filter key is the class_group itself and its label spells out the batch number —
+// otherwise picking "Accounting" would mix every batch's timings together instead of
+// letting the admin isolate the one routine a particular student is actually enrolled in.
 function slotInfo(row: any) {
   if (row.class_group) {
     const s = row.class_group.subject;
     const name = s?.name ?? "Subject";
     const level = s?.level ? ` (${String(s.level).toUpperCase()})` : "";
-    const subjectLabel = `${name}${level}`;
+    const batchLabel = `${name}${level} — Batch ${row.class_group.batch_name}`;
     return {
-      title: `${subjectLabel} — Batch ${row.class_group.batch_name}`,
+      title: batchLabel,
       teacherId: row.class_group.teacher_id ?? row.class_group.teacher?.id ?? null,
       teacherName: row.class_group.teacher?.full_name ?? "—",
-      subjectId: row.class_group.subject_id ?? s?.id ?? null,
-      subjectLabel,
+      subjectId: row.class_group.id,
+      subjectLabel: batchLabel,
     };
   }
   if (row.class_level) {
