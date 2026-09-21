@@ -5,3 +5,10 @@ out
 .vercel
 *.tsbuildinfo
 next-env.d.ts
+
+# A "Claude outputs" folder shows up at the project root sometimes — Cowork's own local
+# download location for files sent into the chat, not part of the app's source. It ended up
+# committed once already (with a stray old ScheduleView.tsx that broke the Vercel build,
+# since it has no "shared.ts" beside it and tsconfig picks up every **/*.tsx by default — see
+# the tsconfig "exclude" entry added the same day). Ignored here so it's never tracked again.
+Claude outputs/
