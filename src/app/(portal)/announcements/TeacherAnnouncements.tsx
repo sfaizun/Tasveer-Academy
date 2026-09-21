@@ -48,7 +48,7 @@ function RequestForm({ subjects }: { subjects: Subject[] }) {
         </div>
         <div className="field">
           <label className="lbl">Batch</label>
-          <input style={inputStyle} type="text" name="batch" placeholder="A" defaultValue="A" />
+          <input style={inputStyle} type="text" name="batch" placeholder="1" />
         </div>
       </div>
       <div className="field">

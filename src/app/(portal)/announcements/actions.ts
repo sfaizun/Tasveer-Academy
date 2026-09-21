@@ -71,7 +71,7 @@ export async function createAnnouncement(_prev: State, formData: FormData): Prom
   const targetType = String(formData.get("target_type") ?? "academy");
   const subject_id = String(formData.get("subject_id") ?? "").trim() || null;
   const teacher_id = String(formData.get("teacher_id") ?? "").trim() || null;
-  const batch = String(formData.get("batch") ?? "").trim() || "A";
+  const batch = String(formData.get("batch") ?? "").trim() || "1";
   const class_level_id = String(formData.get("class_level_id") ?? "").trim() || null;
   const expiresLocal = String(formData.get("expires_at") ?? "").trim();
   const requires_ack = formData.get("requires_ack") === "1";
@@ -179,7 +179,7 @@ export async function submitAnnouncementRequest(_prev: State, formData: FormData
   const title = String(formData.get("title") ?? "").trim();
   const body = String(formData.get("body") ?? "").trim();
   const subject_id = String(formData.get("subject_id") ?? "").trim();
-  const batch = String(formData.get("batch") ?? "").trim() || "A";
+  const batch = String(formData.get("batch") ?? "").trim() || "1";
   const publishLocal = String(formData.get("publish_at") ?? "").trim();
   const expiresLocal = String(formData.get("expires_at") ?? "").trim();
 

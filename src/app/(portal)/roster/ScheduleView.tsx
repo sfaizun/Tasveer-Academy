@@ -207,8 +207,9 @@ export default function ScheduleView({ rows }: { rows: ScheduleRow[] }) {
           const dayRows = byDay[wd];
           return (
             <div className="panel" key={day}>
-              <div className="phead">
+              <div className="phead" style={{ background: `var(--day${wd})` }}>
                 <div className="ptitle">{day}</div>
+                <div className="spacer" />
                 <div className="sub">{dayRows.length} class{dayRows.length === 1 ? "" : "es"}</div>
               </div>
               <div className="tblwrap">

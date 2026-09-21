@@ -11,6 +11,11 @@
   --age1:#f2b3a9; --age2:#cf5849; --age3:#8c2018;
   --sr-raised:#2a5fa0; --sr-coll:#d24a3d;
   --grid:#f0e8e1; --axis:#e0d6cd;
+  /* One soft tint per weekday (Sunday=0 .. Saturday=6, matching class_slot.weekday) — used
+     to color-code each day's header on the Class Schedule and a student's own Routine, so
+     a week reads as seven distinct days at a glance instead of seven identical grey rows. */
+  --day0:#fde2e1; --day1:#e1ecfd; --day2:#e1f7ea; --day3:#fdf0da;
+  --day4:#f0e1fb; --day5:#daf5f5; --day6:#fdeaf6;
   /* "Noto Sans Bengali" sits before the Latin system fallbacks in every stack so the
      Bengali Taka sign (৳) and any Bengali text always have a real glyph to fall back to —
      Instrument Sans/Serif and IBM Plex Mono don't cover Bengali script at all, and relying
@@ -35,6 +40,8 @@
     --age1:#5f251e; --age2:#b8503f; --age3:#f0907c;
     --sr-raised:#4a8fd4; --sr-coll:#dc6250;
     --grid:#2b2420; --axis:#3a312b;
+    --day0:#4a2b28; --day1:#233a52; --day2:#1f3d2c; --day3:#4a3b1d;
+    --day4:#3a2a49; --day5:#1f4444; --day6:#472e3c;
     color-scheme: dark;
   }
 }
@@ -50,6 +57,8 @@
   --age1:#5f251e; --age2:#b8503f; --age3:#f0907c;
   --sr-raised:#4a8fd4; --sr-coll:#dc6250;
   --grid:#2b2420; --axis:#3a312b;
+  --day0:#4a2b28; --day1:#233a52; --day2:#1f3d2c; --day3:#4a3b1d;
+  --day4:#3a2a49; --day5:#1f4444; --day6:#472e3c;
   color-scheme: dark;
 }
 
@@ -192,6 +201,8 @@ input:focus{outline:2px solid var(--coral);outline-offset:0;border-color:var(--c
     --paper:#ffffff; --ground:#ffffff; --tint:#f7f1ec; --tint2:#f2ebe4;
     --ink:#000000; --body:#2b2622; --muted:#6b6058; --faint:#8a7f76;
     --line:#c9beb4; --line2:#ddd4cb;
+    --day0:#fde2e1; --day1:#e1ecfd; --day2:#e1f7ea; --day3:#fdf0da;
+    --day4:#f0e1fb; --day5:#daf5f5; --day6:#fdeaf6;
   }
   .side,.menu-btn,.backdrop,.no-print{display:none!important}
   .shell{display:block}
@@ -199,6 +210,7 @@ input:focus{outline:2px solid var(--coral);outline-offset:0;border-color:var(--c
   .content{padding:0}
   .top{padding:0 0 12px;border-bottom:2px solid #000}
   .panel{border:1px solid #999;break-inside:avoid;box-shadow:none}
+  .phead{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   table{break-inside:auto}
   tr{break-inside:avoid}
 }
