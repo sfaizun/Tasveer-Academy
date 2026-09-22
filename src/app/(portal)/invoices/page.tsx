@@ -128,7 +128,15 @@ export default async function InvoicesPage({
               {hasFilter ? " matching" : " total"}
             </div>
           </div>
-          <form method="GET" style={{ padding: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-end" }}>
+          {/* alignItems:flex-start (not flex-end) is deliberate: the Subject field carries an
+              extra helper line below its select ("Junior classes bill flat…"), which makes its
+              box taller than Student/Teacher/Month. Bottom-aligning (flex-end) was shoving that
+              taller field's label+select upward to keep the bottoms level — the "Subject looks
+              higher than everything else" bug. Top-aligning instead keeps every label flush on
+              the same row regardless of what follows underneath, and the Filter/Clear/Print
+              controls each get their own hidden label spacer below so they still land level
+              with the selects rather than jumping up to the labels' row. */}
+          <form method="GET" style={{ padding: 16, display: "flex", flexWrap: "wrap", gap: 10, alignItems: "flex-start" }}>
             <div className="field">
               <label className="lbl">Student</label>
               <select style={inputStyle} name="student" defaultValue={studentId ?? ""}>
@@ -167,16 +175,25 @@ export default async function InvoicesPage({
               <label className="lbl">Month</label>
               <input type="month" name="month" defaultValue={month ?? ""} style={inputStyle} />
             </div>
-            <button className="btn" type="submit" style={{ fontSize: 12, padding: "8px 14px" }}>
-              Filter
-            </button>
+            <div className="field">
+              <label className="lbl" style={{ visibility: "hidden" }}>Filter</label>
+              <button className="btn" type="submit" style={{ fontSize: 12, padding: "8px 14px" }}>
+                Filter
+              </button>
+            </div>
             {hasFilter && (
-              <a className="btn ghost" href="/invoices" style={{ fontSize: 12, padding: "8px 14px" }}>
-                Clear
-              </a>
+              <div className="field">
+                <label className="lbl" style={{ visibility: "hidden" }}>Clear</label>
+                <a className="btn ghost" href="/invoices" style={{ fontSize: 12, padding: "8px 14px" }}>
+                  Clear
+                </a>
+              </div>
             )}
             <div className="spacer" />
-            <PrintButton label={`Print ${invoices.length} invoice${invoices.length === 1 ? "" : "s"}`} />
+            <div className="field">
+              <label className="lbl" style={{ visibility: "hidden" }}>Print</label>
+              <PrintButton label={`Print ${invoices.length} invoice${invoices.length === 1 ? "" : "s"}`} />
+            </div>
           </form>
         </div>
 
