@@ -93,6 +93,53 @@ export async function setStudentStatus(_prev: State, formData: FormData): Promis
   return { ok: true };
 }
 
+const STUDENT_GENDERS = ["male", "female", "other", "undisclosed"] as const;
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+// Edits the student's own profile fields — everything on the "Student" info panel except
+// reg_no (permanent, never editable here) and status (its own "Change status" control).
+export async function updateStudentDetails(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const full_name = String(formData.get("full_name") ?? "").trim();
+  const previous_reg_no = String(formData.get("previous_reg_no") ?? "").trim();
+  const genderRaw = String(formData.get("gender") ?? "").trim();
+  const nationality = String(formData.get("nationality") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const school_name = String(formData.get("school_name") ?? "").trim();
+  const admitted_on = String(formData.get("admitted_on") ?? "").trim();
+
+  if (!studentId) return { error: "Missing student." };
+  if (!full_name) return { error: "Name is required." };
+  if (genderRaw && !(STUDENT_GENDERS as readonly string[]).includes(genderRaw)) {
+    return { error: "Choose a valid gender option." };
+  }
+  if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("student")
+    .update({
+      full_name,
+      previous_reg_no: previous_reg_no || null,
+      gender: genderRaw || null,
+      nationality: nationality || null,
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      school_name: school_name || null,
+      admitted_on: admitted_on || null,
+    })
+    .eq("id", studentId);
+
+  if (error) return { error: "Could not save the student's details — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  return { ok: true };
+}
+
 export async function addEnrolment(_prev: State, formData: FormData): Promise<State> {
   const studentId = String(formData.get("student_id") ?? "");
   const subjectId = String(formData.get("subject_id") ?? "");

@@ -6,6 +6,7 @@ import { taka, fmtDate } from "@/lib/format";
 import PaymentForm from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
+import EditStudentForm from "./EditStudentForm";
 import EnrolmentsPanel from "./EnrolmentsPanel";
 import InvoicesList from "./InvoicesList";
 import AdmissionFeePanel from "./AdmissionFeePanel";
@@ -211,7 +212,27 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
             <div><div className="lbl">Email</div><div>{s.email ?? "—"}</div></div>
             <div><div className="lbl">School</div><div>{s.school_name ?? "—"}</div></div>
             <div><div className="lbl">Admitted on</div><div className="mono">{fmtDate(s.admitted_on)}</div></div>
+            <div><div className="lbl">Address</div><div>{s.address ?? "—"}</div></div>
           </div>
+          {isAdmin && (
+            <div style={{ padding: "0 18px 18px" }}>
+              <div className="lbl" style={{ marginBottom: 8 }}>Edit student</div>
+              <EditStudentForm
+                studentId={id}
+                details={{
+                  full_name: s.full_name,
+                  previous_reg_no: s.previous_reg_no,
+                  gender: s.gender,
+                  nationality: s.nationality,
+                  phone: s.phone,
+                  email: s.email,
+                  address: s.address,
+                  school_name: s.school_name,
+                  admitted_on: s.admitted_on,
+                }}
+              />
+            </div>
+          )}
           {isAdmin && (
             <div style={{ padding: "0 18px 18px" }}>
               <div className="lbl" style={{ marginBottom: 8 }}>Change status</div>
