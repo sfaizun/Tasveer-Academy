@@ -8,6 +8,7 @@ import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
 import EditStudentForm from "./EditStudentForm";
 import EnrolmentsPanel from "./EnrolmentsPanel";
+import GuardiansPanel from "./GuardiansPanel";
 import InvoicesList from "./InvoicesList";
 import AdmissionFeePanel from "./AdmissionFeePanel";
 import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
@@ -46,7 +47,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
         )
         .eq("id", id)
         .maybeSingle(),
-      supabase.from("guardian").select("full_name, relation, phone, email, address, is_primary").eq("student_id", id),
+      supabase.from("guardian").select("id, full_name, relation, phone, email, address, is_primary").eq("student_id", id),
       supabase.from("sibling").select("full_name, class_name, school_name").eq("student_id", id),
       supabase
         .from("enrolment")
@@ -241,26 +242,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           )}
         </div>
 
-        {(guardians ?? []).length > 0 && (
-          <div className="panel">
-            <div className="phead"><div className="ptitle">Guardian</div></div>
-            <div className="tblwrap">
-              <table>
-                <thead><tr><th>Name</th><th>Relation</th><th>Phone</th><th>Email</th></tr></thead>
-                <tbody>
-                  {(guardians ?? []).map((g: any, i: number) => (
-                    <tr key={i}>
-                      <td><b>{g.full_name}</b>{g.is_primary && <span className="sub"> (primary)</span>}</td>
-                      <td className="sub">{g.relation ?? "—"}</td>
-                      <td className="sub">{g.phone ?? "—"}</td>
-                      <td className="sub">{g.email ?? "—"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
+        <GuardiansPanel studentId={id} guardians={(guardians ?? []) as any} canEdit={isAdmin} />
 
         {(siblings ?? []).length > 0 && (
           <div className="panel">

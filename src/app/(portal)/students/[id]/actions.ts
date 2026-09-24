@@ -140,6 +140,118 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
   return { ok: true };
 }
 
+const GUARDIAN_RELATIONS = ["father", "mother", "other"] as const;
+
+// Adds a new guardian for this student. The schema allows more than one guardian per
+// student (used for e.g. separated parents both needing contact/notification access),
+// though most students currently have exactly one.
+export async function addGuardian(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const full_name = String(formData.get("full_name") ?? "").trim();
+  const relationRaw = String(formData.get("relation") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const is_primary = formData.get("is_primary") === "on";
+
+  if (!studentId) return { error: "Missing student." };
+  if (!full_name) return { error: "Name is required." };
+  if (relationRaw && !(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
+    return { error: "Choose a valid relation." };
+  }
+  if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const supabase = await createClient();
+
+  // Only one guardian can be "primary" at a time — clear it on the others first.
+  if (is_primary) {
+    const { error: unsetError } = await supabase
+      .from("guardian")
+      .update({ is_primary: false })
+      .eq("student_id", studentId);
+    if (unsetError) return { error: "Could not add the guardian — " + unsetError.message };
+  }
+
+  const { error } = await supabase.from("guardian").insert({
+    student_id: studentId,
+    full_name,
+    relation: relationRaw || null,
+    phone: phone || null,
+    email: email || null,
+    address: address || null,
+    is_primary,
+  });
+
+  if (error) return { error: "Could not add the guardian — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
+}
+
+export async function updateGuardian(_prev: State, formData: FormData): Promise<State> {
+  const guardianId = String(formData.get("guardian_id") ?? "");
+  const studentId = String(formData.get("student_id") ?? "");
+  const full_name = String(formData.get("full_name") ?? "").trim();
+  const relationRaw = String(formData.get("relation") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim();
+  const address = String(formData.get("address") ?? "").trim();
+  const is_primary = formData.get("is_primary") === "on";
+
+  if (!guardianId) return { error: "Missing guardian." };
+  if (!studentId) return { error: "Missing student." };
+  if (!full_name) return { error: "Name is required." };
+  if (relationRaw && !(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
+    return { error: "Choose a valid relation." };
+  }
+  if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const supabase = await createClient();
+
+  if (is_primary) {
+    const { error: unsetError } = await supabase
+      .from("guardian")
+      .update({ is_primary: false })
+      .eq("student_id", studentId)
+      .neq("id", guardianId);
+    if (unsetError) return { error: "Could not save the guardian — " + unsetError.message };
+  }
+
+  const { error } = await supabase
+    .from("guardian")
+    .update({
+      full_name,
+      relation: relationRaw || null,
+      phone: phone || null,
+      email: email || null,
+      address: address || null,
+      is_primary,
+    })
+    .eq("id", guardianId);
+
+  if (error) return { error: "Could not save the guardian — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
+}
+
+// Safe to delete directly — the only table referencing guardian.id
+// (notification_preference.guardian_id) cascades on delete.
+export async function removeGuardian(_prev: State, formData: FormData): Promise<State> {
+  const guardianId = String(formData.get("guardian_id") ?? "");
+  const studentId = String(formData.get("student_id") ?? "");
+
+  if (!guardianId) return { error: "Missing guardian." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.from("guardian").delete().eq("id", guardianId);
+
+  if (error) return { error: "Could not remove the guardian — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
+}
+
 export async function addEnrolment(_prev: State, formData: FormData): Promise<State> {
   const studentId = String(formData.get("student_id") ?? "");
   const subjectId = String(formData.get("subject_id") ?? "");

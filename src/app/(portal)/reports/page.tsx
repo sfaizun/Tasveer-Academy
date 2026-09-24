@@ -54,6 +54,7 @@ type StudentRow = { student_id: string; full_name: string; reg_no: string; statu
 type SubjectRow = { subject_id: string; subject_name: string; level: string | null; programme_name: string; total_received: number; total_due: number };
 type TeacherRow = { teacher_id: string; full_name: string; total_received: number; total_due: number };
 type AcademySummary = { total_received: number; total_due: number; total_gross: number; total_discount: number; active_students: number };
+type AdmissionFeeSummary = { total_charged: number; total_discount: number; total_received: number; total_due: number };
 
 export default async function ReportsPage({
   searchParams,
@@ -75,17 +76,19 @@ export default async function ReportsPage({
   const isTeacher = me?.role === "teacher";
 
   if (isAdmin) {
-    const [byStudent, bySubject, byTeacher, summary] = await Promise.all([
+    const [byStudent, bySubject, byTeacher, summary, admissionFees] = await Promise.all([
       supabase.rpc("fn_report_by_student", { p_month: monthDate }),
       supabase.rpc("fn_report_by_subject", { p_month: monthDate }),
       supabase.rpc("fn_report_by_teacher", { p_month: monthDate }),
       supabase.rpc("fn_report_academy_summary", { p_month: monthDate }),
+      supabase.rpc("fn_report_admission_fees", { p_month: monthDate }),
     ]);
 
     const students = (byStudent.data ?? []) as StudentRow[];
     const subjects = (bySubject.data ?? []) as SubjectRow[];
     const teachers = (byTeacher.data ?? []) as TeacherRow[];
     const s: AcademySummary | undefined = (summary.data ?? [])[0];
+    const af: AdmissionFeeSummary | undefined = (admissionFees.data ?? [])[0];
 
     const studentBars: ReportBarRow[] = students.slice(0, 12).map((r) => ({
       key: r.student_id, label: r.full_name, sublabel: r.reg_no, received: Number(r.total_received), due: Number(r.total_due),
@@ -121,6 +124,22 @@ export default async function ReportsPage({
             <Tile label="Discounts given" value={taka(s?.total_discount ?? 0)} />
             <Tile label="Active students" value={String(s?.active_students ?? 0)} />
           </div>
+
+          <details className="panel collapsible" open>
+            <summary className="phead">
+              <div className="ptitle">Admission fees</div>
+              <div className="sub">
+                One-time admission charges only — kept separate from the By subject / By teacher
+                figures below, which cover tuition only
+              </div>
+            </summary>
+            <div style={{ padding: 18, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
+              <Tile label="Charged" value={taka(af?.total_charged ?? 0)} sub="before discounts" />
+              <Tile label="Admission discounts given" value={taka(af?.total_discount ?? 0)} />
+              <Tile label="Collected" value={taka(af?.total_received ?? 0)} tone="var(--ok)" />
+              <Tile label="Outstanding" value={taka(af?.total_due ?? 0)} tone={(af?.total_due ?? 0) > 0 ? "var(--crit)" : undefined} />
+            </div>
+          </details>
 
           <CashFinanceReports supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} today={today} />
 
@@ -165,7 +184,10 @@ export default async function ReportsPage({
           <details className="panel collapsible" open>
             <summary className="phead">
               <div className="ptitle">By subject</div>
-              <div className="sub">O Level / A Level subjects only — Junior bills flat per class, not per subject</div>
+              <div className="sub">
+                O Level / A Level subjects only — Junior bills flat per class, not per subject.
+                Tuition only; admission fees are excluded (see Admission fees above).
+              </div>
               <div className="spacer" />
               <ExportCsvButton
                 filename={`by-subject-${fileTag}`}
@@ -183,7 +205,10 @@ export default async function ReportsPage({
           <details className="panel collapsible" open>
             <summary className="phead">
               <div className="ptitle">By teacher</div>
-              <div className="sub">Revenue attributed to each teacher&apos;s own enrolments</div>
+              <div className="sub">
+                Tuition revenue attributed to each teacher&apos;s own enrolments — admission fees
+                are excluded (see Admission fees above)
+              </div>
               <div className="spacer" />
               <ExportCsvButton
                 filename={`by-teacher-${fileTag}`}
@@ -255,14 +280,17 @@ export default async function ReportsPage({
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
-            <Tile label="Received (your subjects)" value={taka(own?.total_received ?? 0)} tone="var(--ok)" />
-            <Tile label="Outstanding (your subjects)" value={taka(own?.total_due ?? 0)} tone={(own?.total_due ?? 0) > 0 ? "var(--crit)" : undefined} />
+            <Tile label="Received (your subjects)" value={taka(own?.total_received ?? 0)} tone="var(--ok)" sub="tuition only" />
+            <Tile label="Outstanding (your subjects)" value={taka(own?.total_due ?? 0)} tone={(own?.total_due ?? 0) > 0 ? "var(--crit)" : undefined} sub="tuition only" />
           </div>
 
           <div className="panel">
             <div className="phead">
               <div className="ptitle">By subject</div>
-              <div className="sub">Only your own subjects — other teachers' figures aren&apos;t shown here</div>
+              <div className="sub">
+                Only your own subjects — other teachers&apos; figures aren&apos;t shown here. Tuition
+                only; admission fees aren&apos;t counted.
+              </div>
               <div className="spacer" />
               <ExportCsvButton
                 filename={`my-subjects-${fileTag}`}
