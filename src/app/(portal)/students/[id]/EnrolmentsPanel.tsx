@@ -2,7 +2,7 @@
 import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Req from "@/components/Req";
 import { taka, fmtDate, currentBillingMonth } from "@/lib/format";
-import { addEnrolment, removeEnrolment, setEnrolmentEnd, setEnrolmentClassGroup, setEnrolmentDiscount } from "./actions";
+import { addEnrolment, removeEnrolment, setEnrolmentStart, setEnrolmentEnd, setEnrolmentClassGroup, setEnrolmentDiscount } from "./actions";
 import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 
 const inputStyle: React.CSSProperties = {
@@ -154,6 +154,34 @@ function AddSubjectForm({
         fully paid yet, the new subject&apos;s fee is added to it right away. Otherwise it starts on the
         next monthly bill.
       </div>
+    </form>
+  );
+}
+
+// Edits when this subject started. Blocked server-side (fn_set_enrolment_start) once the
+// subject has already been billed for a month before the requested start — moving past
+// that would leave this record disagreeing with an invoice that's already gone out, so
+// the database names the exact month and refuses instead of silently allowing it.
+function StartSubjectForm({ studentId, enrolment }: { studentId: string; enrolment: Enrolment }) {
+  const [state, action, pending] = useActionState(setEnrolmentStart, null);
+
+  return (
+    <form action={action} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+      <input type="hidden" name="student_id" value={studentId} />
+      <input type="hidden" name="enrolment_id" value={enrolment.id} />
+      <label className="sub" style={{ whiteSpace: "nowrap" }}>Studying since:</label>
+      <input
+        style={{ ...inputStyle, width: "auto" }}
+        type="month"
+        name="from_month"
+        max={enrolment.to_month ? enrolment.to_month.slice(0, 7) : undefined}
+        defaultValue={enrolment.from_month.slice(0, 7)}
+      />
+      <button className="btn ghost" type="submit" disabled={pending} style={{ fontSize: 12 }}>
+        {pending ? "Saving…" : "Save"}
+      </button>
+      {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+      {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Saved.</span>}
     </form>
   );
 }
@@ -413,6 +441,10 @@ export default function EnrolmentsPanel({
                           <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>Subject discount</div>
                             <DiscountForm studentId={studentId} enrolment={e} />
+                          </div>
+                          <div>
+                            <div className="lbl" style={{ marginBottom: 6 }}>Start month</div>
+                            <StartSubjectForm studentId={studentId} enrolment={e} />
                           </div>
                           <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>End date</div>

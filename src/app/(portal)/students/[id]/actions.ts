@@ -367,6 +367,30 @@ export async function applyAdmissionDiscount(_prev: State, formData: FormData): 
   return { ok: true };
 }
 
+// Moves a subject's own start month, blocked once this subject has already been billed
+// for a month before the requested one — the database function raises a specific error
+// naming the earliest month that's already gone out, since letting the record disagree
+// with an invoice already sent would just create confusion later.
+export async function setEnrolmentStart(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const enrolmentId = String(formData.get("enrolment_id") ?? "");
+  const fromMonth = String(formData.get("from_month") ?? "").trim();
+
+  if (!enrolmentId) return { error: "Missing subject." };
+  if (!fromMonth) return { error: "Choose a start month." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_enrolment_start", {
+    p_enrolment_id: enrolmentId,
+    p_from_month: `${fromMonth}-01`,
+  });
+
+  if (error) return { error: "Could not update the start month — " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  return { ok: true };
+}
+
 export async function setEnrolmentEnd(_prev: State, formData: FormData): Promise<State> {
   const studentId = String(formData.get("student_id") ?? "");
   const enrolmentId = String(formData.get("enrolment_id") ?? "");
