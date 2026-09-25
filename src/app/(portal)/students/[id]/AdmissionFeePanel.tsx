@@ -29,7 +29,13 @@ export default function AdmissionFeePanel({ studentId, invoices }: { studentId: 
 
   const lines = admissionInvoice.invoice_line ?? [];
   const admissionLine = lines.find((l) => l.type === "admission");
-  const discountLine = lines.find((l) => l.type === "discount" && l.description?.startsWith("Admission fee discount"));
+  const isAdmissionDiscount = (l: { type: string; description: string }) =>
+    l.type === "discount" && l.description?.startsWith("Admission fee discount");
+  // This panel edits only its own discount; any given from "Record a payment" stays separate.
+  const discountLine = lines.find((l) => isAdmissionDiscount(l) && !l.description.includes("(at payment)"));
+  const atPaymentTotal = lines
+    .filter((l) => isAdmissionDiscount(l) && l.description.includes("(at payment)"))
+    .reduce((s, l) => s + Math.abs(Number(l.amount)), 0);
   const isPaid = admissionInvoice.status === "paid";
   const reasonDefault = discountLine ? discountLine.description.replace(/^Admission fee discount( — )?/, "") : "";
 
@@ -41,6 +47,7 @@ export default function AdmissionFeePanel({ studentId, invoices }: { studentId: 
         <div className="sub">
           {admissionLine ? taka(admissionLine.amount) : "—"}
           {discountLine ? ` — ${taka(Math.abs(discountLine.amount))} discount applied` : ""}
+          {atPaymentTotal > 0 ? ` (+ ${taka(atPaymentTotal)} given at payment)` : ""}
         </div>
       </div>
       <div style={{ padding: 16 }}>

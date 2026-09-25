@@ -28,7 +28,15 @@ const lineTypeLabel: Record<string, string> = {
   adjustment: "Adjustment",
 };
 
-export type InvoiceLine = { id: string; type: string; description: string; rate: number; quantity: number; amount: number };
+export type InvoiceLine = {
+  id: string;
+  type: string;
+  description: string;
+  rate: number;
+  quantity: number;
+  amount: number;
+  enrolment_id?: string | null;
+};
 export type InvoiceRow = {
   id: string;
   invoice_no: string;

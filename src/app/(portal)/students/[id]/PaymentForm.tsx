@@ -10,7 +10,8 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit", width: "100%",
 };
 
-export type OpenInvoice = { id: string; invoice_no: string; billing_month: string; balance: number };
+export type DiscountableFee = { line_id: string; label: string; left: number; kind: "admission" | "subject" | "other" };
+export type OpenInvoice = { id: string; invoice_no: string; billing_month: string; balance: number; fees: DiscountableFee[] };
 
 export default function PaymentForm({
   studentId,
@@ -25,6 +26,7 @@ export default function PaymentForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [withDiscount, setWithDiscount] = useState(false);
   const [discountInvoiceId, setDiscountInvoiceId] = useState("");
+  const [discountLineId, setDiscountLineId] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
   const today = dhakaTodayISO();
 
@@ -33,6 +35,7 @@ export default function PaymentForm({
       formRef.current?.reset();
       setWithDiscount(false);
       setDiscountInvoiceId("");
+      setDiscountLineId("");
       setDiscountAmount("");
     }
   }, [state]);
@@ -41,6 +44,7 @@ export default function PaymentForm({
     () => openInvoices.find((inv) => inv.id === discountInvoiceId) ?? null,
     [discountInvoiceId, openInvoices]
   );
+  const selectedFee = selectedInvoice?.fees.find((f) => f.line_id === discountLineId) ?? null;
   const discountNum = Number(discountAmount) || 0;
   const toCoverInvoice = selectedInvoice ? Math.max(selectedInvoice.balance - discountNum, 0) : null;
 
@@ -104,12 +108,39 @@ export default function PaymentForm({
               name="discount_invoice_id"
               required
               value={discountInvoiceId}
-              onChange={(e) => setDiscountInvoiceId(e.target.value)}
+              onChange={(e) => {
+                setDiscountInvoiceId(e.target.value);
+                setDiscountLineId("");
+              }}
             >
               <option value="" disabled>Choose…</option>
               {openInvoices.map((inv) => (
                 <option key={inv.id} value={inv.id}>
                   {inv.invoice_no} — {fmtDate(inv.billing_month)} (balance {taka(inv.balance)})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label className="lbl">Discount on<Req /></label>
+            <select
+              style={inputStyle}
+              name="discount_line_id"
+              required
+              disabled={!selectedInvoice}
+              value={discountLineId}
+              onChange={(e) => setDiscountLineId(e.target.value)}
+            >
+              <option value="" disabled>
+                {!selectedInvoice
+                  ? "Choose an invoice first"
+                  : selectedInvoice.fees.length
+                    ? "Choose admission or a subject…"
+                    : "Nothing left to discount on this invoice"}
+              </option>
+              {(selectedInvoice?.fees ?? []).map((f) => (
+                <option key={f.line_id} value={f.line_id}>
+                  {f.label} ({taka(f.left)} left)
                 </option>
               ))}
             </select>
@@ -121,6 +152,7 @@ export default function PaymentForm({
               type="number"
               name="discount_amount"
               min="1"
+              max={selectedFee ? selectedFee.left : undefined}
               step="1"
               required
               value={discountAmount}
@@ -132,6 +164,10 @@ export default function PaymentForm({
             <input style={inputStyle} type="text" name="discount_note" placeholder="e.g. sibling discount, hardship" required />
           </div>
           <div className="sub" style={{ gridColumn: "1 / -1" }}>
+            {selectedFee?.kind === "admission" && "Counts as an admission discount. It never affects any teacher's figures. "}
+            {selectedFee?.kind === "subject" &&
+              `Counts as a subject discount on ${selectedFee.label}, so it comes off that subject's teacher figures only. `}
+            {selectedFee?.kind === "other" && `Comes off ${selectedFee.label} only. `}
             {selectedInvoice
               ? `This invoice is settled the moment the payment plus the discount cover its ${taka(selectedInvoice.balance)} balance — pay at least ${taka(toCoverInvoice ?? 0)} to mark it fully paid now.`
               : "The discounted amount is recorded on the invoice — it's settled the moment the payment plus the discount cover its balance."}

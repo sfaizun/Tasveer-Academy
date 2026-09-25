@@ -110,8 +110,10 @@ export default async function TeacherStudentPaymentsReport({
       </summary>
       <SubjectPaymentsAccordion groups={subjectGroups} showTeacherColumn={showTeacherColumn} linkStudents={linkStudents} />
       <div className="sub" style={{ padding: "0 16px 14px" }}>
-        A subject&apos;s &ldquo;Paid&rdquo; is its share of each invoice&apos;s total payment, split by that
-        subject line&apos;s portion of the invoice — a payment settles a whole invoice, not one subject on it.
+        &ldquo;Billed&rdquo; is the subject&apos;s tuition minus its own subject discounts; admission fees
+        and admission discounts are never included. On a fully paid or unpaid invoice the figures are
+        exact. On a partly paid one, the payment is split across the invoice&apos;s fees in proportion
+        to each fee&apos;s amount after its own discount.
       </div>
     </details>
   );

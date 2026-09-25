@@ -129,8 +129,8 @@ export default async function ReportsPage({
             <summary className="phead">
               <div className="ptitle">Admission fees</div>
               <div className="sub">
-                One-time admission charges only — kept separate from the By subject / By teacher
-                figures below, which cover tuition only
+                One-time admission charges and admission discounts only. Kept separate from the
+                By subject / By teacher figures below.
               </div>
             </summary>
             <div style={{ padding: 18, display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
@@ -185,8 +185,9 @@ export default async function ReportsPage({
             <summary className="phead">
               <div className="ptitle">By subject</div>
               <div className="sub">
-                O Level / A Level subjects only — Junior bills flat per class, not per subject.
-                Tuition only; admission fees are excluded (see Admission fees above).
+                O Level / A Level subjects only (Junior bills flat per class). Each subject&apos;s
+                tuition minus its own subject discounts; admission fees and admission discounts
+                are not included.
               </div>
               <div className="spacer" />
               <ExportCsvButton
@@ -206,8 +207,8 @@ export default async function ReportsPage({
             <summary className="phead">
               <div className="ptitle">By teacher</div>
               <div className="sub">
-                Tuition revenue attributed to each teacher&apos;s own enrolments — admission fees
-                are excluded (see Admission fees above)
+                Each teacher&apos;s subjects: tuition minus that subject&apos;s own discounts.
+                Admission fees and admission discounts are not included.
               </div>
               <div className="spacer" />
               <ExportCsvButton

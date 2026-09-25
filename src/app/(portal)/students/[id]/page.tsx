@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import { taka, fmtDate } from "@/lib/format";
-import PaymentForm from "./PaymentForm";
+import PaymentForm, { type DiscountableFee } from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
 import EditStudentForm from "./EditStudentForm";
@@ -14,6 +14,36 @@ import AdmissionFeePanel from "./AdmissionFeePanel";
 import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
 
 export const dynamic = "force-dynamic";
+
+// The fees on an open invoice that a payment-time discount can be applied to, each with
+// how much of it is still left after discounts already given against that same fee.
+// Mirrors fn_record_payment's own matching rules, so the form never offers more than the
+// database will accept: a subject is matched by its enrolment, admission by its label.
+function discountableFees(lines: any[]): DiscountableFee[] {
+  const discounts = lines.filter((l) => l.type === "discount");
+  const already = (match: (d: any) => boolean) =>
+    discounts.filter(match).reduce((s, d) => s + Math.abs(Number(d.amount)), 0);
+
+  return lines
+    .filter((l) => l.type === "tuition" || l.type === "admission" || l.type === "mock")
+    .map((l) => {
+      let used = 0;
+      let label = l.description as string;
+      if (l.type === "admission") {
+        used = already((d) => !d.enrolment_id && String(d.description).startsWith("Admission fee discount"));
+        label = "Admission fee";
+      } else if (l.enrolment_id) {
+        used = already((d) => d.enrolment_id === l.enrolment_id);
+      } else if (l.type === "mock") {
+        used = already((d) => !d.enrolment_id && String(d.description).startsWith("Mock exam fee discount"));
+      } else {
+        used = already((d) => !d.enrolment_id && String(d.description).startsWith("Monthly fee discount"));
+      }
+      const kind: DiscountableFee["kind"] = l.type === "admission" ? "admission" : l.enrolment_id ? "subject" : "other";
+      return { line_id: l.id as string, label, left: Math.max(Number(l.amount) - used, 0), kind };
+    })
+    .filter((f) => f.left > 0);
+}
 
 function StatusChip({ status, map }: { status: string; map: Record<string, { cls: string; label: string }> }) {
   const m = map[status] ?? { cls: "due", label: status };
@@ -58,7 +88,7 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
         .order("from_month", { ascending: false }),
       supabase
         .from("invoice")
-        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, status, invoice_line(id, type, description, rate, quantity, amount)")
+        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, status, invoice_line(id, type, description, rate, quantity, amount, enrolment_id)")
         .eq("student_id", id)
         .order("billing_month", { ascending: false }),
       supabase
@@ -102,7 +132,13 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
 
   const openInvoices = (invoices ?? [])
     .filter((i: any) => (i.status === "unpaid" || i.status === "partly_paid") && Number(i.balance) > 0)
-    .map((i: any) => ({ id: i.id, invoice_no: i.invoice_no, billing_month: i.billing_month, balance: Number(i.balance) }));
+    .map((i: any) => ({
+      id: i.id,
+      invoice_no: i.invoice_no,
+      billing_month: i.billing_month,
+      balance: Number(i.balance),
+      fees: discountableFees(i.invoice_line ?? []),
+    }));
 
   // Flattened for EnrolmentsPanel, which expects batch_name directly on the enrolment
   // rather than nested under class_group.
