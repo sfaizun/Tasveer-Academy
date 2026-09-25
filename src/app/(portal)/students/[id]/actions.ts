@@ -13,7 +13,6 @@ export async function recordPayment(_prev: State, formData: FormData): Promise<S
   const discount_invoice_id = String(formData.get("discount_invoice_id") ?? "").trim() || null;
   const discountRaw = String(formData.get("discount_amount") ?? "").trim();
   const discount_note = String(formData.get("discount_note") ?? "").trim();
-  const discount_line_id = String(formData.get("discount_line_id") ?? "").trim() || null;
 
   const amount = Number(amountRaw);
   if (!studentId) return { error: "Missing student." };
@@ -24,9 +23,6 @@ export async function recordPayment(_prev: State, formData: FormData): Promise<S
     return { error: "Enter a valid discount amount." };
   }
   if (discount_amount && !discount_invoice_id) return { error: "Choose which invoice the discount applies to." };
-  if (discount_amount && !discount_line_id) {
-    return { error: "Choose whether the discount is for the admission fee or a specific subject." };
-  }
   if (discount_amount && !discount_note) return { error: "Add a short note for the discount." };
 
   const supabase = await createClient();
@@ -39,7 +35,6 @@ export async function recordPayment(_prev: State, formData: FormData): Promise<S
     p_discount_invoice_id: discount_invoice_id,
     p_discount_amount: discount_amount,
     p_discount_note: discount_note || null,
-    p_discount_line_id: discount_amount ? discount_line_id : null,
   });
 
   if (error) return { error: "Could not record the payment — " + error.message };

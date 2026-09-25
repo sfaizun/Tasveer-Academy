@@ -15,34 +15,28 @@ import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
 
 export const dynamic = "force-dynamic";
 
-// The fees on an open invoice that a payment-time discount can be applied to, each with
-// how much of it is still left after discounts already given against that same fee.
-// Mirrors fn_record_payment's own matching rules, so the form never offers more than the
-// database will accept: a subject is matched by its enrolment, admission by its label.
+// The subject fees on an open invoice (tuition, or the mock fee for a mock-only student),
+// each with what is left after discounts already on it. A discount given with a payment is
+// split equally across these; the admission fee is never included (it has its own panel).
+// Mirrors fn_record_payment's own matching rules so the preview matches what gets saved.
 function discountableFees(lines: any[]): DiscountableFee[] {
   const discounts = lines.filter((l) => l.type === "discount");
   const already = (match: (d: any) => boolean) =>
     discounts.filter(match).reduce((s, d) => s + Math.abs(Number(d.amount)), 0);
 
   return lines
-    .filter((l) => l.type === "tuition" || l.type === "admission" || l.type === "mock")
+    .filter((l) => l.type === "tuition" || l.type === "mock")
     .map((l) => {
       let used = 0;
-      let label = l.description as string;
-      if (l.type === "admission") {
-        used = already((d) => !d.enrolment_id && String(d.description).startsWith("Admission fee discount"));
-        label = "Admission fee";
-      } else if (l.enrolment_id) {
+      if (l.enrolment_id) {
         used = already((d) => d.enrolment_id === l.enrolment_id);
       } else if (l.type === "mock") {
         used = already((d) => !d.enrolment_id && String(d.description).startsWith("Mock exam fee discount"));
       } else {
         used = already((d) => !d.enrolment_id && String(d.description).startsWith("Monthly fee discount"));
       }
-      const kind: DiscountableFee["kind"] = l.type === "admission" ? "admission" : l.enrolment_id ? "subject" : "other";
-      return { line_id: l.id as string, label, left: Math.max(Number(l.amount) - used, 0), kind };
-    })
-    .filter((f) => f.left > 0);
+      return { line_id: l.id as string, label: l.description as string, left: Math.max(Number(l.amount) - used, 0) };
+    });
 }
 
 function StatusChip({ status, map }: { status: string; map: Record<string, { cls: string; label: string }> }) {
