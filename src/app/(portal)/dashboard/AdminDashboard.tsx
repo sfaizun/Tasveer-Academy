@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
-import { taka, dhakaToday, currentBillingMonth, monthName } from "@/lib/format";
+import { taka, dhakaToday, dhakaTodayISO, currentBillingMonth, monthName } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 
 function Tile({ label, value, sub, tone }: { label: string; value: string; sub: string; tone?: string }) {
@@ -18,14 +18,13 @@ export default async function AdminDashboard() {
   const supabase = await createClient();
   const month = currentBillingMonth();
 
-  const [students, teachers, subjects, rates, invoices, payments, unsetRates, applications] = await Promise.all([
+  const [students, teachers, subjects, rates, invoices, payments, applications] = await Promise.all([
     supabase.from("student").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("teacher").select("id", { count: "exact", head: true }).eq("active", true),
     supabase.from("subject").select("id", { count: "exact", head: true }).eq("active", true),
-    supabase.from("fee_rate").select("id", { count: "exact", head: true }),
+    supabase.from("fee_rate").select("kind, programme_id, class_level_id, level, amount, effective_from, created_at"),
     supabase.from("invoice").select("net, paid, balance, status").eq("billing_month", month),
     supabase.from("payment").select("amount").eq("status", "confirmed").gte("received_on", month),
-    supabase.from("fee_rate").select("id", { count: "exact", head: true }).eq("amount", 0),
     supabase.from("application").select("id", { count: "exact", head: true }).eq("status", "submitted"),
   ]);
 
@@ -35,6 +34,22 @@ export default async function AdminDashboard() {
   const outstanding = inv.reduce((s, i) => s + Number(i.balance), 0);
   const rate = raised > 0 ? Math.round((collected / raised) * 100) : 0;
   const billingRun = inv.length > 0;
+
+  // Fee rates are never edited in place: every change adds a new dated row, so older rows
+  // (including the original ৳0 placeholders) stay as history. Only the rate currently in
+  // effect for each fee item counts, i.e. the latest row whose effective date has arrived.
+  const today = dhakaTodayISO();
+  const currentRates = new Map<string, { amount: number; effective_from: string; created_at: string; junior: boolean }>();
+  for (const r of rates.data ?? []) {
+    if (!r.effective_from || r.effective_from > today) continue;
+    const key = [r.kind, r.programme_id ?? "", r.class_level_id ?? "", r.level ?? ""].join("|");
+    const cur = currentRates.get(key);
+    if (!cur || r.effective_from > cur.effective_from || (r.effective_from === cur.effective_from && r.created_at > cur.created_at)) {
+      currentRates.set(key, { amount: Number(r.amount), effective_from: r.effective_from, created_at: r.created_at, junior: !!r.class_level_id });
+    }
+  }
+  const zeroRates = Array.from(currentRates.values()).filter((r) => r.amount <= 0);
+  const zeroJunior = zeroRates.filter((r) => r.junior).length;
 
   return (
     <>
@@ -105,14 +120,15 @@ export default async function AdminDashboard() {
                   <td>
                     <b>Fee rates</b>
                     <div className="sub">
-                      {(unsetRates.count ?? 0) > 0
-                        ? `${unsetRates.count} junior class rates still at zero`
-                        : "all rates set"}
+                      {zeroRates.length > 0
+                        ? `${zeroRates.length} current rate${zeroRates.length === 1 ? "" : "s"} still at zero` +
+                          (zeroJunior > 0 ? ` (${zeroJunior} junior class)` : "")
+                        : "All current rates set"}
                     </div>
                   </td>
-                  <td className="n mono"><b>{rates.count ?? 0}</b></td>
+                  <td className="n mono"><b>{currentRates.size}</b></td>
                   <td>
-                    {(unsetRates.count ?? 0) > 0
+                    {zeroRates.length > 0
                       ? <span className="st past"><span className="dot" />Needs amounts</span>
                       : <span className="st paid"><span className="dot" />Ready</span>}
                   </td>
