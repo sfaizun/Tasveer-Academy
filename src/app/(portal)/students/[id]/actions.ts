@@ -140,7 +140,7 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
   return { ok: true };
 }
 
-const GUARDIAN_RELATIONS = ["father", "mother", "other"] as const;
+const GUARDIAN_RELATIONS = ["father", "mother", "guardian", "other"] as const;
 
 // Adds a new guardian for this student. The schema allows more than one guardian per
 // student (used for e.g. separated parents both needing contact/notification access),
