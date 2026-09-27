@@ -13,6 +13,7 @@ const RELATION_OPTIONS = [
   { value: "", label: "Not specified" },
   { value: "father", label: "Father" },
   { value: "mother", label: "Mother" },
+  { value: "guardian", label: "Guardian" },
   { value: "other", label: "Other" },
 ];
 

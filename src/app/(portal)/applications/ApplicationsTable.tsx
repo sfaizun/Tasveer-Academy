@@ -85,7 +85,8 @@ function ReviewForm({ appId, currentStatus }: { appId: string; currentStatus: st
       {state?.ok && !state.studentId && <span className="sub" style={{ color: "var(--ok)" }}>Updated.</span>}
       {state?.ok && state.studentId && (
         <span className="sub" style={{ color: "var(--ok)" }}>
-          Approved — student record, guardian, enrolments and the first invoice were created.{" "}
+          Approved. Student record, guardian and enrolments were created, with invoices from the
+          start month (admission fee on the first).{" "}
           <a href="/students">View in Students →</a>
         </span>
       )}
@@ -109,6 +110,14 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
   const siblings = p.siblings ?? [];
   const subjects = p.subjects ?? [];
   const fee = p.fee_summary ?? {};
+  // Approval bills every month from the start month to the current month; the admission fee
+  // is only on the first of those invoices.
+  const monthsDue = (() => {
+    if (!/^\d{4}-\d{2}$/.test(p.start_month ?? "")) return 1;
+    const [sy, sm] = String(p.start_month).split("-").map(Number);
+    const now = new Date();
+    return Math.max(1, (now.getFullYear() - sy) * 12 + (now.getMonth() + 1 - sm) + 1);
+  })();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "16px 18px", background: "var(--tint)" }}>
@@ -203,7 +212,7 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
                       <tr key={i}>
                         <td>{s.subject_name}{s.level ? ` (${String(s.level).toUpperCase()})` : ""}</td>
                         <td>{s.teacher_name}</td>
-                        <td className="mono sub">{fmtDate(s.from_month)}</td>
+                        <td className="mono sub">{p.start_month ? fmtDate(`${p.start_month}-01`) : "—"}</td>
                         <td className="n mono">{taka(s.monthly_fee)}</td>
                       </tr>
                     ))}
@@ -226,10 +235,17 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
             </>
           ) : (
             <>
-              <Detail label="Monthly fee (full month)" value={taka(fee.monthly_total ?? 0)} />
+              <Detail
+                label={monthsDue > 1 ? `Monthly fees (${monthsDue} months from ${p.start_month})` : "Monthly fee (full month)"}
+                value={
+                  monthsDue > 1
+                    ? `${taka(fee.monthly_total ?? 0)} × ${monthsDue} = ${taka((fee.monthly_total ?? 0) * monthsDue)}`
+                    : taka(fee.monthly_total ?? 0)
+                }
+              />
               <Detail
                 label="Total due on approval"
-                value={taka((fee.admission_fee ?? 0) + (fee.monthly_total ?? 0))}
+                value={taka((fee.admission_fee ?? 0) + (fee.monthly_total ?? 0) * monthsDue)}
               />
             </>
           )}

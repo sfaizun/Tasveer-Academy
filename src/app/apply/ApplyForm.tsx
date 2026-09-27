@@ -202,6 +202,15 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     () => subjectRows.filter((r) => r.subjectId).length,
     [subjectRows]
   );
+  // Approval bills every month from the start month up to the current month (the admission
+  // fee only on the start month's invoice), so a past start month means several months due.
+  const monthsDue = useMemo(() => {
+    if (!/^\d{4}-\d{2}$/.test(startMonth)) return 1;
+    const [sy, sm] = startMonth.split("-").map(Number);
+    const [cy, cm] = monthISO(todayISO()).split("-").map(Number);
+    return Math.max(1, (cy - sy) * 12 + (cm - sm) + 1);
+  }, [startMonth]);
+
   const admissionFeeTotal = useMemo(() => {
     if (programme === "o_level" || programme === "a_level") {
       return catalogue.admissionFee * enrolledSubjectCount;
@@ -253,7 +262,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
           level: s.level,
           teacher_id: r.teacherId,
           teacher_name: t?.name ?? "",
-          from_month: r.fromMonth,
+          from_month: startMonth, // every subject starts in the application's start month
           monthly_fee: s.monthlyFee,
         };
       });
@@ -734,15 +743,22 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                     ) : (
                       <>
                         <tr>
-                          <td>Monthly fee ({startMonth}, full month)</td>
-                          <td className="n mono">{taka(monthlyTotal)}</td>
+                          <td>
+                            Monthly fee (full month)
+                            {monthsDue > 1 && (
+                              <div className="sub" style={{ fontSize: 12 }}>
+                                {taka(monthlyTotal)} × {monthsDue} months, from {startMonth} to this month
+                              </div>
+                            )}
+                          </td>
+                          <td className="n mono">{taka(monthlyTotal * monthsDue)}</td>
                         </tr>
                         <tr>
                           <td>
                             <b>Total due on approval</b>
                           </td>
                           <td className="n mono">
-                            <b>{taka(admissionFeeTotal + monthlyTotal)}</b>
+                            <b>{taka(admissionFeeTotal + monthlyTotal * monthsDue)}</b>
                           </td>
                         </tr>
                       </>
