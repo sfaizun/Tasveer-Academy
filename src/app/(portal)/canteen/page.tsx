@@ -247,7 +247,8 @@ export default async function CanteenHomePage() {
         </div>
 
         <div className="sub">
-          Coming next: canteen sales reports, then tomorrow&apos;s prep plan once there are a few weeks of sales.
+          Sales, best sellers, busy hours and wastage are on <Link href="/canteen/reports">Reports</Link>. Coming next:
+          tomorrow&apos;s prep plan, once there are a few weeks of sales.
         </div>
       </div>
     </>

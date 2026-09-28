@@ -277,6 +277,30 @@ input.qty-in{width:84px;max-width:84px;border:1px solid var(--line);border-radiu
 .sumrow{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid var(--line2);font-size:13px}
 .sumrow b{color:var(--ink)}
 
+/* ---- Canteen C3: reports ---- */
+a.fchip{text-decoration:none;display:inline-block}
+.hbars{display:flex;flex-direction:column;gap:12px}
+.hbar-top{display:flex;justify-content:space-between;gap:10px;align-items:baseline;margin-bottom:5px}
+.hbar-label{font-weight:600;font-size:13px;color:var(--ink);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hbar-val{font-size:12.5px;color:var(--ink);white-space:nowrap}
+.hbar-track{height:8px;border-radius:4px;background:var(--tint2);overflow:hidden}
+.hbar-fill{height:100%;background:var(--coral);border-radius:0 4px 4px 0}
+.dcols{display:flex;align-items:stretch;gap:2px;height:170px;border-bottom:1px solid var(--line)}
+.dcol{flex:1 1 0;min-width:0;display:flex;flex-direction:column;justify-content:flex-end;cursor:default}
+.dcol-bar-wrap{flex:1;display:flex;align-items:flex-end;justify-content:center}
+.dcol-bar{width:min(100%,34px);background:var(--coral);border-radius:4px 4px 0 0}
+.dcol:hover .dcol-bar{background:var(--coral-dk)}
+.dcol-lbl{height:0;overflow:visible;font-size:10px;color:var(--muted);text-align:center;white-space:nowrap;transform:translateY(4px)}
+.dcols + *{margin-top:18px}
+table.heat{width:auto;border-collapse:separate;border-spacing:2px;font-size:11px}
+table.heat th{font-weight:500;color:var(--muted);padding:2px 4px;text-align:center;border:0;background:none;text-transform:none;letter-spacing:0}
+table.heat tbody th{text-align:left;padding-right:8px;color:var(--ink)}
+table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background:var(--tint);border:0;padding:0;position:relative}
+.heat-dot{position:absolute;right:4px;top:4px;width:6px;height:6px;border-radius:50%;background:var(--ink);box-shadow:0 0 0 1.5px var(--paper)}
+.heat-dot.inline{position:static;display:inline-block;vertical-align:middle;margin-right:4px}
+.heat-key{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.heat-ramp{width:120px;height:9px;border-radius:4px;background:linear-gradient(90deg,color-mix(in oklab,var(--coral) 12%,var(--paper)),var(--coral))}
+
 @media print{
   :root,:root[data-theme="dark"]{
     --paper:#ffffff; --ground:#ffffff; --tint:#f7f1ec; --tint2:#f2ebe4;
