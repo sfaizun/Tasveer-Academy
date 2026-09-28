@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useState } from "react";
-import { createStudentLogin, createTeacherLogin, resetLoginPassword, setAppUserActive } from "./actions";
+import { createCanteenLogin, createStudentLogin, createTeacherLogin, resetLoginPassword, setAppUserActive } from "./actions";
 
 const inputStyle: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "9px 11px",
@@ -61,6 +61,33 @@ function CreateTeacherLoginForm({ teachers }: { teachers: PersonOption[] }) {
       </div>
       {state?.ok && state.email && state.password && <CredentialResult email={state.email} password={state.password} />}
       {teachers.length === 0 && <div className="sub">Every active teacher already has a login.</div>}
+    </form>
+  );
+}
+
+function CreateCanteenLoginForm() {
+  const [state, action, pending] = useActionState(createCanteenLogin, null);
+
+  return (
+    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
+        <div className="field">
+          <label className="lbl">Manager&apos;s name</label>
+          <input style={inputStyle} type="text" name="full_name" required placeholder="e.g. Rahim Uddin" />
+        </div>
+        <div className="field">
+          <label className="lbl">Login email</label>
+          <input style={inputStyle} type="email" name="email" required placeholder="canteen@example.com" />
+        </div>
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button className="btn" type="submit" disabled={pending} style={{ alignSelf: "flex-start" }}>
+          {pending ? "Creating…" : "Create login"}
+        </button>
+        {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+      </div>
+      {state?.ok && state.email && state.password && <CredentialResult email={state.email} password={state.password} />}
+      <div className="sub">This login only sees the canteen: menu, prices, photos and opening hours. It cannot see students, fees or anything else in the academy.</div>
     </form>
   );
 }
@@ -131,6 +158,7 @@ function roleLabel(role: string) {
   if (role === "teacher") return "Teacher";
   if (role === "student") return "Student";
   if (role === "guardian") return "Guardian";
+  if (role === "canteen_manager") return "Canteen manager";
   return role;
 }
 
@@ -162,6 +190,15 @@ export default function AccountsAdmin({
         </div>
         <div style={{ padding: 16 }}>
           <CreateStudentLoginForm students={studentsWithoutLogin} />
+        </div>
+      </div>
+
+      <div className="panel">
+        <div className="phead">
+          <div className="ptitle">Give the canteen manager a login</div>
+        </div>
+        <div style={{ padding: 16 }}>
+          <CreateCanteenLoginForm />
         </div>
       </div>
 

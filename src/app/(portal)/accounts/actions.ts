@@ -54,6 +54,28 @@ export async function createStudentLogin(_prev: State, formData: FormData): Prom
   return { ok: true, email: row?.out_email, password: row?.out_password };
 }
 
+// The canteen manager isn't a teacher or a student, so the login is created from a name alone.
+// Their portal only shows the canteen section (see the portal layout and canteen RLS).
+export async function createCanteenLogin(_prev: State, formData: FormData): Promise<State> {
+  const full_name = String(formData.get("full_name") ?? "").trim();
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+
+  if (!full_name) return { error: "Enter the manager's name." };
+  if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_admin_create_login", {
+    p_email: email,
+    p_full_name: full_name,
+    p_role: "canteen_manager",
+  });
+  if (error) return { error: "Could not create the login — " + error.message };
+
+  const row = Array.isArray(data) ? data[0] : data;
+  revalidatePath("/accounts");
+  return { ok: true, email: row?.out_email, password: row?.out_password };
+}
+
 export async function resetLoginPassword(_prev: State, formData: FormData): Promise<State> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   if (!email) return { error: "Missing account." };

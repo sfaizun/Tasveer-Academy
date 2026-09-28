@@ -14,6 +14,8 @@ const ENTITY_LABEL: Record<string, string> = {
   payment: "Payment", payment_allocation: "Payment allocation", invoice: "Invoice", invoice_line: "Invoice line",
   enrolment: "Enrolment", student: "Student", app_user: "Account", subject: "Subject",
   teacher_subject: "Teacher–subject mapping", fee_rate: "Fee rate", announcement: "Announcement",
+  canteen_item: "Canteen item", canteen_item_price: "Canteen price", canteen_category: "Canteen category",
+  canteen_hours: "Canteen opening hours", canteen_closure: "Canteen closure",
 };
 
 function short(v: string | null, max = 60) {

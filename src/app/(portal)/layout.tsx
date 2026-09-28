@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { headers } from "next/headers";
 import { getViewer } from "@/lib/supabase/viewer";
 import { signOut } from "../login/actions";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -13,6 +14,17 @@ export default async function PortalLayout({ children }: { children: React.React
 
   const isAdmin = me.role === "admin";
   const isTeacher = me.role === "teacher";
+  const isCanteen = me.role === "canteen_manager";
+
+  // The canteen manager only ever works in the canteen section (plus their own password page).
+  // Academy data is already hidden from them in the database; this keeps them off the
+  // academy pages too, e.g. the /dashboard landing page after sign-in.
+  if (isCanteen) {
+    const path = (await headers()).get("x-pathname") ?? "";
+    const allowed = path === "/canteen" || path.startsWith("/canteen/") || path === "/account" || path.startsWith("/account/");
+    if (!allowed) redirect("/canteen");
+  }
+  const roleName = me.is_owner ? "Owner" : isCanteen ? "Canteen manager" : me.role;
   const initials = me.full_name.split(" ").map((p: string) => p[0]).slice(0, 2).join("");
 
   return (
@@ -25,17 +37,28 @@ export default async function PortalLayout({ children }: { children: React.React
               Tasveer Academy
             </div>
             <div className="lbl" style={{ fontSize: 9.5 }}>
-              {me.is_owner ? "Owner" : me.role}
+              {roleName}
             </div>
           </div>
         </div>
 
-        <div className="navlbl">Overview</div>
-        <NavLink href="/dashboard">Dashboard</NavLink>
-        <NavLink href="/roster">Class Schedule</NavLink>
-        {(isAdmin || isTeacher) && <NavLink href="/announcements">Announcements</NavLink>}
-        <NavLink href="/reports">Reports</NavLink>
-        {isAdmin && <NavLink href="/audit-log">Audit log</NavLink>}
+        {isCanteen ? (
+          <>
+            <div className="navlbl">Canteen</div>
+            <NavLink href="/canteen" exact>Canteen home</NavLink>
+            <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
+            <NavLink href="/canteen/hours">Opening hours</NavLink>
+          </>
+        ) : (
+          <>
+            <div className="navlbl">Overview</div>
+            <NavLink href="/dashboard">Dashboard</NavLink>
+            <NavLink href="/roster">Class Schedule</NavLink>
+            {(isAdmin || isTeacher) && <NavLink href="/announcements">Announcements</NavLink>}
+            <NavLink href="/reports">Reports</NavLink>
+            {isAdmin && <NavLink href="/audit-log">Audit log</NavLink>}
+          </>
+        )}
 
         {isAdmin && (
           <>
@@ -46,6 +69,11 @@ export default async function PortalLayout({ children }: { children: React.React
             <div className="navlbl">Billing</div>
             <NavLink href="/billing">Billing run</NavLink>
             <NavLink href="/invoices">Invoices</NavLink>
+
+            <div className="navlbl">Canteen</div>
+            <NavLink href="/canteen" exact>Canteen overview</NavLink>
+            <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
+            <NavLink href="/canteen/hours">Opening hours</NavLink>
 
             <div className="navlbl">Academy</div>
             <NavLink href="/catalogue">Subjects &amp; teachers</NavLink>

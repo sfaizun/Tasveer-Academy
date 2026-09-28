@@ -27,7 +27,7 @@ export default async function AccountsPage() {
     <>
       <header className="top">
         <h1>Accounts</h1>
-        <div className="sub">Create teacher and student logins, and manage existing accounts</div>
+        <div className="sub">Create teacher, student and canteen logins, and manage existing accounts</div>
         <div className="spacer" />
         <ThemeToggle />
       </header>
