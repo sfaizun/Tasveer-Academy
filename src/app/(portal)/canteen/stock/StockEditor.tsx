@@ -15,6 +15,7 @@ export type StockLine = {
   sold_qty: number;
   sold_out_at: string | null;
   prev: { made: number; sold: number } | null;
+  planQty: number | null; // from the saved prep plan for this day
 };
 
 const inputStyle: React.CSSProperties = {
@@ -64,10 +65,14 @@ export default function StockEditor({
   prevLabel: string | null;
 }) {
   const [state, action, pending] = useActionState(saveStock, null);
+  // Morning figures start from the saved prep plan until something has been saved here.
+  const fromPlan = !readOnly && lines.every((l) => l.prepared_qty === 0) && lines.some((l) => (l.planQty ?? 0) > 0);
   const [qty, setQty] = useState<Record<string, string>>(
-    Object.fromEntries(lines.map((l) => [l.item_id, l.prepared_qty ? String(l.prepared_qty) : ""]))
+    Object.fromEntries(
+      lines.map((l) => [l.item_id, l.prepared_qty ? String(l.prepared_qty) : fromPlan && l.planQty ? String(l.planQty) : ""]),
+    )
   );
-  const [dirty, setDirty] = useState(false);
+  const [dirty, setDirty] = useState(fromPlan);
   useEffect(() => {
     if (state?.ok) setDirty(false);
   }, [state]);
@@ -76,7 +81,13 @@ export default function StockEditor({
 
   return (
     <>
-      {!readOnly && nothingYet && lines.length > 0 && (
+      {fromPlan && (
+        <div className="panel" style={{ padding: "12px 16px", borderColor: "var(--ok)", background: "var(--ok-soft)" }}>
+          <b style={{ color: "var(--ink)" }}>Filled in from today&apos;s prep plan.</b>{" "}
+          <span className="sub">Change anything that was made differently, then press Save stock.</span>
+        </div>
+      )}
+      {!readOnly && nothingYet && !fromPlan && lines.length > 0 && (
         <div className="panel" style={{ padding: "12px 16px", borderColor: "var(--coral)", background: "var(--coral-soft)" }}>
           <b style={{ color: "var(--ink)" }}>Enter how many of each item were made or bought today.</b>{" "}
           <span className="sub">Items with nothing entered can&apos;t be sold. Leave an item empty if you don&apos;t have it today.</span>
@@ -127,6 +138,7 @@ export default function StockEditor({
                         {l.prev && prevLabel && (
                           <div className="sub">{prevLabel}: made {l.prev.made}, sold {l.prev.sold}</div>
                         )}
+                        {l.planQty != null && <div className="sub">Plan: {l.planQty}</div>}
                       </td>
                       <td className="n mono">{l.carried_in || "—"}</td>
                       <td className="n">
@@ -173,7 +185,7 @@ export default function StockEditor({
           <div className="panel">
             <div className="phead">
               <div className="ptitle">Restock during the day</div>
-              <div className="sub">A second batch or another crate</div>
+              <div className="sub">Only for a second batch or another crate; the morning quantity goes in &ldquo;Made / bought&rdquo; above</div>
             </div>
             <RestockForm lines={lines} />
           </div>

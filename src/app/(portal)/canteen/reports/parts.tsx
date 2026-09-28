@@ -148,3 +148,44 @@ export function diffText(n: number | null) {
   if (Math.abs(n) < 0.005) return "Matches";
   return n < 0 ? `${taka(-n)} short` : `${taka(n)} over`;
 }
+
+/** Generic columns (one per period), labelled underneath. */
+export function Columns({ rows }: { rows: { key: string; label: string; value: number; tip: string }[] }) {
+  if (rows.length === 0) return <div className="sub" style={{ padding: 16 }}>No data yet.</div>;
+  const max = Math.max(1, ...rows.map((r) => r.value));
+  return (
+    <div className="dcols" role="img" aria-label="Chart; the table below has the same figures">
+      {rows.map((r) => (
+        <div key={r.key} className="dcol" title={r.tip}>
+          <div className="dcol-bar-wrap">
+            <div className="dcol-bar" style={{ height: `${Math.max((r.value / max) * 100, r.value > 0 ? 2 : 0)}%` }} />
+          </div>
+          <div className="dcol-lbl">{r.label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+export type MatrixItem = { id: string; name: string; units: number; revenue: number; cost: number };
+export type Quadrant = "Star" | "Workhorse" | "Puzzle" | "Weak";
+
+/** Menu engineering: popularity against the 70% rule, margin per item against the menu average. */
+export function classifyMenu(items: MatrixItem[]) {
+  const sold = items.filter((i) => i.units > 0);
+  const totalUnits = sold.reduce((a, i) => a + i.units, 0);
+  const totalProfit = sold.reduce((a, i) => a + (i.revenue - i.cost), 0);
+  const popLine = sold.length ? (totalUnits / sold.length) * 0.7 : 0;
+  const avgMargin = totalUnits ? totalProfit / totalUnits : 0;
+  return {
+    popLine,
+    avgMargin,
+    rows: sold.map((i) => {
+      const margin = (i.revenue - i.cost) / i.units;
+      const popular = i.units >= popLine;
+      const profitable = margin >= avgMargin;
+      const q: Quadrant = popular && profitable ? "Star" : popular ? "Workhorse" : profitable ? "Puzzle" : "Weak";
+      return { ...i, margin, quadrant: q };
+    }),
+  };
+}

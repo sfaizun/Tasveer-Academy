@@ -18,6 +18,15 @@ export default async function RequestsPage() {
   ]);
 
   const now = Date.now();
+  // Requests that became menu items: how that item has sold in the last 30 days (CT-33).
+  const linkedIds = [...new Set((requests ?? []).map((r: any) => r.item_id).filter(Boolean))] as string[];
+  const { data: linkedLines } = linkedIds.length
+    ? await supabase.from("canteen_sale_line").select("item_id, qty, canteen_sale!inner(status, sold_at)")
+        .in("item_id", linkedIds).eq("canteen_sale.status", "confirmed")
+        .gte("canteen_sale.sold_at", new Date(now - 30 * DAY).toISOString())
+    : { data: [] as any[] };
+  const linkedSold = new Map<string, number>();
+  for (const l of (linkedLines ?? []) as any[]) linkedSold.set(l.item_id, (linkedSold.get(l.item_id) ?? 0) + l.qty);
   const itemName = new Map((items ?? []).map((i: any) => [i.id, i.name as string]));
   const stats = new Map<string, { total: number; d7: number; d30: number; first: string | null; last: string | null; student: number; teacher: number }>();
   const soldOut = new Map<string, number>();
@@ -48,6 +57,7 @@ export default async function RequestsPage() {
       note: r.note,
       item_id: r.item_id,
       item_name: r.item_id ? itemName.get(r.item_id) ?? null : null,
+      item_sold30: r.item_id ? linkedSold.get(r.item_id) ?? 0 : null,
       total: s?.total ?? 0,
       d7: s?.d7 ?? 0,
       d30: s?.d30 ?? 0,

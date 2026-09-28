@@ -247,8 +247,8 @@ export default async function CanteenHomePage() {
         </div>
 
         <div className="sub">
-          Sales, best sellers, busy hours and wastage are on <Link href="/canteen/reports">Reports</Link>. Coming next:
-          tomorrow&apos;s prep plan, once there are a few weeks of sales.
+          Sales, best sellers, busy hours and wastage are on <Link href="/canteen/reports">Reports</Link>. The{" "}
+          <Link href="/canteen/plan">Prep plan</Link> suggests how much to make each day once there are 3 weeks of sales.
         </div>
       </div>
     </>

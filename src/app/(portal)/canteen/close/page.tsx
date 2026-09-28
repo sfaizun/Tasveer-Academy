@@ -7,6 +7,7 @@ import { loadDays, loadSales } from "../data";
 import { SalesList, StaleDaysBanner } from "../DayBits";
 import CloseDayForm, { type LeftLine } from "./CloseDayForm";
 import { ReopenForm } from "./ReopenForm";
+import OfflineWarning from "./OfflineWarning";
 import { DAY_COLS, STOCK_COLS, dayLabel, type CanteenDay, type StockRow } from "@/lib/canteen";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +88,7 @@ export default async function CloseDayPage({ searchParams }: { searchParams: Pro
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
         {target && target.id !== staleOpen[0]?.id && <StaleDaysBanner days={staleOpen} />}
+        {target?.status === "open" && <OfflineWarning />}
 
         {!target ? (
           <div className="panel sub" style={{ padding: 16 }}>

@@ -10,6 +10,7 @@ export type RequestRow = {
   note: string | null;
   item_id: string | null;
   item_name: string | null;
+  item_sold30: number | null;
   total: number;
   d7: number;
   d30: number;
@@ -169,7 +170,9 @@ export default function RequestsManager({
                     ) : (
                       <>
                         <span className={`st ${STATUS[r.status].cls}`}><span className="dot" />{STATUS[r.status].text}</span>
-                        {r.status === "added" && r.item_name && <div className="sub">as {r.item_name}</div>}
+                        {r.status === "added" && r.item_name && (
+                          <div className="sub">as {r.item_name}{r.item_sold30 != null ? `, ${r.item_sold30} sold in 30 days` : ""}</div>
+                        )}
                         <div><button className="linkbtn" type="button" onClick={() => setEditing(r.id)}>Change</button></div>
                       </>
                     )}

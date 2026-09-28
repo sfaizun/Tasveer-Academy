@@ -41,6 +41,9 @@ export type SaleInput = {
   method: "cash" | "bkash";
   cashReceived: number | null;
   bkashRef: string | null;
+  /** Set when the sale was saved on the laptop while offline and is being sent now. */
+  soldAt?: string | null;
+  clientRef?: string | null;
 };
 export type SaleResult = { ok: true; receipt: string; total: number; change: number } | { ok: false; error: string };
 
@@ -57,6 +60,8 @@ export async function recordSale(input: SaleInput): Promise<SaleResult> {
     p_method: input.method,
     p_cash_received: input.method === "cash" ? input.cashReceived : null,
     p_bkash_ref: input.method === "bkash" ? input.bkashRef?.trim() || null : null,
+    p_sold_at: input.soldAt ?? null,
+    p_client_ref: input.clientRef ?? null,
   });
   if (error) return { ok: false, error: niceError(error.message) };
   const row = Array.isArray(data) ? data[0] : data;
@@ -196,5 +201,34 @@ export async function setRequestStatus(_prev: State, formData: FormData): Promis
     .eq("id", id);
   if (error) return { error: niceError(error.message) };
   refresh();
+  return { ok: true };
+}
+
+/* ---------------- Prep plan ---------------- */
+
+export async function savePlan(_prev: State, formData: FormData): Promise<State> {
+  const date = String(formData.get("plan_date") ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return { error: "Choose a day for the plan." };
+  const lines: { item_id: string; suggested_qty: number | null; accepted_qty: number; flag: string | null; reason: string | null }[] = [];
+  for (const id of formData.getAll("item_id").map(String)) {
+    const raw = String(formData.get(`qty_${id}`) ?? "").trim();
+    if (raw === "") continue;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 0) return { error: "Quantities must be whole numbers, 0 or more." };
+    const sug = String(formData.get(`sug_${id}`) ?? "").trim();
+    lines.push({
+      item_id: id,
+      suggested_qty: sug === "" ? null : Number(sug),
+      accepted_qty: n,
+      flag: String(formData.get(`flag_${id}`) ?? "") || null,
+      reason: String(formData.get(`why_${id}`) ?? "").slice(0, 500) || null,
+    });
+  }
+  if (lines.length === 0) return { error: "Enter at least one quantity." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_canteen_save_plan", { p_date: date, p_lines: lines });
+  if (error) return { error: niceError(error.message) };
+  revalidatePath("/canteen/plan");
+  revalidatePath("/canteen/stock");
   return { ok: true };
 }

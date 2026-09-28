@@ -17,7 +17,7 @@ const ENTITY_LABEL: Record<string, string> = {
   canteen_item: "Canteen item", canteen_item_price: "Canteen price", canteen_category: "Canteen category",
   canteen_hours: "Canteen opening hours", canteen_closure: "Canteen closure",
   canteen_day: "Canteen day", canteen_stock: "Canteen stock", canteen_sale: "Canteen sale",
-  canteen_request: "Canteen request",
+  canteen_request: "Canteen request", canteen_plan: "Canteen prep plan",
 };
 
 function short(v: string | null, max = 60) {

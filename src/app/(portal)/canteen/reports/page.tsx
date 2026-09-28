@@ -5,7 +5,7 @@ import ExportCsvButton from "@/components/ExportCsvButton";
 import { fmtDate, fmtDateTime, taka } from "@/lib/format";
 import { dayLabel, dhakaNow, dhakaTime, hhmm, niceError, WEEKDAYS, type CanteenHoursRow } from "@/lib/canteen";
 import { requireCanteenAccess } from "../guard";
-import { DailyColumns, diffText, HBars, Heatmap, pct, Section, Tile } from "./parts";
+import { classifyMenu, Columns, DailyColumns, diffText, HBars, Heatmap, pct, Section, Tile } from "./parts";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +30,20 @@ type Report = {
     bkash_expected: number | null; bkash_reported: number | null; note: string | null; reopen_reason: string | null; closed_by: string | null; closed_at: string | null;
   }[] | null;
   voids: { receipt_no: string; date: string; sold_at: string; total: number; method: string; reason: string; voided_at: string; voided_by: string | null; items: string | null }[] | null;
+  sellouts: { date: string; name: string; time: string; stocked: number }[];
+  requests: { name: string; status: string; asks: number; students: number; teachers: number; item: string | null }[];
+  soldout_asks: { name: string; asks: number }[];
+  prices: { name: string; at: string; by: string | null; sell: number; cost: number | null; prev_sell: number | null; prev_cost: number | null }[] | null;
+};
+
+type TrendRow = { month: string; sales: number; sale_count: number; cost: number; waste_cost: number; days_open: number };
+
+const STATUS_TEXT: Record<string, string> = { new: "New", considering: "Considering", added: "Added to menu", declined: "Declined" };
+const Q_HELP: Record<string, string> = {
+  Star: "popular and above-average margin: keep and feature",
+  Workhorse: "popular, lower margin: consider a small price rise or cheaper recipe",
+  Puzzle: "good margin but rarely bought: promote it or reposition it",
+  Weak: "rarely bought and lower margin: candidate to drop",
 };
 
 const RANGES = [
@@ -84,11 +98,15 @@ export default async function CanteenReportsPage({
   const range = resolveRange(sp, today);
   const supabase = await createClient();
 
-  const [{ data, error }, { data: changeovers }, { data: hours }] = await Promise.all([
+  const [{ data, error }, { data: changeovers }, { data: hours }, { data: trendData }] = await Promise.all([
     supabase.rpc("fn_canteen_report", { p_from: range.from, p_to: range.to }),
     supabase.rpc("fn_canteen_class_changeovers"),
     supabase.from("canteen_hours").select("weekday, is_open, opens_at, closes_at"),
+    isAdmin ? supabase.rpc("fn_canteen_monthly_trend", { p_months: 12 }) : Promise.resolve({ data: [] }),
   ]);
+  const trend = ((trendData ?? []) as TrendRow[]).map((t) => ({ ...t, sales: Number(t.sales), cost: Number(t.cost), waste_cost: Number(t.waste_cost) }));
+  const firstTrend = trend.findIndex((t) => t.days_open > 0);
+  const trendShown = firstTrend >= 0 ? trend.slice(firstTrend) : [];
   const r = data as Report | null;
   const tag = `canteen-${range.from}${range.from === range.to ? "" : "-to-" + range.to}`;
   const rangeText = range.from === range.to ? dayLabel(range.from) : `${fmtDate(range.from)} to ${fmtDate(range.to)}`;
@@ -156,6 +174,10 @@ export default async function CanteenReportsPage({
     { made: 0, sold: 0, wasted: 0, cost: 0 },
   );
   const cashRows = (r.cash ?? []).filter((c) => c.status === "closed");
+  const menu = classifyMenu(
+    sold.filter((i) => i.cost_known !== false).map((i) => ({ id: i.item_id, name: i.name, units: i.units, revenue: Number(i.revenue), cost: Number(i.cost ?? 0) })),
+  );
+  const monthName = (m: string) => new Date(m + "T00:00:00Z").toLocaleDateString("en-GB", { month: "short", year: "2-digit", timeZone: "UTC" });
   const cashDiffTotal = cashRows.reduce((a, c) => a + (Number(c.cash_counted) - Number(c.cash_expected)), 0);
   const bkashDiffTotal = cashRows.reduce((a, c) => a + (Number(c.bkash_reported) - Number(c.bkash_expected)), 0);
 
@@ -409,6 +431,81 @@ export default async function CanteenReportsPage({
           </div>
         </Section>
 
+        {/* R9 Sell-out times */}
+        <Section
+          title="Sell-outs"
+          sub={r.sellouts.length ? `${r.sellouts.length} time${r.sellouts.length === 1 ? "" : "s"} an item ran out` : "nothing ran out"}
+          actions={
+            <ExportCsvButton
+              filename={`${tag}-sellouts`}
+              headers={["Date", "Item", "Sold out at", "Stock that day"]}
+              rows={r.sellouts.map((x) => [x.date, x.name, x.time, x.stocked])}
+            />
+          }
+        >
+          <div className="tblwrap">
+            <table>
+              <thead><tr><th>Day</th><th>Item</th><th>Sold out at</th><th className="n">Stock that day</th></tr></thead>
+              <tbody>
+                {r.sellouts.map((x, i) => (
+                  <tr key={i}>
+                    <td>{dayLabel(x.date)}</td>
+                    <td><b style={{ color: "var(--ink)" }}>{x.name}</b></td>
+                    <td className="mono">{x.time}</td>
+                    <td className="n mono">{x.stocked}</td>
+                  </tr>
+                ))}
+                {r.sellouts.length === 0 && <tr><td colSpan={4} className="sub">Nothing sold out in this range.</td></tr>}
+              </tbody>
+            </table>
+          </div>
+        </Section>
+
+        {/* R12 Requests and missed demand */}
+        <Section
+          title="Requests and missed demand"
+          sub="asks logged in this range"
+          actions={
+            <ExportCsvButton
+              filename={`${tag}-requests`}
+              headers={["Type", "Name", "Asks", "Students", "Teachers", "Status", "Linked menu item"]}
+              rows={[
+                ...r.requests.map((q) => ["Request", q.name, q.asks, q.students, q.teachers, STATUS_TEXT[q.status] ?? q.status, q.item ?? ""]),
+                ...r.soldout_asks.map((q) => ["Asked while sold out", q.name, q.asks, "", "", "", ""]),
+              ]}
+            />
+          }
+        >
+          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", padding: 16 }}>
+            <div>
+              <div className="lbl" style={{ marginBottom: 8 }}>Asked for, not on the menu</div>
+              {r.requests.length === 0 ? (
+                <div className="sub">No requests logged.</div>
+              ) : (
+                r.requests.map((q) => (
+                  <div key={q.name} className="sumrow">
+                    <span>
+                      {q.name}
+                      <span className="sub"> · {STATUS_TEXT[q.status] ?? q.status}{q.item ? ` as ${q.item}` : ""}</span>
+                    </span>
+                    <b className="mono">{q.asks}</b>
+                  </div>
+                ))
+              )}
+            </div>
+            <div>
+              <div className="lbl" style={{ marginBottom: 8 }}>Asked for while sold out (missed sales)</div>
+              {r.soldout_asks.length === 0 ? (
+                <div className="sub">None logged.</div>
+              ) : (
+                r.soldout_asks.map((q) => (
+                  <div key={q.name} className="sumrow"><span>{q.name}</span><b className="mono">{q.asks}</b></div>
+                ))
+              )}
+            </div>
+          </div>
+        </Section>
+
         {/* R7 Cash reconciliation (admin) */}
         {isAdmin && (
           <Section
@@ -497,6 +594,128 @@ export default async function CanteenReportsPage({
                     </tr>
                   ))}
                   {(r.voids ?? []).length === 0 && <tr><td colSpan={6} className="sub">No voided sales in this range.</td></tr>}
+                </tbody>
+              </table>
+            </div>
+          </Section>
+        )}
+
+        {/* R11 Menu performance (admin) */}
+        {isAdmin && (
+          <Section
+            title="Menu performance"
+            adminOnly
+            sub={menu.rows.length ? `popular = ${Math.ceil(menu.popLine)}+ sold · good margin = ${taka(menu.avgMargin)}+ profit each` : undefined}
+            actions={
+              <ExportCsvButton
+                filename={`${tag}-menu-performance`}
+                headers={["Item", "Group", "Units", "Profit each", "Gross profit"]}
+                rows={menu.rows.map((m) => [m.name, m.quadrant, m.units, Math.round(m.margin * 100) / 100, m.revenue - m.cost])}
+              />
+            }
+          >
+            {menu.rows.length === 0 ? (
+              <div className="sub" style={{ padding: 16 }}>Nothing sold with a known cost in this range.</div>
+            ) : (
+              <div className="quad">
+                {(["Star", "Puzzle", "Workhorse", "Weak"] as const).map((q) => {
+                  const list = menu.rows.filter((m) => m.quadrant === q).sort((a, b) => b.units - a.units);
+                  return (
+                    <div key={q} className="quad-cell">
+                      <div className="quad-head"><b>{q === "Star" ? "Stars" : q === "Puzzle" ? "Puzzles" : q === "Workhorse" ? "Workhorses" : "Weak"}</b> <span className="sub">{Q_HELP[q]}</span></div>
+                      {list.length === 0 ? (
+                        <div className="sub">None</div>
+                      ) : (
+                        list.map((m) => (
+                          <div key={m.id} className="sumrow">
+                            <span>{m.name}</span>
+                            <span className="mono sub">{m.units} sold · {taka(m.margin)} each</span>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* R13 Month-on-month trend (admin) */}
+        {isAdmin && (
+          <Section
+            title="Month by month"
+            adminOnly
+            sub="last 12 months, not affected by the range above"
+            actions={
+              <ExportCsvButton
+                filename="canteen-monthly-trend"
+                headers={["Month", "Sales", "Number of sales", "Average sale", "Cost", "Gross profit", "Margin", "Wastage at cost", "Days open"]}
+                rows={trendShown.map((t) => [
+                  t.month.slice(0, 7), t.sales, t.sale_count, t.sale_count ? Math.round(t.sales / t.sale_count) : 0, t.cost,
+                  t.sales - t.cost, pct(t.sales - t.cost, t.sales), t.waste_cost, t.days_open,
+                ])}
+              />
+            }
+          >
+            <div style={{ padding: "14px 16px 4px" }}>
+              <Columns rows={trendShown.map((t) => ({ key: t.month, label: monthName(t.month), value: t.sales, tip: `${monthName(t.month)}: ${taka(t.sales)} sales` }))} />
+            </div>
+            {trendShown.length > 0 && (
+              <div className="tblwrap">
+                <table>
+                  <thead>
+                    <tr><th>Month</th><th className="n">Sales</th><th className="n">Average sale</th><th className="n">Gross profit</th><th className="n">Margin</th><th className="n">Wastage</th><th className="n">Days open</th></tr>
+                  </thead>
+                  <tbody>
+                    {[...trendShown].reverse().map((t) => (
+                      <tr key={t.month}>
+                        <td>{monthName(t.month)}</td>
+                        <td className="n mono">{taka(t.sales)}</td>
+                        <td className="n mono">{t.sale_count ? taka(t.sales / t.sale_count) : "—"}</td>
+                        <td className="n mono">{taka(t.sales - t.cost)}</td>
+                        <td className="n mono">{pct(t.sales - t.cost, t.sales)}</td>
+                        <td className="n mono">{taka(t.waste_cost)}</td>
+                        <td className="n mono">{t.days_open}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Section>
+        )}
+
+        {/* R14 Price change history (admin) */}
+        {isAdmin && (
+          <Section
+            title="Price changes"
+            adminOnly
+            sub={`${(r.prices ?? []).length} in this range`}
+            actions={
+              <ExportCsvButton
+                filename={`${tag}-price-changes`}
+                headers={["Item", "Changed at", "Changed by", "Old price", "New price", "Old cost", "New cost"]}
+                rows={(r.prices ?? []).map((x) => [x.name, fmtDateTime(x.at), x.by, x.prev_sell, x.sell, x.prev_cost, x.cost])}
+              />
+            }
+          >
+            <div className="tblwrap">
+              <table>
+                <thead><tr><th>Item</th><th>When</th><th>By</th><th>Price</th><th>Cost</th></tr></thead>
+                <tbody>
+                  {(r.prices ?? []).map((x, i) => (
+                    <tr key={i}>
+                      <td><b style={{ color: "var(--ink)" }}>{x.name}</b></td>
+                      <td className="sub" style={{ whiteSpace: "nowrap" }}>{fmtDateTime(x.at)}</td>
+                      <td className="sub">{x.by ?? ""}</td>
+                      <td className="mono">{x.prev_sell == null ? `${taka(x.sell)} (first price)` : x.prev_sell === x.sell ? taka(x.sell) : `${taka(x.prev_sell)} → ${taka(x.sell)}`}</td>
+                      <td className="mono">
+                        {x.prev_sell == null ? (x.cost == null ? "—" : taka(x.cost)) : x.prev_cost === x.cost ? (x.cost == null ? "—" : taka(x.cost)) : `${x.prev_cost == null ? "—" : taka(x.prev_cost)} → ${x.cost == null ? "—" : taka(x.cost)}`}
+                      </td>
+                    </tr>
+                  ))}
+                  {(r.prices ?? []).length === 0 && <tr><td colSpan={5} className="sub">No price changes in this range.</td></tr>}
                 </tbody>
               </table>
             </div>

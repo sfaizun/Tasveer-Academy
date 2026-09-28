@@ -4,6 +4,7 @@ import { useActionState, useEffect, useMemo, useRef, useState, useTransition } f
 import { taka } from "@/lib/format";
 import { dhakaTime, photoUrl, type CanteenCategory } from "@/lib/canteen";
 import { logRequest, logSoldOutAsk, plusOneRequest, recordSale } from "../day-actions";
+import { newRef, QUEUE_EVENT, readQueue, writeQueue, type QueuedSale } from "./offlineQueue";
 
 export type SellItem = {
   id: string;
@@ -94,7 +95,7 @@ function RequestPanel({ requests, onClose }: { requests: { id: string; name: str
 }
 
 export default function SellScreen({
-  items,
+  items: itemsProp,
   categories,
   requests,
 }: {
@@ -111,7 +112,57 @@ export default function SellScreen({
   const [received, setReceived] = useState("");
   const [bkashRef, setBkashRef] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [lastSale, setLastSale] = useState<{ receipt: string; total: number; change: number; method: string } | null>(null);
+  const [lastSale, setLastSale] = useState<{ receipt: string; total: number; change: number; method: string; offline?: boolean } | null>(null);
+  const [queue, setQueue] = useState<QueuedSale[]>([]);
+  const syncing = useRef(false);
+
+  // Sales waiting on this laptop reduce what's shown as left, until they reach the database.
+  const items = useMemo(() => {
+    const pending = new Map<string, number>();
+    for (const q of queue) for (const l of q.lines) pending.set(l.item_id, (pending.get(l.item_id) ?? 0) + l.qty);
+    return pending.size ? itemsProp.map((i) => ({ ...i, available: i.available - (pending.get(i.id) ?? 0) })) : itemsProp;
+  }, [itemsProp, queue]);
+
+  // Keep the offline queue in view and send it whenever the connection is back.
+  useEffect(() => {
+    const load = () => setQueue(readQueue());
+    load();
+    async function syncNow() {
+      if (syncing.current) return;
+      syncing.current = true;
+      try {
+        for (const q of readQueue()) {
+          if (q.error) continue;
+          let res;
+          try {
+            res = await recordSale({
+              lines: q.lines.map((l) => ({ item_id: l.item_id, qty: l.qty })),
+              method: q.method, cashReceived: q.cashReceived, bkashRef: q.bkashRef, soldAt: q.soldAt, clientRef: q.clientRef,
+            });
+          } catch {
+            break; // still offline; try again later
+          }
+          const now = readQueue();
+          writeQueue(res.ok ? now.filter((x) => x.clientRef !== q.clientRef) : now.map((x) => (x.clientRef === q.clientRef ? { ...x, error: res.error } : x)));
+        }
+      } finally {
+        syncing.current = false;
+      }
+    }
+    syncNowRef.current = syncNow;
+    const t = window.setInterval(syncNow, 15000);
+    window.addEventListener("online", syncNow);
+    window.addEventListener(QUEUE_EVENT, load);
+    window.addEventListener("storage", load);
+    syncNow();
+    return () => {
+      window.clearInterval(t);
+      window.removeEventListener("online", syncNow);
+      window.removeEventListener(QUEUE_EVENT, load);
+      window.removeEventListener("storage", load);
+    };
+  }, []);
+  const syncNowRef = useRef<() => void>(() => {});
   const [askedMsg, setAskedMsg] = useState<string | null>(null);
   const [showRequest, setShowRequest] = useState(false);
   const [pending, start] = useTransition();
@@ -162,18 +213,34 @@ export default function SellScreen({
       return;
     }
     setError(null);
+    const clientRef = newRef();
+    const soldAt = new Date().toISOString();
+    const payload = {
+      lines: cart.map((l) => ({ item_id: l.id, qty: l.qty })),
+      method,
+      cashReceived: method === "cash" ? receivedNum : null,
+      bkashRef: method === "bkash" ? bkashRef : null,
+    };
     start(async () => {
-      const res = await recordSale({
-        lines: cart.map((l) => ({ item_id: l.id, qty: l.qty })),
-        method,
-        cashReceived: method === "cash" ? receivedNum : null,
-        bkashRef: method === "bkash" ? bkashRef : null,
-      });
+      let res;
+      try {
+        res = await recordSale({ ...payload, clientRef });
+      } catch {
+        // No answer: the internet is down. Keep the sale on this laptop and send it later.
+        writeQueue([
+          ...readQueue(),
+          {
+            clientRef, soldAt, method, cashReceived: payload.cashReceived, bkashRef: payload.bkashRef, total,
+            lines: cart.map((l) => ({ item_id: l.id, qty: l.qty, name: byId.get(l.id)?.name ?? "Item" })),
+          },
+        ]);
+        res = { ok: true as const, receipt: "", total, change: method === "cash" && receivedNum != null ? receivedNum - total : 0, offline: true };
+      }
       if (!res.ok) {
         setError(res.error);
         return;
       }
-      setLastSale({ receipt: res.receipt, total: res.total, change: res.change, method });
+      setLastSale({ receipt: res.receipt, total: res.total, change: res.change, method, offline: "offline" in res });
       setCart([]);
       setReceived("");
       setBkashRef("");
@@ -251,7 +318,40 @@ export default function SellScreen({
 
   const catsWithItems = categories.filter((c) => items.some((i) => i.category_id === c.id));
 
+  const queueTotal = queue.reduce((a, q) => a + q.total, 0);
+
   return (
+    <>
+    {queue.length > 0 && (
+      <div className="panel" style={{ padding: "12px 16px", borderColor: "var(--warn)", background: "var(--warn-soft)", marginBottom: 16 }}>
+        <b style={{ color: "var(--ink)" }}>
+          {queue.length} sale{queue.length === 1 ? "" : "s"} ({taka(queueTotal)}) saved on this laptop, not sent yet.
+        </b>{" "}
+        <span className="sub">
+          They are sent automatically when the internet is back. Keep this page open, and don&apos;t close the day until they&apos;re sent.
+        </span>
+        {queue.some((q) => q.error) && (
+          <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
+            {queue.filter((q) => q.error).map((q) => (
+              <div key={q.clientRef} style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <span className="sub" style={{ color: "var(--crit)" }}>
+                  {q.lines.map((l) => `${l.qty} × ${l.name}`).join(", ")} ({taka(q.total)}, {dhakaTime(q.soldAt)}): {q.error}
+                </span>
+                <button
+                  type="button" className="linkbtn"
+                  onClick={() => { writeQueue(readQueue().map((x) => (x.clientRef === q.clientRef ? { ...x, error: null } : x))); syncNowRef.current(); }}
+                >Try again</button>
+                <button
+                  type="button" className="linkbtn"
+                  onClick={() => writeQueue(readQueue().filter((x) => x.clientRef !== q.clientRef))}
+                >Remove (I&apos;ll record it again)</button>
+              </div>
+            ))}
+            <span className="sub">Add stock on Today&apos;s stock if it ran out, then Try again.</span>
+          </div>
+        )}
+      </div>
+    )}
     <div className="sell-grid">
       <div style={{ display: "flex", flexDirection: "column", gap: 12, minWidth: 0 }}>
         <div className="panel" style={{ padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
@@ -443,7 +543,13 @@ export default function SellScreen({
           {error && <div className="sub" style={{ color: "var(--crit)" }}>{error}</div>}
           {lastSale && (
             <div className="sale-done">
-              <div><b>Sale saved</b> <span className="mono">{lastSale.receipt}</span></div>
+              <div>
+                {lastSale.offline ? (
+                  <><b>Saved on this laptop</b> <span className="sub">(offline; it will be sent automatically)</span></>
+                ) : (
+                  <><b>Sale saved</b> <span className="mono">{lastSale.receipt}</span></>
+                )}
+              </div>
               <div className="mono">
                 {taka(lastSale.total)} {lastSale.method === "cash" ? `· change ${taka(lastSale.change)}` : "· bKash"}
               </div>
@@ -452,5 +558,6 @@ export default function SellScreen({
         </div>
       </div>
     </div>
+    </>
   );
 }

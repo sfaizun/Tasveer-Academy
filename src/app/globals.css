@@ -301,6 +301,9 @@ table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background
 .heat-key{display:flex;align-items:center;gap:8px;margin-top:10px;flex-wrap:wrap}
 .heat-ramp{width:120px;height:9px;border-radius:4px;background:linear-gradient(90deg,color-mix(in oklab,var(--coral) 12%,var(--paper)),var(--coral))}
 
+.quad{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:var(--line2)}
+.quad-cell{background:var(--paper);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
+.quad-head{margin-bottom:6px;font-size:13px;color:var(--ink)}
 @media print{
   :root,:root[data-theme="dark"]{
     --paper:#ffffff; --ground:#ffffff; --tint:#f7f1ec; --tint2:#f2ebe4;

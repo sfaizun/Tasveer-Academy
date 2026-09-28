@@ -49,6 +49,7 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/canteen/sell">Sell</NavLink>
             <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
             <NavLink href="/canteen/close">Close day</NavLink>
+            <NavLink href="/canteen/plan">Prep plan</NavLink>
             <NavLink href="/canteen/requests">Requests</NavLink>
             <NavLink href="/canteen/reports">Reports</NavLink>
             <div className="navlbl">Set up</div>
@@ -62,7 +63,6 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/roster">Class Schedule</NavLink>
             {(isAdmin || isTeacher) && <NavLink href="/announcements">Announcements</NavLink>}
             <NavLink href="/reports">Reports</NavLink>
-            {isAdmin && <NavLink href="/audit-log">Audit log</NavLink>}
           </>
         )}
 
@@ -82,6 +82,7 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/canteen/sell">Sell</NavLink>
             <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
             <NavLink href="/canteen/close">Cash &amp; day close</NavLink>
+            <NavLink href="/canteen/plan">Prep plan</NavLink>
             <NavLink href="/canteen/requests">Requests</NavLink>
             <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
             <NavLink href="/canteen/hours">Opening hours</NavLink>
@@ -90,6 +91,7 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/catalogue">Subjects &amp; teachers</NavLink>
             <NavLink href="/accounts">Accounts</NavLink>
             <NavLink href="/settings">Fees &amp; settings</NavLink>
+            <NavLink href="/audit-log">Audit log</NavLink>
           </>
         )}
 

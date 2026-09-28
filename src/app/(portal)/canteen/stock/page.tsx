@@ -41,7 +41,7 @@ export default async function StockPage() {
     );
   }
 
-  const [{ data: items }, { data: stock }, { data: prevDay }, { data: madeToOrder }] = await Promise.all([
+  const [{ data: items }, { data: stock }, { data: prevDay }, { data: madeToOrder }, { data: planRows }] = await Promise.all([
     supabase
       .from("canteen_item_current")
       .select("id, name, category_id, track_stock, is_packaged, cost_price, out_of_stock, archived")
@@ -54,7 +54,9 @@ export default async function StockPage() {
       .select("item_id, qty, canteen_sale!inner(day_id, status)")
       .eq("canteen_sale.day_id", day.id)
       .eq("canteen_sale.status", "confirmed"),
+    supabase.from("canteen_plan").select("item_id, accepted_qty").eq("plan_date", day.business_date),
   ]);
+  const planBy = new Map(((planRows ?? []) as any[]).map((p) => [p.item_id, p.accepted_qty as number]));
 
   const { data: prevStock } = prevDay
     ? await supabase.from("canteen_stock_view").select(STOCK_COLS).eq("day_id", prevDay.id)
@@ -82,6 +84,7 @@ export default async function StockPage() {
         sold_qty: s?.sold_qty ?? 0,
         sold_out_at: s?.sold_out_at ?? null,
         prev: p ? { made: p.prepared_qty + p.restock_qty, sold: p.sold_qty } : null,
+        planQty: planBy.get(i.id) ?? null,
       };
     });
 
