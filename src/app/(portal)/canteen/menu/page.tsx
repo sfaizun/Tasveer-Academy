@@ -14,7 +14,7 @@ export default async function CanteenMenuPage() {
     supabase.from("canteen_category").select("id, name, sort, active").order("sort").order("name"),
     supabase
       .from("canteen_item_current")
-      .select("id, category_id, name, description, photo_path, tags, is_packaged, batch_size, out_of_stock, archived, sell_price, cost_price, price_since")
+      .select("id, category_id, name, description, photo_path, tags, is_packaged, track_stock, batch_size, out_of_stock, archived, sell_price, cost_price, price_since")
       .order("name"),
     supabase
       .from("canteen_item_price")

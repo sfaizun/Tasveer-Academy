@@ -34,6 +34,7 @@ export async function saveItem(_prev: State, formData: FormData): Promise<State>
     .filter(Boolean)
     .slice(0, 8);
   const is_packaged = formData.get("is_packaged") === "on";
+  const track_stock = formData.get("track_stock") === "on";
   const batchRaw = String(formData.get("batch_size") ?? "").trim();
   const batch_size = batchRaw ? Math.floor(Number(batchRaw)) : 1;
   const sell = money(formData.get("sell_price"));
@@ -55,7 +56,7 @@ export async function saveItem(_prev: State, formData: FormData): Promise<State>
   }
 
   const supabase = await createClient();
-  const fields = { name, category_id, description: description || null, tags, is_packaged, batch_size };
+  const fields = { name, category_id, description: description || null, tags, is_packaged, track_stock, batch_size };
 
   let itemId = id;
   let oldPhoto: string | null = null;

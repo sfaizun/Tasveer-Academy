@@ -3,10 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import { taka, fmtDate } from "@/lib/format";
 import { requireCanteenAccess } from "./guard";
+import { loadDays, loadSales } from "./data";
+import { StaleDaysBanner } from "./DayBits";
 import { setItemStock } from "./menu/actions";
 import {
-  canteenStatus, dhakaNow, hhmm, photoUrl, statusLabel, WEEKDAYS, WEEK_ORDER,
-  type CanteenCategory, type CanteenClosureRow, type CanteenHoursRow, type CanteenItem,
+  canteenStatus, dayLabel, dhakaNow, hhmm, photoUrl, statusLabel, STOCK_COLS, WEEKDAYS, WEEK_ORDER,
+  type CanteenCategory, type CanteenClosureRow, type CanteenHoursRow, type CanteenItem, type StockRow,
 } from "@/lib/canteen";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +42,17 @@ export default async function CanteenHomePage() {
       : Promise.resolve({ data: null }),
   ]);
 
+  const { day, staleOpen } = await loadDays(supabase);
+  const [sales, { data: stock }, { count: openRequests }] = await Promise.all([
+    day ? loadSales(supabase, day.id) : Promise.resolve([]),
+    day ? supabase.from("canteen_stock_view").select(STOCK_COLS).eq("day_id", day.id) : Promise.resolve({ data: [] }),
+    supabase.from("canteen_request").select("id", { count: "exact", head: true }).in("status", ["new", "considering"]),
+  ]);
+  const live = sales.filter((s) => s.status === "confirmed");
+  const salesTotal = live.reduce((a, s) => a + s.total, 0);
+  const cashTotal = live.filter((s) => s.payment_method === "cash").reduce((a, s) => a + s.total, 0);
+  const soldOutToday = ((stock ?? []) as StockRow[]).filter((s) => s.carried_in + s.prepared_qty + s.restock_qty > 0 && s.available <= 0).length;
+
   const cats = (categories ?? []) as CanteenCategory[];
   const list = (items ?? []) as CanteenItem[];
   const h = (hours ?? []) as CanteenHoursRow[];
@@ -61,6 +74,41 @@ export default async function CanteenHomePage() {
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <StaleDaysBanner days={staleOpen} />
+
+        <div className="panel" style={{ padding: "14px 16px", display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+          <div style={{ flex: "1 1 260px" }}>
+            <div className="lbl">{dayLabel(now.date)}</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: "var(--ink)", marginTop: 3 }}>
+              {!day ? "Not opened yet" : day.status === "open" ? "Day open" : "Day closed"}
+            </div>
+            <div className="sub">
+              {!day
+                ? "Open the day with the cash in the drawer, then enter today's stock."
+                : day.status === "open"
+                  ? "Sell, restock during the day, then count the cash at closing."
+                  : "Today's cash has been counted. See you tomorrow."}
+            </div>
+          </div>
+          {(!day || day.status === "open") && <Link className="btn" href="/canteen/sell">{day ? "Go to Sell" : "Open today"}</Link>}
+          {day?.status === "open" && <Link className="btn ghost" href="/canteen/stock">Today&apos;s stock</Link>}
+          {day?.status === "open" && <Link className="btn ghost" href="/canteen/close">Close day</Link>}
+        </div>
+
+        {day && (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 14 }}>
+            <Tile label="Sales today" value={taka(salesTotal)} sub={`${live.length} sale${live.length === 1 ? "" : "s"}`} />
+            <Tile label="Cash · bKash" value={`${taka(cashTotal)} · ${taka(salesTotal - cashTotal)}`} sub={`Opening cash ${taka(day.opening_float)}`} />
+            <Tile
+              label="Sold out today"
+              value={String(soldOutToday)}
+              tone={soldOutToday ? "var(--warn)" : undefined}
+              sub={soldOutToday ? "restock from Today's stock" : "nothing has run out"}
+            />
+            <Tile label="Open requests" value={String(openRequests ?? 0)} sub="things customers asked for" />
+          </div>
+        )}
+
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))", gap: 14 }}>
           <Tile
             label={`Today · ${WEEKDAYS[now.weekday]}`}
@@ -199,7 +247,7 @@ export default async function CanteenHomePage() {
         </div>
 
         <div className="sub">
-          Coming next: the sell screen, today&apos;s stock, customer requests and day close, then canteen reports.
+          Coming next: canteen sales reports, then tomorrow&apos;s prep plan once there are a few weeks of sales.
         </div>
       </div>
     </>

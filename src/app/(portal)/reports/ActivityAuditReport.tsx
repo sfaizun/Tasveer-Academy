@@ -16,6 +16,8 @@ const ENTITY_LABEL: Record<string, string> = {
   teacher_subject: "Teacher–subject mapping", fee_rate: "Fee rate", announcement: "Announcement",
   canteen_item: "Canteen item", canteen_item_price: "Canteen price", canteen_category: "Canteen category",
   canteen_hours: "Canteen opening hours", canteen_closure: "Canteen closure",
+  canteen_day: "Canteen day", canteen_stock: "Canteen stock", canteen_sale: "Canteen sale",
+  canteen_request: "Canteen request",
 };
 
 function short(v: string | null, max = 60) {
@@ -29,7 +31,7 @@ function summarizeRow(json: string | null): string {
   if (!json) return "—";
   try {
     const obj = JSON.parse(json);
-    const skip = new Set(["id", "created_at", "updated_at", "created_by", "received_by", "reviewed_by", "voided_by", "auth_id"]);
+    const skip = new Set(["id", "created_at", "updated_at", "created_by", "received_by", "reviewed_by", "voided_by", "auth_id", "sold_by", "opened_by", "closed_by", "reopened_by", "logged_by"]);
     const parts = Object.entries(obj)
       .filter(([k, v]) => !skip.has(k) && v !== null && v !== "")
       .slice(0, 4)

@@ -167,10 +167,16 @@ function ItemForm({
         <input id="ci-tags" style={inputStyle} name="tags" defaultValue={(item?.tags ?? []).join(", ")} placeholder="e.g. Veg, Spicy (separate with commas)" />
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, alignItems: "end" }}>
-        <label className="sub" style={{ display: "flex", gap: 7, alignItems: "flex-start", lineHeight: 1.35 }}>
-          <input type="checkbox" name="is_packaged" defaultChecked={item?.is_packaged ?? false} style={{ marginTop: 2 }} />
-          <span>Packaged item (water, juice…): unsold stock carries over to the next day</span>
-        </label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <label className="sub" style={{ display: "flex", gap: 7, alignItems: "flex-start", lineHeight: 1.35 }}>
+            <input type="checkbox" name="track_stock" defaultChecked={item?.track_stock ?? true} style={{ marginTop: 2 }} />
+            <span>Count stock daily (untick for made-to-order items like tea, which never run out)</span>
+          </label>
+          <label className="sub" style={{ display: "flex", gap: 7, alignItems: "flex-start", lineHeight: 1.35 }}>
+            <input type="checkbox" name="is_packaged" defaultChecked={item?.is_packaged ?? false} style={{ marginTop: 2 }} />
+            <span>Packaged item (water, juice…): unsold stock carries over to the next day</span>
+          </label>
+        </div>
         <div className="field">
           <label className="lbl" htmlFor="ci-batch">Made in batches of</label>
           <input id="ci-batch" style={inputStyle} type="number" name="batch_size" min="1" step="1" defaultValue={item?.batch_size ?? 1} />
@@ -349,9 +355,9 @@ export default function MenuManager({
                       <td style={{ width: 56 }}><Thumb path={i.photo_path} name={i.name} /></td>
                       <td>
                         <b style={{ color: "var(--ink)" }}>{i.name}</b>
-                        {(i.tags.length > 0 || i.is_packaged) && (
+                        {(i.tags.length > 0 || i.is_packaged || !i.track_stock) && (
                           <div className="sub" style={{ fontSize: 11.5 }}>
-                            {[i.is_packaged ? "Packaged" : null, ...i.tags].filter(Boolean).join(" · ")}
+                            {[i.is_packaged ? "Packaged" : null, i.track_stock ? null : "Made to order", ...i.tags].filter(Boolean).join(" · ")}
                           </div>
                         )}
                       </td>

@@ -18,6 +18,7 @@ export type CanteenItem = {
   photo_path: string | null;
   tags: string[];
   is_packaged: boolean;
+  track_stock: boolean;
   batch_size: number;
   out_of_stock: boolean;
   archived: boolean;
@@ -80,4 +81,62 @@ export function statusLabel(s: CanteenStatus): { text: string; cls: string } {
     case "open": return { text: `Open until ${s.closes}`, cls: "paid" };
     case "after": return { text: `Closed at ${s.closes}`, cls: "due" };
   }
+}
+
+// ---- C2: the daily cycle -------------------------------------------------------------
+
+export type CanteenDay = {
+  id: string;
+  business_date: string;
+  status: "open" | "closed";
+  opening_float: number;
+  opened_at: string;
+  cash_expected: number | null;
+  cash_counted: number | null;
+  bkash_expected: number | null;
+  bkash_reported: number | null;
+  close_note: string | null;
+  closed_at: string | null;
+  reopen_reason: string | null;
+};
+
+export type StockRow = {
+  id: string;
+  day_id: string;
+  item_id: string;
+  carried_in: number;
+  prepared_qty: number;
+  restock_qty: number;
+  unit_cost: number | null;
+  sold_qty: number;
+  available: number;
+  leftover_qty: number | null;
+  wasted_qty: number | null;
+  carry_over_qty: number | null;
+  sold_out_at: string | null;
+};
+
+export const DAY_COLS =
+  "id, business_date, status, opening_float, opened_at, cash_expected, cash_counted, bkash_expected, bkash_reported, close_note, closed_at, reopen_reason";
+export const STOCK_COLS =
+  "id, day_id, item_id, carried_in, prepared_qty, restock_qty, unit_cost, sold_qty, available, leftover_qty, wasted_qty, carry_over_qty, sold_out_at";
+
+/** "15:42" in Dhaka time, for sold-out and sale times. */
+export function dhakaTime(iso: string | null | undefined): string {
+  if (!iso) return "";
+  return new Date(iso).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Dhaka" });
+}
+
+/** "Mon 28-SEP" for a business date. */
+export function dayLabel(date: string): string {
+  const d = new Date(date + "T00:00:00Z");
+  const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][d.getUTCDay()];
+  const mon = ["JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC"][d.getUTCMonth()];
+  return `${wd} ${String(d.getUTCDate()).padStart(2, "0")}-${mon}`;
+}
+
+/** Database errors come back lower-case ("open today before selling"); show them as a sentence. */
+export function niceError(message: string | undefined | null): string {
+  const m = (message ?? "Something went wrong").trim();
+  return m.charAt(0).toUpperCase() + m.slice(1) + (/[.!?]$/.test(m) ? "" : ".");
 }

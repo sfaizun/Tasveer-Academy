@@ -46,6 +46,11 @@ export default async function PortalLayout({ children }: { children: React.React
           <>
             <div className="navlbl">Canteen</div>
             <NavLink href="/canteen" exact>Canteen home</NavLink>
+            <NavLink href="/canteen/sell">Sell</NavLink>
+            <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
+            <NavLink href="/canteen/close">Close day</NavLink>
+            <NavLink href="/canteen/requests">Requests</NavLink>
+            <div className="navlbl">Set up</div>
             <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
             <NavLink href="/canteen/hours">Opening hours</NavLink>
           </>
@@ -72,6 +77,10 @@ export default async function PortalLayout({ children }: { children: React.React
 
             <div className="navlbl">Canteen</div>
             <NavLink href="/canteen" exact>Canteen overview</NavLink>
+            <NavLink href="/canteen/sell">Sell</NavLink>
+            <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
+            <NavLink href="/canteen/close">Cash &amp; day close</NavLink>
+            <NavLink href="/canteen/requests">Requests</NavLink>
             <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
             <NavLink href="/canteen/hours">Opening hours</NavLink>
 
