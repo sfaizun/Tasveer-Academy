@@ -304,6 +304,13 @@ table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background
 .quad{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1px;background:var(--line2)}
 .quad-cell{background:var(--paper);padding:14px 16px;display:flex;flex-direction:column;gap:2px}
 .quad-head{margin-bottom:6px;font-size:13px;color:var(--ink)}
+/* Admin sidebar: the canteen group sits last, boxed and in green so it reads as a separate business. */
+.navgroup-canteen{margin:18px 0 12px;padding:4px 6px 6px;border:1px solid color-mix(in oklab,var(--ok) 40%,transparent);
+  border-radius:9px;background:var(--ok-soft)}
+.navgroup-head{display:flex;align-items:center;gap:7px;padding:8px 6px 6px;font-size:10.5px;font-weight:700;
+  letter-spacing:.13em;text-transform:uppercase;color:var(--ok)}
+.navgroup-canteen .nav:hover{background:color-mix(in oklab,var(--ok) 14%,transparent)}
+.navgroup-canteen .nav.on,.navgroup-canteen .nav.on:hover{background:var(--ok);color:#fff}
 @media print{
   :root,:root[data-theme="dark"]{
     --paper:#ffffff; --ground:#ffffff; --tint:#f7f1ec; --tint2:#f2ebe4;

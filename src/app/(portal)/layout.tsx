@@ -76,22 +76,32 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/billing">Billing run</NavLink>
             <NavLink href="/invoices">Invoices</NavLink>
 
-            <div className="navlbl">Canteen</div>
-            <NavLink href="/canteen" exact>Canteen overview</NavLink>
-            <NavLink href="/canteen/reports">Sales reports</NavLink>
-            <NavLink href="/canteen/sell">Sell</NavLink>
-            <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
-            <NavLink href="/canteen/close">Cash &amp; day close</NavLink>
-            <NavLink href="/canteen/plan">Prep plan</NavLink>
-            <NavLink href="/canteen/requests">Requests</NavLink>
-            <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
-            <NavLink href="/canteen/hours">Opening hours</NavLink>
-
             <div className="navlbl">Academy</div>
             <NavLink href="/catalogue">Subjects &amp; teachers</NavLink>
             <NavLink href="/accounts">Accounts</NavLink>
             <NavLink href="/settings">Fees &amp; settings</NavLink>
             <NavLink href="/audit-log">Audit log</NavLink>
+
+            {/* The canteen is a separate business: its own boxed, differently coloured group at the end. */}
+            <div className="navgroup-canteen">
+              <div className="navgroup-head">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M4 8h13v5a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6V8z" />
+                  <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
+                  <path d="M8 2.5v2.5M11.5 2.5v2.5" />
+                </svg>
+                Canteen
+              </div>
+              <NavLink href="/canteen" exact>Canteen overview</NavLink>
+              <NavLink href="/canteen/reports">Sales reports</NavLink>
+              <NavLink href="/canteen/sell">Sell</NavLink>
+              <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
+              <NavLink href="/canteen/close">Cash &amp; day close</NavLink>
+              <NavLink href="/canteen/plan">Prep plan</NavLink>
+              <NavLink href="/canteen/requests">Requests</NavLink>
+              <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
+              <NavLink href="/canteen/hours">Opening hours</NavLink>
+            </div>
           </>
         )}
 
