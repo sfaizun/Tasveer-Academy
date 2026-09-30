@@ -501,7 +501,7 @@ export default function SellScreen({
               <div className="field">
                 <label className="lbl" htmlFor="sell-recv">Cash received</label>
                 <input
-                  id="sell-recv" style={{ ...inputStyle, fontSize: 15 }} type="number" min="0" step="1" inputMode="numeric"
+                  id="sell-recv" style={{ ...inputStyle, fontSize: 15 }} type="number" min="0" step="0.01" inputMode="decimal"
                   value={received} onChange={(e) => setReceived(e.target.value)} placeholder={total ? `${total} (exact)` : "0"}
                 />
               </div>

@@ -652,7 +652,7 @@ export default async function CanteenReportsPage({
                 filename="canteen-monthly-trend"
                 headers={["Month", "Sales", "Number of sales", "Average sale", "Cost", "Gross profit", "Margin", "Wastage at cost", "Days open"]}
                 rows={trendShown.map((t) => [
-                  t.month.slice(0, 7), t.sales, t.sale_count, t.sale_count ? Math.round(t.sales / t.sale_count) : 0, t.cost,
+                  t.month.slice(0, 7), t.sales, t.sale_count, t.sale_count ? Math.round((t.sales / t.sale_count) * 100) / 100 : 0, t.cost,
                   t.sales - t.cost, pct(t.sales - t.cost, t.sales), t.waste_cost, t.days_open,
                 ])}
               />

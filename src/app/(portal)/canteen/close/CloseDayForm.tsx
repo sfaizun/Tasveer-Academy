@@ -127,7 +127,7 @@ export default function CloseDayForm({
             <div className="field" style={{ marginTop: 10 }}>
               <label className="lbl" htmlFor="cl-cash">Counted in the drawer (৳)</label>
               <input
-                id="cl-cash" style={{ ...inputStyle, fontSize: 15 }} name="cash_counted" type="number" min="0" step="1"
+                id="cl-cash" style={{ ...inputStyle, fontSize: 15 }} name="cash_counted" type="number" min="0" step="0.01"
                 inputMode="numeric" required value={counted} onChange={(e) => setCounted(e.target.value)}
               />
             </div>
@@ -142,7 +142,7 @@ export default function CloseDayForm({
             <div className="field" style={{ marginTop: 10 }}>
               <label className="lbl" htmlFor="cl-bk">Received today, from the bKash app (৳)</label>
               <input
-                id="cl-bk" style={{ ...inputStyle, fontSize: 15 }} name="bkash_reported" type="number" min="0" step="1"
+                id="cl-bk" style={{ ...inputStyle, fontSize: 15 }} name="bkash_reported" type="number" min="0" step="0.01"
                 inputMode="numeric" required value={bkash} onChange={(e) => setBkash(e.target.value)}
                 placeholder={bkashSales.total ? undefined : "0"}
               />

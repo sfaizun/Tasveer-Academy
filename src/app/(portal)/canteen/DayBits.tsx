@@ -24,7 +24,7 @@ export function OpenDayBox({ today, lastFloat }: { today: string; lastFloat?: nu
         <div className="field" style={{ maxWidth: 220 }}>
           <label className="lbl" htmlFor="od-float">Cash in the drawer now (৳)</label>
           <input
-            id="od-float" style={inputStyle} name="opening_float" type="number" min="0" step="1" inputMode="numeric"
+            id="od-float" style={inputStyle} name="opening_float" type="number" min="0" step="0.01" inputMode="decimal"
             defaultValue={lastFloat ?? ""} placeholder="0" autoFocus
           />
         </div>

@@ -44,7 +44,7 @@ function RestockForm({ lines }: { lines: StockLine[] }) {
       </div>
       <div className="field">
         <label className="lbl" htmlFor="rs-cost">Cost each (৳)</label>
-        <input id="rs-cost" className="qty-in" name="unit_cost" type="number" min="0" step="0.5" placeholder="same" />
+        <input id="rs-cost" className="qty-in" name="unit_cost" type="number" min="0" step="0.01" inputMode="decimal" placeholder="same" />
       </div>
       <button className="btn" type="submit" disabled={pending}>{pending ? "Adding…" : "+ Add stock"}</button>
       {state?.error && <span className="sub" style={{ color: "var(--crit)", width: "100%" }}>{state.error}</span>}
@@ -151,7 +151,7 @@ export default function StockEditor({
                       </td>
                       <td className="n">
                         <input
-                          className="qty-in" name={`cost_${l.item_id}`} type="number" min="0" step="0.5"
+                          className="qty-in" name={`cost_${l.item_id}`} type="number" min="0" step="0.01" inputMode="decimal"
                           defaultValue={l.unit_cost ?? ""} disabled={readOnly} aria-label={`${l.name} cost each`}
                           onChange={() => setDirty(true)}
                         />

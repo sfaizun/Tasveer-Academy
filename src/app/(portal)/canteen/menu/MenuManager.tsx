@@ -146,11 +146,11 @@ function ItemForm({
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
         <div className="field">
           <label className="lbl" htmlFor="ci-sell">Selling price (৳)<Req /></label>
-          <input id="ci-sell" style={inputStyle} type="number" name="sell_price" min="0" step="1" required value={sell} onChange={(e) => setSell(e.target.value)} />
+          <input id="ci-sell" style={inputStyle} type="number" name="sell_price" min="0" step="0.01" inputMode="decimal" required value={sell} onChange={(e) => setSell(e.target.value)} />
         </div>
         <div className="field">
           <label className="lbl" htmlFor="ci-cost">Cost price (৳)</label>
-          <input id="ci-cost" style={inputStyle} type="number" name="cost_price" min="0" step="0.5" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="What it costs to make or buy" />
+          <input id="ci-cost" style={inputStyle} type="number" name="cost_price" min="0" step="0.01" inputMode="decimal" value={cost} onChange={(e) => setCost(e.target.value)} placeholder="What it costs to make or buy" />
         </div>
       </div>
       {isAdmin && m !== null && (

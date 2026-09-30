@@ -1,11 +1,14 @@
-/** Bangladeshi lakh grouping: 684500 -> "6,84,500". */
+/** Bangladeshi lakh grouping: 684500 -> "6,84,500". Whole amounts show no decimals; an amount
+ * with paisa shows both places (12.5 -> "৳12.50") so it is never rounded away. */
 export function taka(n: number | string | null | undefined, opts?: { decimals?: boolean }) {
   const v = Number(n ?? 0);
+  const hasPaisa = Math.round(Math.abs(v) * 100) % 100 !== 0;
+  const decimals = opts?.decimals ?? hasPaisa;
   return (
     "৳" +
     v.toLocaleString("en-IN", {
-      minimumFractionDigits: opts?.decimals ? 2 : 0,
-      maximumFractionDigits: opts?.decimals ? 2 : 0,
+      minimumFractionDigits: decimals ? 2 : 0,
+      maximumFractionDigits: decimals ? 2 : 0,
     })
   );
 }
