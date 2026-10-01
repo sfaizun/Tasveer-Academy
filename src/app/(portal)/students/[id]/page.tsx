@@ -12,6 +12,9 @@ import GuardiansPanel from "./GuardiansPanel";
 import InvoicesList from "./InvoicesList";
 import AdmissionFeePanel from "./AdmissionFeePanel";
 import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
+import MockExamsPanel, { type StudentMockRow } from "./MockExamsPanel";
+import { examTitle, timeRange, subjectLabel as mockSubjectLabel } from "@/lib/mock";
+import { dhakaTodayISO } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -113,12 +116,48 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
       ])
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
-  const { data: mockSubjects } = isMockOnly
-    ? await supabase
-        .from("mock_registration")
-        .select("subject_id, subject(name, level)")
-        .eq("student_id", id)
-    : { data: [] };
+  // Mock exams: this student's registrations, and (admin) the open exams they could be added to.
+  const today = dhakaTodayISO();
+  const [{ data: mockRegs }, { data: openMockExams }] = isSubjectBased
+    ? await Promise.all([
+        supabase
+          .from("mock_registration")
+          .select(
+            `id, status, fee, withdrawn_reason, created_at,
+             mock_exam(id, series, exam_date, start_time, duration_min, room, status, subject(name, level, programme(code))),
+             subject(name, level, programme(code)),
+             invoice_line(invoice(invoice_no, status))`
+          )
+          .eq("student_id", id)
+          .order("created_at", { ascending: false }),
+        isAdmin
+          ? supabase
+              .from("mock_exam")
+              .select("id, series, exam_date, start_time, status, fee, subject(name, level, programme(code))")
+              .eq("status", "open")
+              .gte("exam_date", today)
+              .order("exam_date")
+          : Promise.resolve({ data: [] as any[] }),
+      ])
+    : [{ data: [] as any[] }, { data: [] as any[] }];
+  const mockRows: StudentMockRow[] = ((mockRegs ?? []) as any[]).map((r) => ({
+    id: r.id,
+    status: r.status,
+    fee: r.fee == null ? null : Number(r.fee),
+    withdrawn_reason: r.withdrawn_reason,
+    exam: r.mock_exam ?? null,
+    subject: r.mock_exam?.subject ?? r.subject ?? null,
+    invoice: r.invoice_line?.invoice ?? null,
+  }));
+  const registeredExamIds = new Set(
+    ((mockRegs ?? []) as any[]).filter((r) => r.status !== "withdrawn" && r.mock_exam).map((r) => r.mock_exam.id)
+  );
+  const openExamOptions = ((openMockExams ?? []) as any[])
+    .filter((e) => e.subject?.programme?.code === s.programme?.code && !registeredExamIds.has(e.id))
+    .map((e) => ({
+      id: e.id,
+      label: `${examTitle(e)}${e.start_time ? ` ${timeRange(e.start_time, null)}` : ""} · ৳${Number(e.fee).toLocaleString("en-IN")}`,
+    }));
 
   const outstanding = (invoices ?? [])
     .filter((i: any) => i.status !== "void" && i.status !== "waived")
@@ -287,28 +326,8 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
           </div>
         )}
 
-        {isMockOnly && (
-          <div className="panel">
-            <div className="phead">
-              <div className="ptitle">Mock exam subjects</div>
-              <div className="sub">Sitting mocks only — no ongoing class, teacher or monthly billing</div>
-            </div>
-            <div className="tblwrap">
-              <table>
-                <thead><tr><th>Subject</th></tr></thead>
-                <tbody>
-                  {(mockSubjects ?? []).map((r: any, i: number) => (
-                    <tr key={i}>
-                      <td>{r.subject?.name}{r.subject?.level ? ` (${String(r.subject.level).toUpperCase()})` : ""}</td>
-                    </tr>
-                  ))}
-                  {(mockSubjects ?? []).length === 0 && (
-                    <tr><td className="sub">No mock subjects on record.</td></tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+        {isSubjectBased && (isMockOnly || mockRows.length > 0 || isAdmin) && (
+          <MockExamsPanel studentId={id} rows={mockRows} openExams={openExamOptions} canEdit={isAdmin} isMockOnly={isMockOnly} />
         )}
 
         {isSubjectBased ? (
@@ -368,7 +387,21 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
         </div>
       </div>
 
-      {isAdmin && <StudentRoutine rows={routineRows} />}
+      {isAdmin && (
+        <StudentRoutine
+          rows={routineRows}
+          mocks={mockRows
+            .filter((r) => r.exam && r.exam.status !== "cancelled" && r.status !== "withdrawn" && r.exam.exam_date >= today)
+            .map((r) => ({
+              id: r.id,
+              date: r.exam!.exam_date,
+              time: timeRange(r.exam!.start_time, r.exam!.duration_min),
+              title: `${mockSubjectLabel(r.exam!.subject)} mock`,
+              series: r.exam!.series,
+              room: r.exam!.room,
+            }))}
+        />
+      )}
       </div>
     </>
   );

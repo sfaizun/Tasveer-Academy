@@ -6,6 +6,8 @@ import { submitApplication, type ApplicationPayload } from "./actions";
 export type CatalogueData = {
   admissionFee: number;
   mockFee: number;
+  // Open, upcoming mock exams (one per subject per series) a mock-only candidate can sit.
+  mockExams: { id: string; subjectId: string; series: string; examDate: string; startTime: string | null; fee: number }[];
   classLevels: { id: string; code: string; name: string; monthlyFee: number }[];
   subjects: {
     id: string;
@@ -19,7 +21,7 @@ export type CatalogueData = {
 
 type ProgrammeCode = "" | "junior" | "o_level" | "a_level";
 
-type SubjectRow = { key: string; subjectId: string; teacherId: string; fromMonth: string };
+type SubjectRow = { key: string; subjectId: string; teacherId: string; fromMonth: string; mockExamId?: string };
 type SiblingRow = { key: string; fullName: string; className: string; schoolName: string };
 
 const selStyle: React.CSSProperties = {
@@ -191,9 +193,19 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     return 0;
   }, [isMock, programme, selectedClassLevel, subjectRows, catalogue.subjects]);
 
-  // Flat, one-time mock exam fee — same whether the candidate is sitting O Level or
-  // A Level mocks, and regardless of how many subjects (decision, 14 Sep 2026).
-  const mockFeeTotal = isMock ? catalogue.mockFee : 0;
+  // Each mock exam carries its own fee (৳5,000 per subject by default, decision 30 Sep 2026).
+  const examById = useMemo(() => new Map(catalogue.mockExams.map((e) => [e.id, e])), [catalogue.mockExams]);
+  const programmeExams = useMemo(
+    () => catalogue.mockExams.filter((e) => catalogue.subjects.find((s) => s.id === e.subjectId)?.programmeCode === programme),
+    [catalogue.mockExams, catalogue.subjects, programme]
+  );
+  const chosenExams = isMock ? subjectRows.map((r) => (r.mockExamId ? examById.get(r.mockExamId) : undefined)).filter(Boolean) as CatalogueData["mockExams"] : [];
+  const mockFeeTotal = chosenExams.reduce((a, e) => a + e.fee, 0);
+  function examLabel(e: CatalogueData["mockExams"][number]) {
+    const sub = catalogue.subjects.find((s) => s.id === e.subjectId);
+    const d = new Date(e.examDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
+    return `${sub ? subjectLabel(sub) : "Subject"}, ${e.series}, ${d}${e.startTime ? ` ${e.startTime.slice(0, 5)}` : ""}`;
+  }
 
   // Admission fee is charged per subject for O Level / A Level (one unit of the admission
   // rate for every subject enrolled at admission); Junior has no subject concept, so it
@@ -212,11 +224,13 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   }, [startMonth]);
 
   const admissionFeeTotal = useMemo(() => {
+    // A mock-only candidate pays one flat admission fee, however many mocks (decision, 30 Sep 2026).
+    if (isMock) return catalogue.admissionFee;
     if (programme === "o_level" || programme === "a_level") {
       return catalogue.admissionFee * enrolledSubjectCount;
     }
     return catalogue.admissionFee;
-  }, [programme, catalogue.admissionFee, enrolledSubjectCount]);
+  }, [isMock, programme, catalogue.admissionFee, enrolledSubjectCount]);
 
   // Always the full month's fee — the academy no longer pro-rates a student's first
   // month by calendar days for a mid-month start; a reduced first-month charge, if one
@@ -233,7 +247,8 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     if (programme === "junior" && !classLevelCode) return "Choose a class level.";
     if (programme !== "junior") {
       const valid = subjectRows.filter((r) => r.subjectId);
-      if (valid.length === 0) return "Add at least one subject.";
+      if (valid.length === 0) return isMock ? "Choose at least one mock exam." : "Add at least one subject.";
+      if (isMock && valid.some((r) => !r.mockExamId)) return "Choose a mock exam in every row.";
       if (!isMock && valid.some((r) => !r.teacherId)) return "Choose a teacher for every subject row.";
       const subjectIds = valid.map((r) => r.subjectId);
       if (new Set(subjectIds).size !== subjectIds.length) return "Each subject can only be selected once.";
@@ -256,14 +271,16 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
       .map((r) => {
         const s = catalogue.subjects.find((x) => x.id === r.subjectId)!;
         const t = s.teachers.find((x) => x.id === r.teacherId);
+        const exam = isMock && r.mockExamId ? examById.get(r.mockExamId) : undefined;
         return {
           subject_id: s.id,
           subject_name: s.name,
           level: s.level,
-          teacher_id: r.teacherId,
-          teacher_name: t?.name ?? "",
+          teacher_id: isMock ? "" : r.teacherId,
+          teacher_name: isMock ? "" : t?.name ?? "",
           from_month: startMonth, // every subject starts in the application's start month
-          monthly_fee: s.monthlyFee,
+          monthly_fee: isMock ? 0 : s.monthlyFee,
+          ...(exam ? { mock_exam_id: exam.id, mock_exam_label: examLabel(exam), mock_fee: exam.fee } : {}),
         };
       });
 
@@ -286,7 +303,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
         first_month_estimate: firstMonthEstimate,
         mock_fee: mockFeeTotal,
         note: isMock
-          ? "Indicative only. Mock exam candidates pay the admission fee and the flat mock exam fee once, on approval — no monthly billing."
+          ? "Indicative only. Mock exam candidates pay one admission fee plus each mock exam's fee, on approval. No monthly billing."
           : "Indicative only. The academy generates the actual first invoice on approval, charging the full month's fee (not pro-rated).",
       },
       declaration_accepted: accepted,
@@ -632,10 +649,12 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
 
           {(programme === "o_level" || programme === "a_level") && (
             <Section
-              title={isMock ? "Mock Exam Subjects" : "Subjects"}
+              title={isMock ? "Mock Exams" : "Subjects"}
               sub={
                 isMock
-                  ? `${programme === "o_level" ? "O Level" : "A Level"} — up to 10 subjects to sit mocks in, no teacher assignment needed`
+                  ? programmeExams.length
+                    ? `${programme === "o_level" ? "O Level" : "A Level"}: choose the mock exams to sit, one per subject`
+                    : "No mock exams are open for registration right now. Please contact the academy."
                   : `${programme === "o_level" ? "O Level" : "A Level"} — up to 10 subjects, ${taka(
                       subjectOptions[0]?.monthlyFee ?? 0
                     )}/subject/month varies by level`
@@ -651,6 +670,29 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                 const rowOptions = subjectOptions.filter((s) => s.id === row.subjectId || !takenElsewhere.has(s.id));
                 return (
                   <div key={row.key} className={`subj-row${isMock ? " mock" : ""}`}>
+                    {isMock ? (
+                      <Field label={`Mock exam ${i + 1}`} required={i === 0}>
+                        <select
+                          style={selStyle}
+                          value={row.mockExamId ?? ""}
+                          onChange={(e) => {
+                            const exam = examById.get(e.target.value);
+                            setSubjectRows((rows) =>
+                              rows.map((r) => (r.key === row.key ? { ...r, mockExamId: e.target.value, subjectId: exam?.subjectId ?? "", teacherId: "" } : r))
+                            );
+                          }}
+                        >
+                          <option value="">Choose…</option>
+                          {programmeExams
+                            .filter((ex) => ex.id === row.mockExamId || !subjectRows.some((r) => r.key !== row.key && r.subjectId === ex.subjectId))
+                            .map((ex) => (
+                              <option key={ex.id} value={ex.id}>
+                                {examLabel(ex)} · {taka(ex.fee)}
+                              </option>
+                            ))}
+                        </select>
+                      </Field>
+                    ) : (
                     <Field label={`Subject ${i + 1}`} required={i === 0}>
                       <select
                         style={selStyle}
@@ -669,6 +711,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                         ))}
                       </select>
                     </Field>
+                    )}
                     {!isMock && (
                       <>
                         <Field label="Teacher" required={i === 0}>
@@ -703,7 +746,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
               })}
               {subjectRows.length < 10 && (
                 <button type="button" className="btn ghost" onClick={addSubjectRow} style={{ alignSelf: "flex-start" }}>
-                  + Add subject
+                  {isMock ? "+ Add mock exam" : "+ Add subject"}
                 </button>
               )}
             </Section>
@@ -717,7 +760,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                     <tr>
                       <td>
                         Admission fee (one time)
-                        {(programme === "o_level" || programme === "a_level") && enrolledSubjectCount > 0 && (
+                        {!isMock && (programme === "o_level" || programme === "a_level") && enrolledSubjectCount > 0 && (
                           <div className="sub" style={{ fontSize: 12 }}>
                             {taka(catalogue.admissionFee)} × {enrolledSubjectCount} subject{enrolledSubjectCount === 1 ? "" : "s"}
                           </div>
@@ -727,10 +770,18 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                     </tr>
                     {isMock ? (
                       <>
-                        <tr>
-                          <td>Mock exam fee (flat, one time)</td>
-                          <td className="n mono">{taka(mockFeeTotal)}</td>
-                        </tr>
+                        {chosenExams.map((ex) => (
+                          <tr key={ex.id}>
+                            <td>Mock exam: {examLabel(ex)}</td>
+                            <td className="n mono">{taka(ex.fee)}</td>
+                          </tr>
+                        ))}
+                        {chosenExams.length === 0 && (
+                          <tr>
+                            <td className="sub">Mock exam fees (per exam)</td>
+                            <td className="n mono">{taka(0)}</td>
+                          </tr>
+                        )}
                         <tr>
                           <td>
                             <b>Total due on approval</b>

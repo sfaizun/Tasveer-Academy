@@ -5,6 +5,7 @@ import { taka, fmtDate, monthName, dhakaTodayISO } from "@/lib/format";
 import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
 import ExportCsvButton from "@/components/ExportCsvButton";
 import CashFinanceReports from "./CashFinanceReports";
+import MockFeesReport from "./MockFeesReport";
 import TeacherWorkloadReport from "./TeacherWorkloadReport";
 import TeacherStudentPaymentsReport from "./TeacherStudentPaymentsReport";
 import AnnouncementReachReport from "./AnnouncementReachReport";
@@ -140,6 +141,8 @@ export default async function ReportsPage({
               <Tile label="Outstanding" value={taka(af?.total_due ?? 0)} tone={(af?.total_due ?? 0) > 0 ? "var(--crit)" : undefined} />
             </div>
           </details>
+
+          <MockFeesReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} />
 
           <CashFinanceReports supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} today={today} />
 

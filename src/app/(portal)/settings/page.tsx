@@ -68,8 +68,8 @@ export default async function Settings() {
     }
   }
   if (oLevel || aLevel) {
-    // Global — same flat rate whether the candidate sits O Level or A Level mocks.
-    options.push({ value: `mock|||`, label: "Mock exam fee — O/A Level (flat, one time)" });
+    // Global: the default fee for each mock exam (per subject), same for O Level, AS and A2.
+    options.push({ value: `mock|||`, label: "Mock exam fee (per subject, O Level / AS / A2)" });
   }
 
   const isOwner = !!me?.is_owner;
@@ -95,7 +95,7 @@ export default async function Settings() {
                 {admission.map((r) => (
                   <tr key={r.id}>
                     <td><b>Admission fee — {r.programme?.name ?? "—"}</b></td>
-                    <td>{r.programme?.code === "junior" ? "Per student, one time" : "Per subject, one time"}</td>
+                    <td>{r.programme?.code === "junior" ? "Per student, one time" : "Per subject enrolled, one time (mock-only candidates pay it once)"}</td>
                     <td className="n mono"><b>{taka(r.amount)}</b></td>
                     <td className="mono sub">{fmtDate(r.effective_from)}</td>
                   </tr>
@@ -110,8 +110,8 @@ export default async function Settings() {
                 ))}
                 {mock.map((r) => (
                   <tr key={r.id}>
-                    <td><b>Mock exam fee — O/A Level</b></td>
-                    <td>Flat per student, one time (same for O and A Level)</td>
+                    <td><b>Mock exam fee (per subject)</b></td>
+                    <td>Per mock exam (subject); default for new exams, same for O Level, AS and A2</td>
                     <td className="n mono"><b>{taka(r.amount)}</b></td>
                     <td className="mono sub">{fmtDate(r.effective_from)}</td>
                   </tr>
@@ -175,7 +175,7 @@ export default async function Settings() {
                       {r.kind === "admission"
                         ? `Admission fee — ${r.programme?.name ?? "—"}`
                         : r.kind === "mock"
-                        ? "Mock exam fee — O/A Level"
+                        ? "Mock exam fee (per subject)"
                         : r.class_level
                         ? `Junior — ${r.class_level.name}`
                         : `${r.programme?.name}${r.level ? ` (${r.level.toUpperCase()})` : ""}`}

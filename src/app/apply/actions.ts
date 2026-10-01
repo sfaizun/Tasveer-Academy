@@ -35,6 +35,9 @@ export type ApplicationPayload = {
     teacher_name: string;
     from_month: string;
     monthly_fee: number;
+    mock_exam_id?: string;
+    mock_exam_label?: string;
+    mock_fee?: number;
   }[];
   fee_summary: {
     admission_fee: number;
@@ -75,6 +78,9 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   }
   if (payload.programme_code !== "junior" && payload.subjects.length > 10) {
     return { ok: false, error: "A maximum of 10 subjects can be added." };
+  }
+  if (payload.mock_only && payload.subjects.some((s) => !s.mock_exam_id)) {
+    return { ok: false, error: "Choose a mock exam in every row." };
   }
   if (payload.programme_code !== "junior") {
     const subjectIds = payload.subjects.map((s) => s.subject_id);

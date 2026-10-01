@@ -311,6 +311,8 @@ table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background
   letter-spacing:.13em;text-transform:uppercase;color:var(--ok)}
 .navgroup-canteen .nav:hover{background:color-mix(in oklab,var(--ok) 14%,transparent)}
 .navgroup-canteen .nav.on,.navgroup-canteen .nav.on:hover{background:var(--ok);color:#fff}
+.print-only{display:none}
+
 @media print{
   :root,:root[data-theme="dark"]{
     --paper:#ffffff; --ground:#ffffff; --tint:#f7f1ec; --tint2:#f2ebe4;
@@ -328,4 +330,7 @@ table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background
   .phead{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   table{break-inside:auto}
   tr{break-inside:avoid}
+  th.print-only,td.print-only{display:table-cell!important}
+  span.print-only{display:inline!important}
+  .panel.print-flow{break-inside:auto}
 }

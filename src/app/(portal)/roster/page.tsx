@@ -1,3 +1,6 @@
+import Link from "next/link";
+import { dhakaTodayISO, fmtDate } from "@/lib/format";
+import { subjectLabel, timeRange } from "@/lib/mock";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -114,6 +117,17 @@ export default async function RosterPage() {
     };
   });
 
+  // Upcoming mock exams: everyone sees them here (students only the ones they're registered for,
+  // enforced by the database).
+  const { data: mockData } = await supabase
+    .from("mock_exam")
+    .select("id, series, exam_date, start_time, duration_min, room, status, subject(name, level, programme(code))")
+    .neq("status", "cancelled")
+    .gte("exam_date", dhakaTodayISO())
+    .order("exam_date")
+    .order("start_time");
+  const upcomingMocks = (mockData ?? []) as any[];
+
   return (
     <>
       <header className="top">
@@ -149,6 +163,34 @@ export default async function RosterPage() {
         )}
 
         <ScheduleView rows={scheduleRows} />
+
+        {upcomingMocks.length > 0 && (
+          <div className="panel">
+            <div className="phead">
+              <div className="ptitle">Upcoming mock exams</div>
+              <div className="spacer" />
+              <div className="sub">{isStudentOrGuardian ? "the ones you are registered for" : `${upcomingMocks.length} scheduled`}</div>
+            </div>
+            <div className="tblwrap">
+              <table>
+                <thead><tr><th>Date</th><th>Time</th><th>Exam</th><th>Series</th><th>Room</th></tr></thead>
+                <tbody>
+                  {upcomingMocks.map((m) => (
+                    <tr key={m.id}>
+                      <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmtDate(m.exam_date)}</td>
+                      <td className="mono" style={{ whiteSpace: "nowrap" }}>{timeRange(m.start_time, m.duration_min) || "—"}</td>
+                      <td>
+                        {isAdmin ? <Link href={`/mock-exams/${m.id}`}><b>{subjectLabel(m.subject)}</b></Link> : <b>{subjectLabel(m.subject)}</b>}
+                      </td>
+                      <td className="sub">{m.series}</td>
+                      <td>{m.room ?? "—"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
     </>
   );

@@ -185,19 +185,20 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
       {subjects.length > 0 && (
         <div>
           <div className="ptitle" style={{ marginBottom: 8 }}>
-            {p.mock_only ? "Mock exam subjects" : "Subjects"}
+            {p.mock_only ? "Mock exams" : "Subjects"}
           </div>
           <div className="tblwrap">
             <table>
               {p.mock_only ? (
                 <>
                   <thead>
-                    <tr><th>Subject</th></tr>
+                    <tr><th>Mock exam</th><th className="n">Fee</th></tr>
                   </thead>
                   <tbody>
                     {subjects.map((s: any, i: number) => (
                       <tr key={i}>
-                        <td>{s.subject_name}{s.level ? ` (${String(s.level).toUpperCase()})` : ""}</td>
+                        <td>{s.mock_exam_label ?? `${s.subject_name}${s.level ? ` (${String(s.level).toUpperCase()})` : ""}`}</td>
+                        <td className="n mono">{s.mock_fee != null ? taka(s.mock_fee) : "—"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -230,7 +231,7 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
           <Detail label="Admission fee" value={taka(fee.admission_fee ?? 0)} />
           {p.mock_only ? (
             <>
-              <Detail label="Mock exam fee" value={taka(fee.mock_fee ?? 0)} />
+              <Detail label={`Mock exam fees (${subjects.length})`} value={taka(fee.mock_fee ?? 0)} />
               <Detail label="Total due on approval" value={taka((fee.admission_fee ?? 0) + (fee.mock_fee ?? 0))} />
             </>
           ) : (
@@ -266,7 +267,7 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
           <div className="sub" style={{ marginBottom: 8 }}>
             Setting this to Approved creates the student, guardian and sibling records{" "}
             {app.payload?.mock_only
-              ? "and the mock exam subject registrations"
+              ? "and registers them for the chosen mock exams"
               : "and subject enrolments"}
             , and generates the first invoice — it can&apos;t be undone from here.
           </div>
