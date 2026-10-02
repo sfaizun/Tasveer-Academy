@@ -6,42 +6,78 @@ type State = { error?: string; ok?: boolean } | null;
 
 export async function recordPayment(_prev: State, formData: FormData): Promise<State> {
   const studentId = String(formData.get("student_id") ?? "");
+  const invoiceId = String(formData.get("invoice_id") ?? "").trim() || null;
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const method = String(formData.get("method") ?? "cash");
   const received_on = String(formData.get("received_on") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
-  const discount_invoice_id = String(formData.get("discount_invoice_id") ?? "").trim() || null;
-  const discountRaw = String(formData.get("discount_amount") ?? "").trim();
-  const discount_note = String(formData.get("discount_note") ?? "").trim();
 
   const amount = Number(amountRaw);
   if (!studentId) return { error: "Missing student." };
   if (!amountRaw || Number.isNaN(amount) || amount <= 0) return { error: "Enter a valid amount." };
 
-  const discount_amount = discountRaw ? Number(discountRaw) : null;
-  if (discountRaw && (Number.isNaN(discount_amount) || (discount_amount as number) <= 0)) {
-    return { error: "Enter a valid discount amount." };
-  }
-  if (discount_amount && !discount_invoice_id) return { error: "Choose which invoice the discount applies to." };
-  if (discount_amount && !discount_note) return { error: "Add a short note for the discount." };
-
   const supabase = await createClient();
+  // The invoice the payment was taken against is settled first; anything over goes to the
+  // oldest open invoice, then stays as advance credit.
   const { error } = await supabase.rpc("fn_record_payment", {
     p_student_id: studentId,
     p_amount: amount,
     p_method: method,
     p_received_on: received_on || null,
     p_note: note || null,
-    p_discount_invoice_id: discount_invoice_id,
-    p_discount_amount: discount_amount,
-    p_discount_note: discount_note || null,
+    p_discount_invoice_id: invoiceId,
+    p_discount_amount: null,
+    p_discount_note: null,
   });
 
-  if (error) return { error: "Could not record the payment — " + error.message };
+  if (error) return { error: "Could not record the payment: " + error.message };
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
   return { ok: true };
+}
+
+export async function editInvoice(
+  _prev: (State & { message?: string }) | null,
+  formData: FormData
+): Promise<(State & { message?: string }) | null> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const invoiceId = String(formData.get("invoice_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!invoiceId) return { error: "Missing invoice." };
+  if (!reason) return { error: "Add a reason for this change." };
+
+  let lines: unknown;
+  let add: unknown;
+  try {
+    lines = JSON.parse(String(formData.get("lines") ?? "[]"));
+    add = JSON.parse(String(formData.get("add") ?? "[]"));
+  } catch {
+    return { error: "Could not read the changes. Please try again." };
+  }
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_edit_invoice", {
+    p_invoice_id: invoiceId,
+    p_lines: lines,
+    p_add: add,
+    p_reason: reason,
+  });
+  if (error) return { error: "Could not save: " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/billing");
+  const r = (data ?? {}) as { changes?: number; moved?: number; credit?: number };
+  if (!r.changes) return { ok: true, message: "Nothing changed." };
+  const fmt = (n: number) => "৳" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
+  let message = "Invoice updated.";
+  if (r.moved && r.moved > 0) {
+    message += r.credit && r.credit > 0
+      ? ` ${fmt(r.moved)} already paid is now more than this invoice; ${fmt(r.credit)} is kept as advance credit.`
+      : ` ${fmt(r.moved)} already paid moved to the next open invoice.`;
+  }
+  return { ok: true, message };
 }
 
 export async function editPayment(_prev: State, formData: FormData): Promise<State> {

@@ -28,6 +28,7 @@ function readExam(formData: FormData) {
   const feeRaw = String(formData.get("fee") ?? "").trim();
   const fee = Math.round(Number(feeRaw) * 100) / 100;
   const note = String(formData.get("note") ?? "").trim() || null;
+  const teacher_id = String(formData.get("teacher_id") ?? "").trim() || null;
 
   if (!series) return { error: "Enter the series name, e.g. Winter Mocks 2026." };
   if (!subject_id) return { error: "Choose the subject." };
@@ -36,7 +37,7 @@ function readExam(formData: FormData) {
     return { error: "Duration must be between 10 and 600 minutes." };
   }
   if (!feeRaw || !Number.isFinite(fee) || fee < 0) return { error: "Enter the exam fee." };
-  return { values: { series, subject_id, exam_date, start_time, duration_min, room, fee, note } };
+  return { values: { series, subject_id, exam_date, start_time, duration_min, room, fee, note, teacher_id } };
 }
 
 export async function createMockExam(_prev: State, formData: FormData): Promise<State> {

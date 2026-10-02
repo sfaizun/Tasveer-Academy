@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import { taka, fmtDate } from "@/lib/format";
-import PaymentForm, { type DiscountableFee } from "./PaymentForm";
+import PaymentForm from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
 import EditStudentForm from "./EditStudentForm";
@@ -17,30 +17,6 @@ import { examTitle, timeRange, subjectLabel as mockSubjectLabel } from "@/lib/mo
 import { dhakaTodayISO } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
-
-// The subject fees on an open invoice (tuition, or the mock fee for a mock-only student),
-// each with what is left after discounts already on it. A discount given with a payment is
-// split equally across these; the admission fee is never included (it has its own panel).
-// Mirrors fn_record_payment's own matching rules so the preview matches what gets saved.
-function discountableFees(lines: any[]): DiscountableFee[] {
-  const discounts = lines.filter((l) => l.type === "discount");
-  const already = (match: (d: any) => boolean) =>
-    discounts.filter(match).reduce((s, d) => s + Math.abs(Number(d.amount)), 0);
-
-  return lines
-    .filter((l) => l.type === "tuition" || l.type === "mock")
-    .map((l) => {
-      let used = 0;
-      if (l.enrolment_id) {
-        used = already((d) => d.enrolment_id === l.enrolment_id);
-      } else if (l.type === "mock") {
-        used = already((d) => !d.enrolment_id && String(d.description).startsWith("Mock exam fee discount"));
-      } else {
-        used = already((d) => !d.enrolment_id && String(d.description).startsWith("Monthly fee discount"));
-      }
-      return { line_id: l.id as string, label: l.description as string, left: Math.max(Number(l.amount) - used, 0) };
-    });
-}
 
 function StatusChip({ status, map }: { status: string; map: Record<string, { cls: string; label: string }> }) {
   const m = map[status] ?? { cls: "due", label: status };
@@ -60,8 +36,15 @@ const studentStatusMap: Record<string, { cls: string; label: string }> = {
   alumni: { cls: "past", label: "Alumni" },
 };
 
-export default async function StudentDetail({ params }: { params: Promise<{ id: string }> }) {
+export default async function StudentDetail({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ invoice?: string }>;
+}) {
   const { id } = await params;
+  const { invoice: openInvoiceId } = await searchParams;
   const supabase = await createClient();
   const { me } = await getViewer();
 
@@ -85,9 +68,10 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
         .order("from_month", { ascending: false }),
       supabase
         .from("invoice")
-        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, status, invoice_line(id, type, description, rate, quantity, amount, enrolment_id)")
+        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, status, invoice_line(id, type, description, rate, quantity, amount, enrolment_id, applies_to_line_id, created_at)")
         .eq("student_id", id)
-        .order("billing_month", { ascending: false }),
+        .order("billing_month", { ascending: false })
+        .order("created_at", { referencedTable: "invoice_line" }),
       supabase
         .from("payment")
         .select("id, receipt_no, amount, method, received_on, status, note, void_reason, payment_allocation(invoice_id, amount)")
@@ -162,16 +146,6 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
   const outstanding = (invoices ?? [])
     .filter((i: any) => i.status !== "void" && i.status !== "waived")
     .reduce((sum: number, i: any) => sum + Number(i.balance || 0), 0);
-
-  const openInvoices = (invoices ?? [])
-    .filter((i: any) => (i.status === "unpaid" || i.status === "partly_paid") && Number(i.balance) > 0)
-    .map((i: any) => ({
-      id: i.id,
-      invoice_no: i.invoice_no,
-      billing_month: i.billing_month,
-      balance: Number(i.balance),
-      fees: discountableFees(i.invoice_line ?? []),
-    }));
 
   // Flattened for EnrolmentsPanel, which expects batch_name directly on the enrolment
   // rather than nested under class_group.
@@ -365,19 +339,26 @@ export default async function StudentDetail({ params }: { params: Promise<{ id: 
 
         {isAdmin && <AdmissionFeePanel studentId={id} invoices={(invoices ?? []) as any} />}
 
-        <InvoicesList invoices={(invoices ?? []) as any} outstanding={outstanding} />
-
-        {isAdmin && (
-          <div className="panel">
-            <div className="phead"><div className="ptitle">Record a payment</div></div>
-            <div style={{ padding: 18 }}>
-              <PaymentForm studentId={id} outstanding={outstanding} openInvoices={openInvoices} />
-            </div>
-          </div>
-        )}
+        <InvoicesList
+          studentId={id}
+          invoices={(invoices ?? []) as any}
+          payments={(payments ?? []) as PaymentRow[]}
+          outstanding={outstanding}
+          canEdit={isAdmin}
+          canVoid={isOwner}
+          initialOpen={openInvoiceId ?? null}
+        />
 
         <div className="panel">
           <div className="phead"><div className="ptitle">Payment history</div></div>
+          {isAdmin && (
+            <details className="advance-pay">
+              <summary>Record a payment without choosing an invoice (advance or lump sum)</summary>
+              <div style={{ padding: "12px 0 4px" }}>
+                <PaymentForm studentId={id} />
+              </div>
+            </details>
+          )}
           <PaymentsList
             studentId={id}
             payments={(payments ?? []) as PaymentRow[]}

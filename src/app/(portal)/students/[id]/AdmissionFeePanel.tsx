@@ -36,7 +36,6 @@ export default function AdmissionFeePanel({ studentId, invoices }: { studentId: 
   const atPaymentTotal = lines
     .filter((l) => isAdmissionDiscount(l) && l.description.includes("(at payment)"))
     .reduce((s, l) => s + Math.abs(Number(l.amount)), 0);
-  const isPaid = admissionInvoice.status === "paid";
   const reasonDefault = discountLine ? discountLine.description.replace(/^Admission fee discount( — )?/, "") : "";
 
   return (
@@ -77,13 +76,8 @@ export default function AdmissionFeePanel({ studentId, invoices }: { studentId: 
           {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
           {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Saved.</span>}
         </form>
-        {isPaid && !discountLine && (
-          <div className="sub" style={{ marginTop: 8, color: "var(--crit)" }}>
-            This admission invoice is already fully paid — a discount can no longer be applied to it.
-          </div>
-        )}
         <div className="sub" style={{ marginTop: 8 }}>
-          Applies only to the admission fee. Subject fees have their own per-subject discounts above.
+          Applies only to the admission fee. You can also change it from the invoice with Edit invoice. If the invoice is already paid, the amount freed up goes to the next open invoice or stays as advance credit.
         </div>
       </div>
     </div>

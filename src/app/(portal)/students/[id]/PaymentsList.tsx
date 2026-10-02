@@ -26,14 +26,14 @@ function StatusChip({ status }: { status: string }) {
   return <span className="st paid"><span className="dot" />Confirmed</span>;
 }
 
-function EditForm({ studentId, payment }: { studentId: string; payment: PaymentRow }) {
+export function EditForm({ studentId, payment }: { studentId: string; payment: PaymentRow }) {
   const [state, action, pending] = useActionState(editPayment, null);
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <input type="hidden" name="student_id" value={studentId} />
       <input type="hidden" name="payment_id" value={payment.id} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
-        <input style={inputStyle} type="number" name="amount" min="1" step="1" defaultValue={payment.amount} required />
+        <input style={inputStyle} type="number" name="amount" min="0.01" step="0.01" defaultValue={payment.amount} required />
         <select style={inputStyle} name="method" defaultValue={payment.method}>
           <option value="cash">Cash</option>
           <option value="bkash">bKash</option>
@@ -56,7 +56,7 @@ function EditForm({ studentId, payment }: { studentId: string; payment: PaymentR
   );
 }
 
-function VoidForm({ studentId, payment }: { studentId: string; payment: PaymentRow }) {
+export function VoidForm({ studentId, payment }: { studentId: string; payment: PaymentRow }) {
   const [state, action, pending] = useActionState(voidPayment, null);
   return (
     <form action={action} style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>

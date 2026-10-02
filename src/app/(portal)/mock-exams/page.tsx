@@ -17,10 +17,12 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
   const today = dhakaTodayISO();
   const supabase = await createClient();
 
-  const [{ data: exams }, { data: subjects }, { data: rate }] = await Promise.all([
+  const [{ data: exams }, { data: subjects }, { data: rate }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
     supabase.from("mock_exam").select(`${MOCK_EXAM_COLS}, mock_registration(status)`).order("exam_date").order("start_time"),
     supabase.from("subject").select("id, name, level, programme(code, name)").eq("active", true).order("sort_order"),
     supabase.from("fee_rate").select("amount").eq("kind", "mock").lte("effective_from", today).order("effective_from", { ascending: false }).limit(1).maybeSingle(),
+    supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
+    supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
   ]);
 
   const all = ((exams ?? []) as any[]).map((e) => ({
@@ -59,6 +61,8 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
             subjects={((subjects ?? []) as any[]).filter((s) => s.programme?.code === "o_level" || s.programme?.code === "a_level")}
             defaultFee={rate?.amount != null ? Number(rate.amount) : 5000}
             seriesOptions={seriesOptions}
+            teachers={(teachers ?? []) as any}
+            teacherSubjects={(teacherSubjects ?? []) as any}
           />
         </details>
 
@@ -99,7 +103,7 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
             <div className="tblwrap">
               <table>
                 <thead>
-                  <tr><th>Date</th><th>Time</th><th>Subject</th><th>Room</th><th className="n">Fee</th><th className="n">Candidates</th><th>Status</th><th></th></tr>
+                  <tr><th>Date</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th><th className="n">Fee</th><th className="n">Candidates</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
                   {exams.map((e) => {
@@ -110,6 +114,9 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
                         <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmtDate(e.exam_date)}</td>
                         <td className="mono" style={{ whiteSpace: "nowrap" }}>{timeRange(e.start_time, e.duration_min) || "—"}</td>
                         <td><b style={{ color: "var(--ink)" }}>{subjectLabel(e.subject)}</b></td>
+                        <td className="sub">
+                          {e.teacher?.full_name ?? <span style={{ color: "var(--warn)" }}>Not set</span>}
+                        </td>
                         <td>{e.room ?? "—"}</td>
                         <td className="n mono">{taka(e.fee)}</td>
                         <td className="n mono">

@@ -12,11 +12,13 @@ export type MockExam = {
   status: "open" | "closed" | "cancelled";
   note: string | null;
   cancel_reason: string | null;
+  teacher_id: string | null;
+  teacher?: { id: string; full_name: string } | null;
   subject?: { name: string; level: string | null; programme?: { code: string; name: string } | null } | null;
 };
 
 export const MOCK_EXAM_COLS =
-  "id, series, subject_id, exam_date, start_time, duration_min, room, fee, status, note, cancel_reason, subject(name, level, programme(code, name))";
+  "id, series, subject_id, exam_date, start_time, duration_min, room, fee, status, note, cancel_reason, teacher_id, teacher(id, full_name), subject(name, level, programme(code, name))";
 
 export function subjectLabel(s: { name: string; level: string | null; programme?: { code: string } | null } | null | undefined) {
   if (!s) return "Subject";

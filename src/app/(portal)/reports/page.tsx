@@ -6,6 +6,7 @@ import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
 import ExportCsvButton from "@/components/ExportCsvButton";
 import CashFinanceReports from "./CashFinanceReports";
 import MockFeesReport from "./MockFeesReport";
+import TeacherMocksReport from "./TeacherMocksReport";
 import TeacherWorkloadReport from "./TeacherWorkloadReport";
 import TeacherStudentPaymentsReport from "./TeacherStudentPaymentsReport";
 import AnnouncementReachReport from "./AnnouncementReachReport";
@@ -225,6 +226,8 @@ export default async function ReportsPage({
             </div>
           </details>
 
+          <TeacherMocksReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} linkStudents />
+
           <TeacherWorkloadReport supabase={supabase} />
 
           <TeacherStudentPaymentsReport
@@ -306,6 +309,8 @@ export default async function ReportsPage({
               <ReportBars rows={subjectBars} emptyLabel="No billing on your subjects yet." />
             </div>
           </div>
+
+          {myTeacherRow?.id && <TeacherMocksReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} forTeacher />}
 
           {myTeacherRow?.id && (
             <TeacherWorkloadReport

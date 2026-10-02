@@ -1,5 +1,5 @@
 "use client";
-import { useActionState, useEffect, useRef } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 import Req from "@/components/Req";
 import { groupSubjects } from "@/lib/subjectGroups";
 import { hm, type MockExam } from "@/lib/mock";
@@ -14,9 +14,11 @@ const inputStyle: React.CSSProperties = {
 
 /** Add a mock exam, or edit one (when `exam` is given). */
 export default function MockExamForm({
-  subjects, defaultFee, exam, seriesOptions, hasRegistrations,
+  subjects, defaultFee, exam, seriesOptions, hasRegistrations, teachers, teacherSubjects,
 }: {
   subjects: SubjectOpt[];
+  teachers: { id: string; full_name: string }[];
+  teacherSubjects: { teacher_id: string; subject_id: string }[];
   defaultFee: number;
   exam?: MockExam;
   seriesOptions: string[];
@@ -28,6 +30,11 @@ export default function MockExamForm({
     if (state?.ok && !exam) ref.current?.reset();
   }, [state, exam]);
   const groups = groupSubjects(subjects);
+  const [subjectId, setSubjectId] = useState(exam?.subject_id ?? "");
+  const subjectTeachers = teachers.filter((t) => teacherSubjects.some((ts) => ts.subject_id === subjectId && ts.teacher_id === t.id));
+  const [teacherId, setTeacherId] = useState(exam?.teacher_id ?? "");
+  // One teacher for the subject: pick them. Several: leave the choice to admin.
+  const effectiveTeacher = teacherId || (subjectTeachers.length === 1 ? subjectTeachers[0].id : "");
 
   return (
     <form ref={ref} action={action} style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
@@ -40,7 +47,7 @@ export default function MockExamForm({
         </div>
         <div className="field">
           <label className="lbl" htmlFor="me-subject">Subject<Req /></label>
-          <select id="me-subject" style={inputStyle} name="subject_id" required defaultValue={exam?.subject_id ?? ""}>
+          <select id="me-subject" style={inputStyle} name="subject_id" required value={subjectId} onChange={(e) => { setSubjectId(e.target.value); setTeacherId(""); }}>
             <option value="" disabled>Choose…</option>
             {groups.map((g) => (
               <optgroup key={g.label} label={g.label}>
@@ -71,6 +78,15 @@ export default function MockExamForm({
           <label className="lbl" htmlFor="me-fee">Fee (৳)<Req /></label>
           <input id="me-fee" style={inputStyle} type="number" name="fee" min="0" step="0.01" inputMode="decimal" required defaultValue={exam?.fee ?? defaultFee} />
         </div>
+        <div className="field">
+          <label className="lbl" htmlFor="me-teacher">Teacher</label>
+          <select id="me-teacher" style={inputStyle} name="teacher_id" value={effectiveTeacher} onChange={(e) => setTeacherId(e.target.value)}>
+            <option value="">{subjectTeachers.length > 1 ? "Choose…" : "Not set"}</option>
+            {(subjectTeachers.length ? subjectTeachers : teachers).map((t) => (
+              <option key={t.id} value={t.id}>{t.full_name}</option>
+            ))}
+          </select>
+        </div>
         {exam && (
           <div className="field">
             <label className="lbl" htmlFor="me-status">Registration</label>
@@ -84,6 +100,10 @@ export default function MockExamForm({
       <div className="field">
         <label className="lbl" htmlFor="me-note">Note</label>
         <input id="me-note" style={inputStyle} name="note" defaultValue={exam?.note ?? ""} placeholder="Optional, e.g. Paper 1 and Paper 2, bring a calculator" />
+      </div>
+      <div className="sub">
+        Mock fees show in the teacher&apos;s report. A candidate who studies this subject here counts for their own class
+        teacher; the teacher above gets everyone else (for example mock-only candidates).
       </div>
       {exam && hasRegistrations && (
         <div className="sub">A new fee applies to new registrations only; students already registered keep the fee on their invoice.</div>

@@ -19,9 +19,23 @@ export default async function MockFeesReport({
     .from("mock_registration")
     .select(
       `id, status, mock_exam(id, series, exam_date, subject(name, level, programme(code))), subject(name, level, programme(code)),
-       invoice_line(amount, invoice(billing_month, net, paid, balance, status))`
+       invoice_line(id, amount, invoice(billing_month, net, paid, balance, status))`
     )
     .not("invoice_line_id", "is", null);
+
+  // Discounts given on a mock fee (Edit invoice) reduce what was charged for it.
+  const lineIds = ((data ?? []) as any[]).map((r) => r.invoice_line?.id).filter(Boolean) as string[];
+  const discByLine = new Map<string, number>();
+  if (lineIds.length) {
+    const { data: discs } = await supabase
+      .from("invoice_line")
+      .select("applies_to_line_id, amount")
+      .eq("type", "discount")
+      .in("applies_to_line_id", lineIds);
+    for (const d of (discs ?? []) as any[]) {
+      discByLine.set(d.applies_to_line_id, (discByLine.get(d.applies_to_line_id) ?? 0) + Math.abs(Number(d.amount)));
+    }
+  }
 
   type Row = {
     key: string; examId: string | null; series: string; date: string | null; subject: string;
@@ -33,7 +47,7 @@ export default async function MockFeesReport({
     const inv = line?.invoice;
     if (!line || !inv || inv.status === "void") continue;
     if (monthDate && inv.billing_month !== monthDate) continue;
-    const amt = Number(line.amount);
+    const amt = Number(line.amount) - (discByLine.get(line.id) ?? 0);
     const net = Number(inv.net);
     const share = net > 0 ? amt / net : 0;
     const key = r.mock_exam?.id ?? `subject:${subjectLabel(r.subject)}`;

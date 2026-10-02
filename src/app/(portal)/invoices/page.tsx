@@ -26,7 +26,8 @@ const lineTypeLabel: Record<string, string> = {
   admission: "Admission fee",
   tuition: "Tuition",
   discount: "Discount",
-  adjustment: "Adjustment",
+  adjustment: "Other charge",
+  mock: "Mock exam",
 };
 
 type StudentOpt = { id: string; reg_no: string; full_name: string };
@@ -216,6 +217,11 @@ export default async function InvoicesPage({
                     <div className="ptitle mono">{inv.invoice_no}</div>
                     <div className="sub">
                       {inv.student?.full_name} <span className="mono">({inv.student?.reg_no})</span>
+                      {inv.student?.id && (
+                        <a className="no-print" href={`/students/${inv.student.id}?invoice=${inv.id}#invoices`} style={{ marginLeft: 8 }}>
+                          Open to pay or edit
+                        </a>
+                      )}
                     </div>
                   </div>
                   <div className="spacer" />

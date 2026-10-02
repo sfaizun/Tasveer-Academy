@@ -26,7 +26,7 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
   const supabase = await createClient();
   const today = dhakaTodayISO();
 
-  const [{ data: examRow }, { data: regs }, { data: subjects }, { data: seriesRows }] = await Promise.all([
+  const [{ data: examRow }, { data: regs }, { data: subjects }, { data: seriesRows }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
     supabase.from("mock_exam").select(MOCK_EXAM_COLS).eq("id", id).maybeSingle(),
     supabase
       .from("mock_registration")
@@ -39,6 +39,8 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
       .order("created_at"),
     supabase.from("subject").select("id, name, level, programme(code, name)").eq("active", true).order("sort_order"),
     supabase.from("mock_exam").select("series"),
+    supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
+    supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
   ]);
   if (!examRow) notFound();
   const exam = examRow as unknown as MockExam;
@@ -84,6 +86,11 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
           <div style={{ padding: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
             <div><div className="lbl">Date</div><b style={{ color: "var(--ink)" }}>{fmtDate(exam.exam_date)}</b>{exam.exam_date < today && <div className="sub">past</div>}</div>
             <div><div className="lbl">Time</div><b style={{ color: "var(--ink)" }}>{timeRange(exam.start_time, exam.duration_min) || "Not set"}</b></div>
+            <div>
+              <div className="lbl">Teacher</div>
+              <b style={{ color: exam.teacher ? "var(--ink)" : "var(--warn)" }}>{exam.teacher?.full_name ?? "Not set"}</b>
+              <div className="sub">for candidates not in this subject&apos;s class</div>
+            </div>
             <div><div className="lbl">Room</div><b style={{ color: "var(--ink)" }}>{exam.room ?? "Not set"}</b></div>
             <div><div className="lbl">Fee</div><b className="mono" style={{ color: "var(--ink)" }}>{taka(exam.fee)}</b></div>
             <div><div className="lbl">Candidates</div><b style={{ color: "var(--ink)" }}>{active.length}</b><div className="sub">{collected} fully paid</div></div>
@@ -166,6 +173,8 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
               exam={exam}
               seriesOptions={[...new Set(((seriesRows ?? []) as any[]).map((s) => s.series))].sort()}
               hasRegistrations={all.length > 0}
+              teachers={(teachers ?? []) as any}
+              teacherSubjects={(teacherSubjects ?? []) as any}
             />
             <div style={{ padding: "0 16px 16px" }}>
               <CancelExamForm examId={exam.id} candidates={active.filter((r) => r.status !== "sat").length} />
