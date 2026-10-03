@@ -129,6 +129,16 @@ function ItemForm({
         )}
         {shrinking && <span className="sub">Preparing photo…</span>}
       </div>
+      {!removePhoto && (
+        <input
+          style={inputStyle}
+          type="url"
+          name="photo_url"
+          inputMode="url"
+          aria-label="Photo link"
+          placeholder="Or paste an image link, e.g. from a shop's product page (https://…)"
+        />
+      )}
 
       <div className="field">
         <label className="lbl" htmlFor="ci-name">Name<Req /></label>

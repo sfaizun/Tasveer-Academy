@@ -8,6 +8,38 @@ type State = { error?: string; ok?: boolean; savedId?: string } | null;
 const MAX_PHOTO_BYTES = 3 * 1024 * 1024;
 const PHOTO_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
+/** Downloads a photo from a web link (e.g. a shop's product image) so it can be stored like
+ * an uploaded one. Only public http(s) addresses; must be a JPG, PNG or WebP under 3 MB. */
+async function photoFromLink(raw: string): Promise<File | string> {
+  let u: URL;
+  try {
+    u = new URL(raw);
+  } catch {
+    return "That photo link isn't a valid web address.";
+  }
+  if (u.protocol !== "https:" && u.protocol !== "http:") return "The photo link must start with https://.";
+  if (/^(localhost|127\.|0\.|10\.|192\.168\.|169\.254\.|172\.(1[6-9]|2\d|3[01])\.|\[)/i.test(u.hostname)) {
+    return "That photo link can't be used.";
+  }
+  try {
+    const res = await fetch(u, {
+      signal: AbortSignal.timeout(15000),
+      redirect: "follow",
+      headers: { Accept: "image/jpeg,image/png,image/webp,image/*;q=0.8", "User-Agent": "Mozilla/5.0 (TasveerAcademyPortal)" },
+    });
+    if (!res.ok) return `Couldn't download the photo from that link (error ${res.status}).`;
+    const type = (res.headers.get("content-type") ?? "").split(";")[0].trim().toLowerCase();
+    if (!PHOTO_TYPES.includes(type)) return "That link isn't a JPG, PNG or WebP image.";
+    const buf = await res.arrayBuffer();
+    if (buf.byteLength > MAX_PHOTO_BYTES) return "The photo at that link is larger than 3 MB.";
+    if (buf.byteLength === 0) return "The photo link returned an empty file.";
+    const ext = type === "image/png" ? "png" : type === "image/webp" ? "webp" : "jpg";
+    return new File([buf], `photo.${ext}`, { type });
+  } catch {
+    return "Couldn't download the photo from that link. Check the link and try again.";
+  }
+}
+
 function revalidate() {
   revalidatePath("/canteen");
   revalidatePath("/canteen/menu");
@@ -41,6 +73,7 @@ export async function saveItem(_prev: State, formData: FormData): Promise<State>
   const cost = money(formData.get("cost_price"));
   const photo = formData.get("photo");
   const removePhoto = formData.get("remove_photo") === "on";
+  const photoLink = String(formData.get("photo_url") ?? "").trim();
 
   if (!name) return { error: "Enter the item's name." };
   if (!category_id) return { error: "Choose a category." };
@@ -49,7 +82,12 @@ export async function saveItem(_prev: State, formData: FormData): Promise<State>
   if (cost === "bad") return { error: "Enter a valid cost price, or leave it blank." };
   if (!Number.isFinite(batch_size) || batch_size < 1) return { error: "Batch size must be 1 or more." };
 
-  const file = photo instanceof File && photo.size > 0 ? photo : null;
+  let file = photo instanceof File && photo.size > 0 ? photo : null;
+  if (!file && photoLink && !removePhoto) {
+    const got = await photoFromLink(photoLink);
+    if (typeof got === "string") return { error: got };
+    file = got;
+  }
   if (file) {
     if (!PHOTO_TYPES.includes(file.type)) return { error: "The photo must be a JPG, PNG or WebP image." };
     if (file.size > MAX_PHOTO_BYTES) return { error: "The photo is larger than 3 MB. Please use a smaller one." };
