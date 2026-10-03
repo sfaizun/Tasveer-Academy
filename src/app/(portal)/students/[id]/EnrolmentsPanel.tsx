@@ -137,7 +137,7 @@ function AddSubjectForm({
         </div>
         <div className="field">
           <label className="lbl">Starting from</label>
-          <input style={inputStyle} type="month" name="from_month" min={currentMonth} defaultValue={currentMonth} />
+          <input style={inputStyle} type="month" name="from_month" defaultValue={currentMonth} />
         </div>
       </div>
 
@@ -150,9 +150,8 @@ function AddSubjectForm({
       </div>
       <div className="sub">
         Pick an existing batch to put this student on the routine they&apos;ll actually attend, or type a
-        new batch name to start one. If this month&apos;s bill has already been issued and isn&apos;t
-        fully paid yet, the new subject&apos;s fee is added to it right away. Otherwise it starts on the
-        next monthly bill.
+        new batch name to start one. You can start from a past month: the fee is added to each month&apos;s
+        bill from then up to now (a month with no bill gets one). A future month starts on that month&apos;s bill.
       </div>
     </form>
   );
