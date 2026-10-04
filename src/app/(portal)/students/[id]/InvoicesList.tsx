@@ -264,7 +264,17 @@ export default function InvoicesList({
                     <td className="n mono">{taka(inv.paid)}</td>
                     <td className="n mono">{taka(inv.balance)}</td>
                     <td className="n"><StatusChip status={inv.status} /></td>
-                    <td className="n">
+                    <td className="n" style={{ whiteSpace: "nowrap" }}>
+                      <a
+                        className="btn ghost"
+                        href={`/invoices/${inv.id}?print=1`}
+                        target="_blank"
+                        rel="noopener"
+                        style={{ fontSize: 12, padding: "6px 10px", marginRight: 6 }}
+                        title={`Print ${inv.invoice_no}`}
+                      >
+                        Print
+                      </a>
                       <button
                         className={isOpen ? "btn ghost" : canEdit && Number(inv.balance) > 0 && inv.status !== "void" ? "btn" : "btn ghost"}
                         type="button"
