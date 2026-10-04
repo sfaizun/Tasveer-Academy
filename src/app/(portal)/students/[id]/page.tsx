@@ -15,6 +15,7 @@ import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
 import MockExamsPanel, { type StudentMockRow } from "./MockExamsPanel";
 import { examTitle, timeRange, subjectLabel as mockSubjectLabel } from "@/lib/mock";
 import { dhakaTodayISO } from "@/lib/format";
+import { isCurrentEnrolment } from "@/lib/enrolment";
 
 export const dynamic = "force-dynamic";
 
@@ -167,11 +168,14 @@ export default async function StudentDetail({
   // This student's actual weekly routine, built the same way as the main Class Schedule
   // page: class_slot rows scoped to whichever class_groups their active subjects put them
   // in (O/A Level), or their class_level (Junior/mock-only has no ongoing class at all).
-  const activeClassGroupIds = (enrolments ?? [])
-    .filter((e: any) => e.status === "active" && e.class_group_id)
+  // Only subjects the student is studying this month: started, and not ended.
+  const currentEnrolments = ((enrolments ?? []) as any[]).filter((e) => isCurrentEnrolment(e));
+  const activeClassGroupIds = currentEnrolments
+    .filter((e: any) => e.class_group_id)
     .map((e: any) => e.class_group_id as string);
 
   let routineRows: RoutineRow[] = [];
+  const scheduledGroupIds = new Set<string>();
   if (activeClassGroupIds.length > 0 || s.class_level_id) {
     const orParts: string[] = [];
     if (activeClassGroupIds.length > 0) orParts.push(`class_group_id.in.(${activeClassGroupIds.join(",")})`);
@@ -188,6 +192,7 @@ export default async function StudentDetail({
       .order("weekday")
       .order("start_time");
 
+    for (const sl of (slots ?? []) as any[]) if (sl.class_group_id) scheduledGroupIds.add(sl.class_group_id);
     routineRows = ((slots ?? []) as any[]).map((r) => {
       if (r.class_group) {
         const sub = r.class_group.subject;
@@ -371,6 +376,13 @@ export default async function StudentDetail({
       {isAdmin && (
         <StudentRoutine
           rows={routineRows}
+          unscheduled={currentEnrolments
+            .filter((e: any) => !e.class_group_id || !scheduledGroupIds.has(e.class_group_id))
+            .map((e: any) => ({
+              id: e.id,
+              title: `${e.subject?.name ?? "Subject"}${e.level ? ` (${String(e.level).toUpperCase()})` : ""}${e.class_group?.batch_name ? ` — Batch ${e.class_group.batch_name}` : ""}`,
+              teacherName: e.teacher?.full_name ?? "—",
+            }))}
           mocks={mockRows
             .filter((r) => r.exam && r.exam.status !== "cancelled" && r.status !== "withdrawn" && r.exam.exam_date >= today)
             .map((r) => ({

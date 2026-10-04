@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isOngoingEnrolment } from "@/lib/enrolment";
 import { fmtDate } from "@/lib/format";
 import ExportCsvButton from "@/components/ExportCsvButton";
 import { targetLabel } from "../announcements/shared";
@@ -38,7 +39,7 @@ export default async function AnnouncementReachReport({
       .order("published_at", { ascending: false })
       .limit(20),
     supabase.from("student").select("id, full_name, reg_no, class_level_id").eq("status", "active"),
-    supabase.from("enrolment").select("student_id, class_group_id").eq("status", "active"),
+    supabase.from("enrolment").select("student_id, class_group_id, status, from_month, to_month").eq("status", "active"),
   ]);
 
   const anns = (annRows ?? []) as any[];
@@ -59,7 +60,7 @@ export default async function AnnouncementReachReport({
     byClassLevel.set(s.class_level_id, arr);
   }
   const byClassGroup = new Map<string, string[]>();
-  for (const e of (enrolments ?? []) as any[]) {
+  for (const e of ((enrolments ?? []) as any[]).filter((x) => isOngoingEnrolment(x))) {
     const arr = byClassGroup.get(e.class_group_id) ?? [];
     arr.push(e.student_id);
     byClassGroup.set(e.class_group_id, arr);

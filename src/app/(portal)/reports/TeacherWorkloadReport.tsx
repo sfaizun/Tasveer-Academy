@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isCurrentEnrolment } from "@/lib/enrolment";
 import ExportCsvButton from "@/components/ExportCsvButton";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -29,7 +30,7 @@ export default async function TeacherWorkloadReport({
   const [{ data: teachers }, { data: classGroups }, { data: activeEnrolments }, { data: slots }] = await Promise.all([
     supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
     supabase.from("class_group").select("id, teacher_id").eq("active", true),
-    supabase.from("enrolment").select("teacher_id, student_id").eq("status", "active"),
+    supabase.from("enrolment").select("teacher_id, student_id, status, from_month, to_month").eq("status", "active"),
     supabase.from("class_slot").select("start_time, end_time, teacher_id, class_group(teacher_id)"),
   ]);
 
@@ -38,7 +39,7 @@ export default async function TeacherWorkloadReport({
     .map((t) => {
       const classes = ((classGroups ?? []) as any[]).filter((cg) => cg.teacher_id === t.id).length;
       const students = new Set(
-        ((activeEnrolments ?? []) as any[]).filter((e) => e.teacher_id === t.id).map((e) => e.student_id)
+        ((activeEnrolments ?? []) as any[]).filter((e) => e.teacher_id === t.id && isCurrentEnrolment(e)).map((e) => e.student_id)
       ).size;
       const minutes = ((slots ?? []) as any[])
         .filter((sl) => (sl.teacher_id ?? sl.class_group?.teacher_id) === t.id)

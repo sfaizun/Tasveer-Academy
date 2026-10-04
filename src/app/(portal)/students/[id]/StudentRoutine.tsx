@@ -18,7 +18,17 @@ export type RoutineRow = {
 // admin-only for now (gated by the page, not here).
 export type RoutineMock = { id: string; date: string; time: string; title: string; series: string; room: string | null };
 
-export default function StudentRoutine({ rows, mocks = [] }: { rows: RoutineRow[]; mocks?: RoutineMock[] }) {
+export type UnscheduledSubject = { id: string; title: string; teacherName: string };
+
+export default function StudentRoutine({
+  rows,
+  mocks = [],
+  unscheduled = [],
+}: {
+  rows: RoutineRow[];
+  mocks?: RoutineMock[];
+  unscheduled?: UnscheduledSubject[];
+}) {
   const byDay = WEEKDAYS.map((_, wd) =>
     rows.filter((r) => r.weekday === wd).sort((a, b) => a.start_time.localeCompare(b.start_time))
   );
@@ -40,8 +50,21 @@ export default function StudentRoutine({ rows, mocks = [] }: { rows: RoutineRow[
             Print
           </button>
         </div>
-        {!hasAny && (
-          <div className="sub" style={{ padding: 18 }}>No classes scheduled yet for this student&apos;s active subjects.</div>
+        {!hasAny && unscheduled.length === 0 && (
+          <div className="sub" style={{ padding: 18 }}>No subjects this month.</div>
+        )}
+        {unscheduled.length > 0 && (
+          <div style={{ padding: "12px 18px 16px" }}>
+            <div className="lbl" style={{ marginBottom: 6 }}>Studying this month, no class times set yet</div>
+            {unscheduled.map((u) => (
+              <div key={u.id} className="sub" style={{ padding: "3px 0" }}>
+                <b style={{ color: "var(--ink)", fontWeight: 500 }}>{u.title}</b> · {u.teacherName}
+              </div>
+            ))}
+            <div className="sub no-print" style={{ marginTop: 6 }}>
+              Add this batch&apos;s weekly times on the Class Schedule page and they will appear here.
+            </div>
+          </div>
         )}
       </div>
 

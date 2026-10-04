@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isCurrentEnrolment } from "@/lib/enrolment";
 import { dhakaTodayISO, fmtDate } from "@/lib/format";
 import { subjectLabel, timeRange } from "@/lib/mock";
 import { createClient } from "@/lib/supabase/server";
@@ -82,11 +83,11 @@ export default async function RosterPage() {
           const studentIds = await myStudentIds(supabase);
           if (studentIds.length === 0) return { classGroupIds: new Set<string>(), classLevelIds: new Set<string>() };
           const [{ data: enrolments }, { data: students }] = await Promise.all([
-            supabase.from("enrolment").select("class_group_id").eq("status", "active").in("student_id", studentIds),
+            supabase.from("enrolment").select("class_group_id, status, from_month, to_month").eq("status", "active").in("student_id", studentIds),
             supabase.from("student").select("class_level_id").in("id", studentIds),
           ]);
           return {
-            classGroupIds: new Set(((enrolments ?? []) as any[]).map((e) => e.class_group_id).filter(Boolean)),
+            classGroupIds: new Set(((enrolments ?? []) as any[]).filter((e) => isCurrentEnrolment(e)).map((e) => e.class_group_id).filter(Boolean)),
             classLevelIds: new Set(((students ?? []) as any[]).map((s) => s.class_level_id).filter(Boolean)),
           };
         })()

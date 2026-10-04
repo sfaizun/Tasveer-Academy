@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import { isCurrentEnrolment } from "@/lib/enrolment";
 import { dhakaToday } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -39,7 +40,7 @@ export default async function TeacherDashboard({ appUserId, fullName }: { appUse
     supabase
       .from("class_group")
       .select(
-        "id, batch_name, active, subject(name, level, programme(name)), enrolment(id, status, student(id, reg_no, full_name, phone, guardian(full_name, phone, is_primary)))"
+        "id, batch_name, active, subject(name, level, programme(name)), enrolment(id, status, from_month, to_month, student(id, reg_no, full_name, phone, guardian(full_name, phone, is_primary)))"
       )
       .eq("teacher_id", teacher.id),
   ]);
@@ -48,7 +49,7 @@ export default async function TeacherDashboard({ appUserId, fullName }: { appUse
   const groups = (classGroups ?? []).filter((g: any) => g.active);
 
   const totalStudents = new Set(
-    groups.flatMap((g: any) => (g.enrolment ?? []).filter((e: any) => e.status === "active").map((e: any) => e.student?.id))
+    groups.flatMap((g: any) => (g.enrolment ?? []).filter((e: any) => isCurrentEnrolment(e)).map((e: any) => e.student?.id))
   ).size;
 
   return (
@@ -102,7 +103,7 @@ export default async function TeacherDashboard({ appUserId, fullName }: { appUse
         </div>
 
         {groups.map((g: any) => {
-          const roster = (g.enrolment ?? []).filter((e: any) => e.status === "active");
+          const roster = (g.enrolment ?? []).filter((e: any) => isCurrentEnrolment(e));
           return (
             <div className="panel" key={g.id}>
               <div className="phead">
