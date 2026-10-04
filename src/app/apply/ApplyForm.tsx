@@ -655,9 +655,9 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   ? programmeExams.length
                     ? `${programme === "o_level" ? "O Level" : "A Level"}: choose the mock exams to sit, one per subject`
                     : "No mock exams are open for registration right now. Please contact the academy."
-                  : `${programme === "o_level" ? "O Level" : "A Level"} — up to 10 subjects, ${taka(
-                      subjectOptions[0]?.monthlyFee ?? 0
-                    )}/subject/month varies by level`
+                  : programme === "o_level"
+                  ? `O Level: up to 10 subjects, ${taka(subjectOptions[0]?.monthlyFee ?? 0)}/subject/month`
+                  : "A Level: up to 10 subjects, the monthly fee is shown for each subject"
               }
             >
               {subjectRows.map((row, i) => {

@@ -22,7 +22,7 @@ export default async function AdminDashboard() {
     supabase.from("student").select("id", { count: "exact", head: true }).eq("status", "active"),
     supabase.from("teacher").select("id", { count: "exact", head: true }).eq("active", true),
     supabase.from("subject").select("id", { count: "exact", head: true }).eq("active", true),
-    supabase.from("fee_rate").select("kind, programme_id, class_level_id, level, amount, effective_from, created_at"),
+    supabase.from("fee_rate").select("kind, programme_id, class_level_id, level, subject_id, amount, effective_from, created_at"),
     supabase.from("invoice").select("net, paid, balance, status").eq("billing_month", month),
     supabase.from("payment").select("amount").eq("status", "confirmed").gte("received_on", month),
     supabase.from("application").select("id", { count: "exact", head: true }).eq("status", "submitted"),
@@ -42,7 +42,7 @@ export default async function AdminDashboard() {
   const currentRates = new Map<string, { amount: number; effective_from: string; created_at: string; junior: boolean }>();
   for (const r of rates.data ?? []) {
     if (!r.effective_from || r.effective_from > today) continue;
-    const key = [r.kind, r.programme_id ?? "", r.class_level_id ?? "", r.level ?? ""].join("|");
+    const key = [r.kind, r.programme_id ?? "", r.class_level_id ?? "", r.level ?? "", r.subject_id ?? ""].join("|");
     const cur = currentRates.get(key);
     if (!cur || r.effective_from > cur.effective_from || (r.effective_from === cur.effective_from && r.created_at > cur.created_at)) {
       currentRates.set(key, { amount: Number(r.amount), effective_from: r.effective_from, created_at: r.created_at, junior: !!r.class_level_id });

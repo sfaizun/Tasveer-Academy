@@ -10,7 +10,7 @@ export async function addFeeRate(_prev: State, formData: FormData): Promise<Stat
   const effective_from = String(formData.get("effective_from") ?? "").trim();
   const note = String(formData.get("note") ?? "").trim();
 
-  const [kind, programme_id, level, class_level_id] = target.split("|");
+  const [kind, programme_id, level, class_level_id, subject_id] = target.split("|");
   // programme_id can be blank: the mock exam fee is global (same rate for O and A Level).
   if (!kind) return { error: "Choose which rate this is for." };
 
@@ -28,6 +28,7 @@ export async function addFeeRate(_prev: State, formData: FormData): Promise<Stat
     programme_id: programme_id || null,
     level: level || null,
     class_level_id: class_level_id || null,
+    subject_id: subject_id || null,
     amount,
     effective_from,
     note: note || null,

@@ -68,7 +68,11 @@ export default async function ApplyPage() {
         name: s.name,
         level: s.level as "as" | "a2" | null,
         programmeCode: prog?.code ?? "",
-        monthlyFee: subjectFeeByProgLevel.get(`${s.programme_id}:${s.level ?? ""}`) ?? 0,
+        // Each subject's own price if it has one (e.g. Law), else the standard for its level.
+        monthlyFee:
+          s.monthly_fee != null
+            ? Number(s.monthly_fee)
+            : subjectFeeByProgLevel.get(`${s.programme_id}:${s.level ?? ""}`) ?? 0,
         teachers: (teachersBySubject.get(s.id) ?? []).sort((a, b) => a.name.localeCompare(b.name)),
       };
     }),
