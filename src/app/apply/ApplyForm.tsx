@@ -7,7 +7,7 @@ export type CatalogueData = {
   admissionFee: number;
   mockFee: number;
   // Open, upcoming mock exams (one per subject per series) a mock-only candidate can sit.
-  mockExams: { id: string; subjectId: string; series: string; examDate: string; startTime: string | null; fee: number }[];
+  mockExams: { id: string; subjectId: string; series: string; fee: number }[];
   classLevels: { id: string; code: string; name: string; monthlyFee: number }[];
   subjects: {
     id: string;
@@ -203,8 +203,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   const mockFeeTotal = chosenExams.reduce((a, e) => a + e.fee, 0);
   function examLabel(e: CatalogueData["mockExams"][number]) {
     const sub = catalogue.subjects.find((s) => s.id === e.subjectId);
-    const d = new Date(e.examDate + "T00:00:00Z").toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" });
-    return `${sub ? subjectLabel(sub) : "Subject"}, ${e.series}, ${d}${e.startTime ? ` ${e.startTime.slice(0, 5)}` : ""}`;
+    return `${sub ? subjectLabel(sub) : "Subject"}, ${e.series}`;
   }
 
   // Admission fee is charged per subject for O Level / A Level (one unit of the admission

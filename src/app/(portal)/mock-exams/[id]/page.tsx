@@ -4,8 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import PrintButton from "@/components/PrintButton";
-import { dhakaTodayISO, fmtDate, fmtDateTime, taka } from "@/lib/format";
-import { EXAM_STATUS, MOCK_EXAM_COLS, REG_STATUS, subjectLabel, timeRange, type MockExam } from "@/lib/mock";
+import { fmtDateTime, taka } from "@/lib/format";
+import { EXAM_STATUS, MOCK_EXAM_COLS, REG_STATUS, subjectLabel, type MockExam } from "@/lib/mock";
 import MockExamForm from "../MockExamForm";
 import { AttendanceSelect, CancelExamForm, RegisterForm, WithdrawButton } from "../MockBits";
 
@@ -24,7 +24,6 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
   if (me?.role !== "admin") redirect("/dashboard");
   const { id } = await params;
   const supabase = await createClient();
-  const today = dhakaTodayISO();
 
   const [{ data: examRow }, { data: regs }, { data: subjects }, { data: seriesRows }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
     supabase.from("mock_exam").select(MOCK_EXAM_COLS).eq("id", id).maybeSingle(),
@@ -84,14 +83,11 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
             <PrintButton label="Print attendance sheet" />
           </div>
           <div style={{ padding: 16, display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))" }}>
-            <div><div className="lbl">Date</div><b style={{ color: "var(--ink)" }}>{fmtDate(exam.exam_date)}</b>{exam.exam_date < today && <div className="sub">past</div>}</div>
-            <div><div className="lbl">Time</div><b style={{ color: "var(--ink)" }}>{timeRange(exam.start_time, exam.duration_min) || "Not set"}</b></div>
             <div>
               <div className="lbl">Teacher</div>
               <b style={{ color: exam.teacher ? "var(--ink)" : "var(--warn)" }}>{exam.teacher?.full_name ?? "Not set"}</b>
               <div className="sub">for candidates not in this subject&apos;s class</div>
             </div>
-            <div><div className="lbl">Room</div><b style={{ color: "var(--ink)" }}>{exam.room ?? "Not set"}</b></div>
             <div><div className="lbl">Fee</div><b className="mono" style={{ color: "var(--ink)" }}>{taka(exam.fee)}</b></div>
             <div><div className="lbl">Candidates</div><b style={{ color: "var(--ink)" }}>{active.length}</b><div className="sub">{collected} fully paid</div></div>
           </div>

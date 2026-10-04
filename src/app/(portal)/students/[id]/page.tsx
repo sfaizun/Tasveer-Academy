@@ -13,8 +13,7 @@ import InvoicesList from "./InvoicesList";
 import AdmissionFeePanel from "./AdmissionFeePanel";
 import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
 import MockExamsPanel, { type StudentMockRow } from "./MockExamsPanel";
-import { examTitle, timeRange, subjectLabel as mockSubjectLabel } from "@/lib/mock";
-import { dhakaTodayISO } from "@/lib/format";
+import { examTitle } from "@/lib/mock";
 import { isCurrentEnrolment } from "@/lib/enrolment";
 
 export const dynamic = "force-dynamic";
@@ -102,14 +101,13 @@ export default async function StudentDetail({
     : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
   // Mock exams: this student's registrations, and (admin) the open exams they could be added to.
-  const today = dhakaTodayISO();
   const [{ data: mockRegs }, { data: openMockExams }] = isSubjectBased
     ? await Promise.all([
         supabase
           .from("mock_registration")
           .select(
             `id, status, fee, withdrawn_reason, created_at,
-             mock_exam(id, series, exam_date, start_time, duration_min, room, status, subject(name, level, programme(code))),
+             mock_exam(id, series, status, subject(name, level, programme(code))),
              subject(name, level, programme(code)),
              invoice_line(invoice(invoice_no, status))`
           )
@@ -118,10 +116,9 @@ export default async function StudentDetail({
         isAdmin
           ? supabase
               .from("mock_exam")
-              .select("id, series, exam_date, start_time, status, fee, subject(name, level, programme(code))")
+              .select("id, series, exam_date, status, fee, subject(name, level, programme(code))")
               .eq("status", "open")
-              .gte("exam_date", today)
-              .order("exam_date")
+              .order("series")
           : Promise.resolve({ data: [] as any[] }),
       ])
     : [{ data: [] as any[] }, { data: [] as any[] }];
@@ -141,7 +138,7 @@ export default async function StudentDetail({
     .filter((e) => e.subject?.programme?.code === s.programme?.code && !registeredExamIds.has(e.id))
     .map((e) => ({
       id: e.id,
-      label: `${examTitle(e)}${e.start_time ? ` ${timeRange(e.start_time, null)}` : ""} · ৳${Number(e.fee).toLocaleString("en-IN")}`,
+      label: `${examTitle(e)} · ৳${Number(e.fee).toLocaleString("en-IN")}`,
     }));
 
   const outstanding = (invoices ?? [])
@@ -382,16 +379,6 @@ export default async function StudentDetail({
               id: e.id,
               title: `${e.subject?.name ?? "Subject"}${e.level ? ` (${String(e.level).toUpperCase()})` : ""}${e.class_group?.batch_name ? ` — Batch ${e.class_group.batch_name}` : ""}`,
               teacherName: e.teacher?.full_name ?? "—",
-            }))}
-          mocks={mockRows
-            .filter((r) => r.exam && r.exam.status !== "cancelled" && r.status !== "withdrawn" && r.exam.exam_date >= today)
-            .map((r) => ({
-              id: r.id,
-              date: r.exam!.exam_date,
-              time: timeRange(r.exam!.start_time, r.exam!.duration_min),
-              title: `${mockSubjectLabel(r.exam!.subject)} mock`,
-              series: r.exam!.series,
-              room: r.exam!.room,
             }))}
         />
       )}

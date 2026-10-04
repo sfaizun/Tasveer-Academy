@@ -51,8 +51,6 @@ export default async function ApplyPage() {
       id: m.id,
       subjectId: m.subject_id,
       series: m.series,
-      examDate: m.exam_date,
-      startTime: m.start_time ?? null,
       fee: Number(m.fee),
     })),
     classLevels: (catalogueRaw.class_levels ?? []).map((c: any) => ({

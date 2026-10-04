@@ -2,7 +2,7 @@
 import { useActionState, useEffect, useRef, useState } from "react";
 import Req from "@/components/Req";
 import { groupSubjects } from "@/lib/subjectGroups";
-import { hm, type MockExam } from "@/lib/mock";
+import { type MockExam } from "@/lib/mock";
 import { createMockExam, updateMockExam } from "./actions";
 
 type SubjectOpt = { id: string; name: string; level: string | null; programme: { code: string; name: string } | null };
@@ -57,22 +57,6 @@ export default function MockExamForm({
               </optgroup>
             ))}
           </select>
-        </div>
-        <div className="field">
-          <label className="lbl" htmlFor="me-date">Exam date<Req /></label>
-          <input id="me-date" style={inputStyle} type="date" name="exam_date" required defaultValue={exam?.exam_date ?? ""} />
-        </div>
-        <div className="field">
-          <label className="lbl" htmlFor="me-time">Start time</label>
-          <input id="me-time" style={inputStyle} type="time" name="start_time" defaultValue={hm(exam?.start_time)} />
-        </div>
-        <div className="field">
-          <label className="lbl" htmlFor="me-dur">Duration (minutes)</label>
-          <input id="me-dur" style={inputStyle} type="number" name="duration_min" min="10" max="600" step="5" defaultValue={exam?.duration_min ?? ""} placeholder="e.g. 120" />
-        </div>
-        <div className="field">
-          <label className="lbl" htmlFor="me-room">Room</label>
-          <input id="me-room" style={inputStyle} name="room" defaultValue={exam?.room ?? ""} placeholder="e.g. Room 3" />
         </div>
         <div className="field">
           <label className="lbl" htmlFor="me-fee">Fee (৳)<Req /></label>

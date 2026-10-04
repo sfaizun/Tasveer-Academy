@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import ExportCsvButton from "@/components/ExportCsvButton";
-import { fmtDate, taka } from "@/lib/format";
+import { taka } from "@/lib/format";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -8,7 +8,7 @@ type Row = {
   registration_id: string;
   mock_exam_id: string;
   series: string;
-  exam_date: string;
+  exam_date: string | null;
   subject_name: string;
   level: string | null;
   programme_code: string;
@@ -81,7 +81,7 @@ export default async function TeacherMocksReport({
       <table>
         <thead>
           <tr>
-            <th>Exam</th><th>Date</th><th className="n">Candidates</th>
+            <th>Exam</th><th className="n">Candidates</th>
             <th className="n">Charged</th><th className="n">Collected</th><th className="n">Due</th>
           </tr>
         </thead>
@@ -117,7 +117,6 @@ export default async function TeacherMocksReport({
                     </table>
                   </details>
                 </td>
-                <td className="mono sub" style={{ whiteSpace: "nowrap" }}>{fmtDate(e.exam_date)}</td>
                 <td className="n mono">{t.candidates}</td>
                 <td className="n mono">{taka(t.charged)}</td>
                 <td className="n mono" style={{ color: "var(--ok)" }}>{taka(t.collected)}</td>
@@ -142,8 +141,8 @@ export default async function TeacherMocksReport({
         <div className="spacer" />
         <ExportCsvButton
           filename={`${forTeacher ? "my-mock-exams" : "mock-exams-by-teacher"}-${fileTag}`}
-          headers={["Teacher", "Series", "Subject", "Exam date", "Student", "Reg. no.", "Status", "Charged", "Collected", "Due"]}
-          rows={rows.map((r) => [r.teacher_name ?? "No teacher set", r.series, subj(r), r.exam_date, r.student_name, r.reg_no, STATUS[r.status] ?? r.status, r.charged, r.collected, r.due])}
+          headers={["Teacher", "Series", "Subject", "Student", "Reg. no.", "Status", "Charged", "Collected", "Due"]}
+          rows={rows.map((r) => [r.teacher_name ?? "No teacher set", r.series, subj(r), r.student_name, r.reg_no, STATUS[r.status] ?? r.status, r.charged, r.collected, r.due])}
         />
       </summary>
       <div style={{ padding: "14px 18px 4px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12 }}>

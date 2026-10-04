@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { createClient } from "@/lib/supabase/server";
 import ExportCsvButton from "@/components/ExportCsvButton";
-import { fmtDate, taka } from "@/lib/format";
+import { taka } from "@/lib/format";
 import { subjectLabel } from "@/lib/mock";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -67,7 +67,7 @@ export default async function MockFeesReport({
     row.due += share * Number(inv.balance);
     rows.set(key, row);
   }
-  const list = [...rows.values()].sort((a, b) => a.series.localeCompare(b.series) || String(a.date).localeCompare(String(b.date)) || a.subject.localeCompare(b.subject));
+  const list = [...rows.values()].sort((a, b) => a.series.localeCompare(b.series) || a.subject.localeCompare(b.subject));
   const tot = list.reduce(
     (a, r) => ({ c: a.c + r.candidates, ch: a.ch + r.charged, co: a.co + r.collected, d: a.d + r.due }),
     { c: 0, ch: 0, co: 0, d: 0 },
@@ -81,8 +81,8 @@ export default async function MockFeesReport({
         <div className="spacer" />
         <ExportCsvButton
           filename={`mock-exam-fees-${fileTag}`}
-          headers={["Series", "Subject", "Exam date", "Candidates", "Sat", "Absent", "Charged", "Collected", "Due"]}
-          rows={list.map((r) => [r.series, r.subject, r.date ?? "", r.candidates, r.sat, r.absent, r.charged, Math.round(r.collected * 100) / 100, Math.round(r.due * 100) / 100])}
+          headers={["Series", "Subject", "Candidates", "Sat", "Absent", "Charged", "Collected", "Due"]}
+          rows={list.map((r) => [r.series, r.subject, r.candidates, r.sat, r.absent, r.charged, Math.round(r.collected * 100) / 100, Math.round(r.due * 100) / 100])}
         />
       </summary>
       <div style={{ padding: "14px 18px 4px", display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
@@ -94,14 +94,13 @@ export default async function MockFeesReport({
       <div className="tblwrap">
         <table>
           <thead>
-            <tr><th>Series</th><th>Subject</th><th>Date</th><th className="n">Candidates</th><th className="n">Sat / absent</th><th className="n">Charged</th><th className="n">Collected</th><th className="n">Due</th></tr>
+            <tr><th>Series</th><th>Subject</th><th className="n">Candidates</th><th className="n">Sat / absent</th><th className="n">Charged</th><th className="n">Collected</th><th className="n">Due</th></tr>
           </thead>
           <tbody>
             {list.map((r) => (
               <tr key={r.key}>
                 <td className="sub">{r.series}</td>
                 <td>{r.examId ? <Link href={`/mock-exams/${r.examId}`}><b>{r.subject}</b></Link> : <b>{r.subject}</b>}</td>
-                <td className="mono sub">{r.date ? fmtDate(r.date) : "—"}</td>
                 <td className="n mono">{r.candidates}</td>
                 <td className="n mono">{r.sat} / {r.absent}</td>
                 <td className="n mono">{taka(r.charged)}</td>
@@ -109,7 +108,7 @@ export default async function MockFeesReport({
                 <td className="n mono" style={{ color: r.due > 0.5 ? "var(--crit)" : undefined }}>{taka(r.due)}</td>
               </tr>
             ))}
-            {list.length === 0 && <tr><td colSpan={8} className="sub">No mock exam fees{monthDate ? " billed in this month" : " yet"}.</td></tr>}
+            {list.length === 0 && <tr><td colSpan={7} className="sub">No mock exam fees{monthDate ? " billed in this month" : " yet"}.</td></tr>}
           </tbody>
         </table>
       </div>

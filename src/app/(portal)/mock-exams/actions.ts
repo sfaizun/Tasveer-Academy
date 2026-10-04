@@ -20,11 +20,6 @@ function refresh(examId?: string | null, studentId?: string | null) {
 function readExam(formData: FormData) {
   const series = String(formData.get("series") ?? "").trim();
   const subject_id = String(formData.get("subject_id") ?? "").trim();
-  const exam_date = String(formData.get("exam_date") ?? "").trim();
-  const start_time = String(formData.get("start_time") ?? "").trim() || null;
-  const durRaw = String(formData.get("duration_min") ?? "").trim();
-  const duration_min = durRaw ? Math.round(Number(durRaw)) : null;
-  const room = String(formData.get("room") ?? "").trim() || null;
   const feeRaw = String(formData.get("fee") ?? "").trim();
   const fee = Math.round(Number(feeRaw) * 100) / 100;
   const note = String(formData.get("note") ?? "").trim() || null;
@@ -32,12 +27,9 @@ function readExam(formData: FormData) {
 
   if (!series) return { error: "Enter the series name, e.g. Winter Mocks 2026." };
   if (!subject_id) return { error: "Choose the subject." };
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(exam_date)) return { error: "Choose the exam date." };
-  if (duration_min != null && (!Number.isFinite(duration_min) || duration_min < 10 || duration_min > 600)) {
-    return { error: "Duration must be between 10 and 600 minutes." };
-  }
   if (!feeRaw || !Number.isFinite(fee) || fee < 0) return { error: "Enter the exam fee." };
-  return { values: { series, subject_id, exam_date, start_time, duration_min, room, fee, note, teacher_id } };
+  // Mock exams have no date, time or room: just series, subject, fee and teacher.
+  return { values: { series, subject_id, fee, note, teacher_id } };
 }
 
 export async function createMockExam(_prev: State, formData: FormData): Promise<State> {

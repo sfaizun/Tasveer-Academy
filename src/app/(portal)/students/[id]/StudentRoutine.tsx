@@ -1,6 +1,5 @@
 "use client";
 import { WEEKDAYS, fmtTime } from "../../roster/shared";
-import { fmtDate } from "@/lib/format";
 
 export type RoutineRow = {
   id: string;
@@ -16,17 +15,13 @@ export type RoutineRow = {
 // rows attached to their active subject enrolments (and, for Junior students, their class
 // level), reusing the same day-grouped/print layout as the main Class Schedule page. Kept
 // admin-only for now (gated by the page, not here).
-export type RoutineMock = { id: string; date: string; time: string; title: string; series: string; room: string | null };
-
 export type UnscheduledSubject = { id: string; title: string; teacherName: string };
 
 export default function StudentRoutine({
   rows,
-  mocks = [],
   unscheduled = [],
 }: {
   rows: RoutineRow[];
-  mocks?: RoutineMock[];
   unscheduled?: UnscheduledSubject[];
 }) {
   const byDay = WEEKDAYS.map((_, wd) =>
@@ -112,30 +107,6 @@ export default function StudentRoutine({
         </div>
       )}
 
-      {mocks.length > 0 && (
-        <div className="panel" style={{ marginTop: 16 }}>
-          <div className="phead">
-            <div className="ptitle">Upcoming mock exams</div>
-            <div className="spacer" />
-            <div className="sub">{mocks.length} exam{mocks.length === 1 ? "" : "s"}</div>
-          </div>
-          <div className="tblwrap">
-            <table>
-              <thead><tr><th>Date</th><th>Time</th><th>Exam</th><th>Room</th></tr></thead>
-              <tbody>
-                {[...mocks].sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time)).map((m) => (
-                  <tr key={m.id}>
-                    <td className="mono sub">{fmtDate(m.date)}</td>
-                    <td className="mono sub">{m.time || "—"}</td>
-                    <td><b>{m.title}</b><div className="sub">{m.series}</div></td>
-                    <td className="sub">{m.room ?? "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
     </>
   );
 }

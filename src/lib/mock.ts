@@ -4,7 +4,7 @@ export type MockExam = {
   id: string;
   series: string;
   subject_id: string;
-  exam_date: string;
+  exam_date: string | null;
   start_time: string | null;
   duration_min: number | null;
   room: string | null;
@@ -41,7 +41,7 @@ export function timeRange(start: string | null | undefined, durationMin: number 
 }
 
 export function examTitle(e: Pick<MockExam, "series" | "exam_date"> & { subject?: MockExam["subject"] }) {
-  return `${subjectLabel(e.subject)}, ${e.series}, ${fmtDate(e.exam_date)}`;
+  return `${subjectLabel(e.subject)}, ${e.series}${e.exam_date ? `, ${fmtDate(e.exam_date)}` : ""}`;
 }
 
 export const REG_STATUS: Record<string, { text: string; cls: string }> = {

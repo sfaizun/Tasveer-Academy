@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { fmtDate, taka } from "@/lib/format";
-import { REG_STATUS, subjectLabel, timeRange } from "@/lib/mock";
+import { taka } from "@/lib/format";
+import { REG_STATUS, subjectLabel } from "@/lib/mock";
 import { RegisterForm, WithdrawButton } from "../../mock-exams/MockBits";
 
 export type StudentMockRow = {
@@ -9,8 +9,7 @@ export type StudentMockRow = {
   fee: number | null;
   withdrawn_reason: string | null;
   exam: {
-    id: string; series: string; exam_date: string; start_time: string | null; duration_min: number | null;
-    room: string | null; status: string; subject: { name: string; level: string | null; programme?: { code: string } | null } | null;
+    id: string; series: string; status: string; subject: { name: string; level: string | null; programme?: { code: string } | null } | null;
   } | null;
   subject: { name: string; level: string | null; programme?: { code: string } | null } | null;
   invoice: { invoice_no: string; status: string } | null;
@@ -48,7 +47,7 @@ export default function MockExamsPanel({
       <div className="tblwrap">
         <table>
           <thead>
-            <tr><th>Exam</th><th>Date</th><th>Room</th><th>Fee</th><th>Attendance</th>{canEdit && <th></th>}</tr>
+            <tr><th>Exam</th><th>Fee</th><th>Attendance</th>{canEdit && <th></th>}</tr>
           </thead>
           <tbody>
             {shown.map((r) => {
@@ -61,13 +60,8 @@ export default function MockExamsPanel({
                     ) : (
                       <b style={{ color: "var(--ink)" }}>{subjectLabel(r.subject)}</b>
                     )}
-                    <div className="sub">{r.exam?.series ?? "Subject only (no exam date)"}{r.exam?.status === "cancelled" ? " · cancelled" : ""}</div>
+                    <div className="sub">{r.exam?.series ?? "Subject only"}{r.exam?.status === "cancelled" ? " · cancelled" : ""}</div>
                   </td>
-                  <td className="mono" style={{ whiteSpace: "nowrap" }}>
-                    {r.exam ? fmtDate(r.exam.exam_date) : "—"}
-                    {r.exam?.start_time && <div className="sub">{timeRange(r.exam.start_time, r.exam.duration_min)}</div>}
-                  </td>
-                  <td>{r.exam?.room ?? "—"}</td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <span className="mono">{taka(r.fee ?? 0)}</span>
                     {r.invoice && <div className="sub">{PAY[r.invoice.status] ?? r.invoice.status} · {r.invoice.invoice_no}</div>}

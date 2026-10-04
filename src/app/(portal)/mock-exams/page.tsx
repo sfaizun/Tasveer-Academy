@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
-import { dhakaTodayISO, fmtDate, taka } from "@/lib/format";
-import { EXAM_STATUS, MOCK_EXAM_COLS, subjectLabel, timeRange, type MockExam } from "@/lib/mock";
+import { dhakaTodayISO, taka } from "@/lib/format";
+import { EXAM_STATUS, MOCK_EXAM_COLS, subjectLabel, type MockExam } from "@/lib/mock";
 import MockExamForm from "./MockExamForm";
 
 export const dynamic = "force-dynamic";
@@ -13,12 +13,12 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
   const { me } = await getViewer();
   if (me?.role !== "admin") redirect("/dashboard");
   const sp = await searchParams;
-  const show = sp.show === "past" || sp.show === "all" ? sp.show : "upcoming";
+  const show = sp.show === "cancelled" || sp.show === "all" ? sp.show : "active";
   const today = dhakaTodayISO();
   const supabase = await createClient();
 
   const [{ data: exams }, { data: subjects }, { data: rate }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
-    supabase.from("mock_exam").select(`${MOCK_EXAM_COLS}, mock_registration(status)`).order("exam_date").order("start_time"),
+    supabase.from("mock_exam").select(`${MOCK_EXAM_COLS}, mock_registration(status)`).order("series"),
     supabase.from("subject").select("id, name, level, programme(code, name)").eq("active", true).order("sort_order"),
     supabase.from("fee_rate").select("amount").eq("kind", "mock").lte("effective_from", today).order("effective_from", { ascending: false }).limit(1).maybeSingle(),
     supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
@@ -31,9 +31,9 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
   }));
   const seriesOptions = [...new Set(all.map((e) => e.series))].sort();
   const list = all
-    .filter((e) => (show === "upcoming" ? e.exam_date >= today : show === "past" ? e.exam_date < today : true))
-    .filter((e) => !sp.series || e.series === sp.series);
-  if (show === "past") list.reverse();
+    .filter((e) => (show === "active" ? e.status !== "cancelled" : show === "cancelled" ? e.status === "cancelled" : true))
+    .filter((e) => !sp.series || e.series === sp.series)
+    .sort((a, b) => a.series.localeCompare(b.series) || subjectLabel(a.subject).localeCompare(subjectLabel(b.subject)));
 
   // Group by series so a season's papers sit together.
   const bySeries = new Map<string, typeof list>();
@@ -68,17 +68,17 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
 
         <div className="panel" style={{ padding: 12, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <div className="fchips">
-            {(["upcoming", "past", "all"] as const).map((k) => (
-              <Link key={k} className={show === k ? "fchip on" : "fchip"} href={q({ show: k === "upcoming" ? undefined : k, series: sp.series })}>
-                {k === "upcoming" ? "Upcoming" : k === "past" ? "Past" : "All"}
+            {(["active", "cancelled", "all"] as const).map((k) => (
+              <Link key={k} className={show === k ? "fchip on" : "fchip"} href={q({ show: k === "active" ? undefined : k, series: sp.series })}>
+                {k === "active" ? "Active" : k === "cancelled" ? "Cancelled" : "All"}
               </Link>
             ))}
           </div>
           {seriesOptions.length > 1 && (
             <div className="fchips">
-              <Link className={!sp.series ? "fchip on" : "fchip"} href={q({ show: show === "upcoming" ? undefined : show })}>All series</Link>
+              <Link className={!sp.series ? "fchip on" : "fchip"} href={q({ show: show === "active" ? undefined : show })}>All series</Link>
               {seriesOptions.map((s) => (
-                <Link key={s} className={sp.series === s ? "fchip on" : "fchip"} href={q({ show: show === "upcoming" ? undefined : show, series: s })}>{s}</Link>
+                <Link key={s} className={sp.series === s ? "fchip on" : "fchip"} href={q({ show: show === "active" ? undefined : show, series: s })}>{s}</Link>
               ))}
             </div>
           )}
@@ -103,7 +103,7 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
             <div className="tblwrap">
               <table>
                 <thead>
-                  <tr><th>Date</th><th>Time</th><th>Subject</th><th>Teacher</th><th>Room</th><th className="n">Fee</th><th className="n">Candidates</th><th>Status</th><th></th></tr>
+                  <tr><th>Subject</th><th>Teacher</th><th className="n">Fee</th><th className="n">Candidates</th><th>Status</th><th></th></tr>
                 </thead>
                 <tbody>
                   {exams.map((e) => {
@@ -111,13 +111,10 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
                     const st = EXAM_STATUS[e.status];
                     return (
                       <tr key={e.id}>
-                        <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmtDate(e.exam_date)}</td>
-                        <td className="mono" style={{ whiteSpace: "nowrap" }}>{timeRange(e.start_time, e.duration_min) || "—"}</td>
                         <td><b style={{ color: "var(--ink)" }}>{subjectLabel(e.subject)}</b></td>
                         <td className="sub">
                           {e.teacher?.full_name ?? <span style={{ color: "var(--warn)" }}>Not set</span>}
                         </td>
-                        <td>{e.room ?? "—"}</td>
                         <td className="n mono">{taka(e.fee)}</td>
                         <td className="n mono">
                           {active.length}
