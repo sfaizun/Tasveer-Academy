@@ -50,7 +50,8 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
   const withdrawn = all.filter((r) => r.status === "withdrawn");
 
   // Students who can be added: active O/A Level students not already on this exam.
-  const taken = new Set(active.map((r) => r.student?.id));
+  // Candidates whose fee is missing from every invoice can be registered again to bill it.
+  const taken = new Set(active.filter((r) => r.invoice_line).map((r) => r.student?.id));
   const { data: studentRows } = await supabase
     .from("student")
     .select("id, full_name, reg_no, programme(code)")

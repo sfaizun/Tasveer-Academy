@@ -64,7 +64,11 @@ export default function MockExamsPanel({
                   </td>
                   <td style={{ whiteSpace: "nowrap" }}>
                     <span className="mono">{taka(r.fee ?? 0)}</span>
-                    {r.invoice && <div className="sub">{PAY[r.invoice.status] ?? r.invoice.status} · {r.invoice.invoice_no}</div>}
+                    {r.invoice ? (
+                      <div className="sub">{PAY[r.invoice.status] ?? r.invoice.status} · {r.invoice.invoice_no}</div>
+                    ) : r.status !== "withdrawn" && (
+                      <div className="sub" style={{ color: "var(--crit)" }}>Not on any invoice. Add the exam again to bill it.</div>
+                    )}
                   </td>
                   <td><span className={`st ${rs.cls}`}><span className="dot" />{rs.text}</span></td>
                   {canEdit && (

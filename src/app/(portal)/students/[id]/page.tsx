@@ -132,7 +132,8 @@ export default async function StudentDetail({
     invoice: r.invoice_line?.invoice ?? null,
   }));
   const registeredExamIds = new Set(
-    ((mockRegs ?? []) as any[]).filter((r) => r.status !== "withdrawn" && r.mock_exam).map((r) => r.mock_exam.id)
+    // A registration with no fee on any invoice stays in the list so it can be added again to bill it.
+    ((mockRegs ?? []) as any[]).filter((r) => r.status !== "withdrawn" && r.mock_exam && r.invoice_line).map((r) => r.mock_exam.id)
   );
   const openExamOptions = ((openMockExams ?? []) as any[])
     .filter((e) => e.subject?.programme?.code === s.programme?.code && !registeredExamIds.has(e.id))
