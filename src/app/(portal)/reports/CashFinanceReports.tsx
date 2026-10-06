@@ -95,9 +95,9 @@ export default async function CashFinanceReports({
       .from("student")
       .select("id, full_name, reg_no, admitted_on, class_level_id, programme(code, name)")
       .eq("status", "active"),
-    supabase.from("enrolment").select("student_id, rate_applied, from_month, to_month").eq("status", "active"),
+    supabase.from("enrolment").select("student_id, rate_applied, discount_pct, discount_amt, from_month, to_month").eq("status", "active"),
     supabase.from("fee_rate").select("class_level_id, amount, effective_from").eq("kind", "tuition").not("class_level_id", "is", null),
-    supabase.from("invoice").select("student_id, paid").eq("billing_month", forecastMonth),
+    supabase.from("invoice").select("student_id, net, paid").eq("billing_month", forecastMonth).neq("status", "void"),
   ]);
 
   // --- Revenue by programme ---
@@ -143,17 +143,26 @@ export default async function CashFinanceReports({
   const enrolExpected = new Map<string, number>();
   for (const e of (activeEnrolments ?? []) as any[]) {
     if (e.from_month <= forecastMonth && (!e.to_month || e.to_month >= forecastMonth)) {
-      enrolExpected.set(e.student_id, (enrolExpected.get(e.student_id) ?? 0) + Number(e.rate_applied));
+      // Before the month is billed, estimate from each subject's rate less its recurring discount.
+      const rate = Number(e.rate_applied);
+      const disc = e.discount_pct != null ? (rate * Number(e.discount_pct)) / 100 : Number(e.discount_amt ?? 0);
+      enrolExpected.set(e.student_id, (enrolExpected.get(e.student_id) ?? 0) + Math.max(rate - disc, 0));
     }
   }
+  // Once the month is billed, "expected" is what the invoice actually asks for (tuition after
+  // discounts, plus any admission or mock fees), so it matches the invoices exactly.
   const collectedMap = new Map<string, number>();
+  const billedMap = new Map<string, number>();
   for (const inv of (monthInvoices ?? []) as any[]) {
     collectedMap.set(inv.student_id, (collectedMap.get(inv.student_id) ?? 0) + Number(inv.paid));
+    billedMap.set(inv.student_id, (billedMap.get(inv.student_id) ?? 0) + Number(inv.net));
   }
   const forecastRows: { id: string; full_name: string; reg_no: string; programme: string; expected: number; collected: number; gap: number }[] = [];
   for (const s of (activeStudents ?? []) as any[]) {
     let expected = 0;
-    if (s.programme?.code === "junior") {
+    if (billedMap.has(s.id)) {
+      expected = billedMap.get(s.id)!;
+    } else if (s.programme?.code === "junior") {
       if (s.admitted_on && s.admitted_on.slice(0, 7) <= forecastMonth.slice(0, 7)) {
         expected = juniorRate.get(s.class_level_id)?.amount ?? 0;
       }
@@ -346,7 +355,7 @@ export default async function CashFinanceReports({
       <details className="panel collapsible" open>
         <summary className="phead">
           <div className="ptitle">Revenue forecast</div>
-          <div className="sub">Expected vs collected for {monthName(forecastMonth)} — based on active enrolments and rates, not just issued invoices</div>
+          <div className="sub">Expected vs collected for {monthName(forecastMonth)}: the invoice total where the month is billed, otherwise an estimate from subjects, rates and recurring discounts</div>
           <div className="spacer" />
           <ExportCsvButton
             filename={`forecast-${forecastMonth.slice(0, 7)}`}
