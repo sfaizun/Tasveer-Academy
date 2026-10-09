@@ -27,16 +27,58 @@ type Slot = {
   label: string;
 };
 
+type Draft = { weekday: string; start: string; end: string; room: string };
+
+const roomKey = (r: string | null | undefined) =>
+  (r ?? "").trim().toLowerCase().replace(/^room\s*/, "").replace(/\s+/g, "") || null;
+
+function readDraft(form: HTMLFormElement): Draft {
+  const f = new FormData(form);
+  return {
+    weekday: String(f.get("weekday") ?? ""),
+    start: String(f.get("start_time") ?? ""),
+    end: String(f.get("end_time") ?? ""),
+    room: String(f.get("room") ?? ""),
+  };
+}
+
+/** The slot already using this room at an overlapping time on the same day, if any. */
+function findRoomClash(slots: Slot[], d: Draft, ignoreId?: string): Slot | null {
+  const key = roomKey(d.room);
+  if (!key || d.weekday === "" || !d.start || !d.end || d.end <= d.start) return null;
+  return (
+    slots.find(
+      (o) =>
+        o.id !== ignoreId &&
+        o.weekday === Number(d.weekday) &&
+        roomKey(o.room) === key &&
+        o.start_time.slice(0, 5) < d.end &&
+        d.start < o.end_time.slice(0, 5)
+    ) ?? null
+  );
+}
+
+function ClashWarning({ clash, room }: { clash: Slot; room: string }) {
+  return (
+    <div className="sub" role="alert" style={{ color: "var(--crit)", fontWeight: 500 }}>
+      Room {room.trim().replace(/^room\s*/i, "")} is already booked on {WEEKDAYS[clash.weekday]} from {fmtTime(clash.start_time)} to{" "}
+      {fmtTime(clash.end_time)} for {clash.label}. Choose another room or time.
+    </div>
+  );
+}
+
 function levelLabel(l: ClassLevel) {
   return `${l.programme?.name ?? ""} — ${l.name}`;
 }
 
 function AddSlotForm({
+  slots,
   subjects,
   teachers,
   teacherSubjects,
   classLevels,
 }: {
+  slots: Slot[];
   subjects: Subject[];
   teachers: Teacher[];
   teacherSubjects: TeacherSubject[];
@@ -46,11 +88,14 @@ function AddSlotForm({
   const formRef = useRef<HTMLFormElement>(null);
   const [targetType, setTargetType] = useState<"class_group" | "class_level">("class_group");
   const [subjectId, setSubjectId] = useState("");
+  const [draft, setDraft] = useState<Draft>({ weekday: "", start: "", end: "", room: "" });
+  const clash = findRoomClash(slots, draft);
 
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
       setSubjectId("");
+      setDraft({ weekday: "", start: "", end: "", room: "" });
     }
   }, [state]);
 
@@ -62,7 +107,12 @@ function AddSlotForm({
   }, [subjectId, teacherSubjects, teachers]);
 
   return (
-    <form ref={formRef} action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <form
+      ref={formRef}
+      action={action}
+      onChange={(e) => setDraft(readDraft(e.currentTarget))}
+      style={{ display: "flex", flexDirection: "column", gap: 12 }}
+    >
       <div className="field" style={{ maxWidth: 260 }}>
         <label className="lbl">This slot is for<Req /></label>
         <select
@@ -164,8 +214,9 @@ function AddSlotForm({
         </div>
       </div>
 
+      {clash && <ClashWarning clash={clash} room={draft.room} />}
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-        <button className="btn" type="submit" disabled={pending} style={{ alignSelf: "flex-start" }}>
+        <button className="btn" type="submit" disabled={pending || !!clash} style={{ alignSelf: "flex-start" }}>
           {pending ? "Adding…" : "+ Add to schedule"}
         </button>
         {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
@@ -175,10 +226,18 @@ function AddSlotForm({
   );
 }
 
-function EditSlotForm({ slot, teachers }: { slot: Slot; teachers: Teacher[] }) {
+function EditSlotForm({ slot, slots, teachers }: { slot: Slot; slots: Slot[]; teachers: Teacher[] }) {
   const [state, action, pending] = useActionState(updateClassSlot, null);
+  const [draft, setDraft] = useState<Draft>({
+    weekday: String(slot.weekday), start: slot.start_time.slice(0, 5), end: slot.end_time.slice(0, 5), room: slot.room ?? "",
+  });
+  const unchanged =
+    draft.weekday === String(slot.weekday) && draft.start === slot.start_time.slice(0, 5) &&
+    draft.end === slot.end_time.slice(0, 5) && roomKey(draft.room) === roomKey(slot.room);
+  // A slot that already clashes can still have its capacity or teacher changed; only a move is checked.
+  const clash = unchanged ? null : findRoomClash(slots, draft, slot.id);
   return (
-    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+    <form action={action} onChange={(e) => setDraft(readDraft(e.currentTarget))} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <input type="hidden" name="id" value={slot.id} />
       <input type="hidden" name="is_junior" value={String(slot.isJunior)} />
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
@@ -218,8 +277,9 @@ function EditSlotForm({ slot, teachers }: { slot: Slot; teachers: Teacher[] }) {
           </div>
         )}
       </div>
+      {clash && <ClashWarning clash={clash} room={draft.room} />}
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-        <button className="btn ghost" type="submit" disabled={pending} style={{ fontSize: 12 }}>
+        <button className="btn ghost" type="submit" disabled={pending || !!clash} style={{ fontSize: 12 }}>
           {pending ? "Saving…" : "Save changes"}
         </button>
         {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
@@ -253,7 +313,7 @@ export default function RosterAdmin({
           <div className="sub">Only admin can add, edit or remove a slot.</div>
         </summary>
         <div style={{ padding: 16 }}>
-          <AddSlotForm subjects={subjects} teachers={teachers} teacherSubjects={teacherSubjects} classLevels={classLevels} />
+          <AddSlotForm slots={slots} subjects={subjects} teachers={teachers} teacherSubjects={teacherSubjects} classLevels={classLevels} />
         </div>
       </details>
 
@@ -295,7 +355,7 @@ export default function RosterAdmin({
                     {isOpen && (
                       <tr>
                         <td colSpan={4} style={{ padding: "12px 16px", background: "var(--tint)" }}>
-                          <EditSlotForm slot={s} teachers={teachers} />
+                          <EditSlotForm slot={s} slots={slots} teachers={teachers} />
                           <form action={deleteClassSlot} style={{ marginTop: 12 }}>
                             <input type="hidden" name="id" value={s.id} />
                             <button className="btn ghost" type="submit" style={{ fontSize: 12, color: "var(--crit)" }}>

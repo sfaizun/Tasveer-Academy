@@ -53,7 +53,7 @@ export async function addClassSlot(_prev: State, formData: FormData): Promise<St
     room,
     capacity,
   });
-  if (error) return { error: "Could not add the slot — " + error.message };
+  if (error) return { error: error.code === "23P01" ? error.message : "Could not add the slot: " + error.message };
 
   revalidatePath("/roster");
   return { ok: true };
@@ -88,7 +88,7 @@ export async function updateClassSlot(_prev: State, formData: FormData): Promise
       teacher_id: isJunior ? teacher_id : null,
     })
     .eq("id", id);
-  if (error) return { error: "Could not update the slot — " + error.message };
+  if (error) return { error: error.code === "23P01" ? error.message : "Could not update the slot: " + error.message };
 
   revalidatePath("/roster");
   return { ok: true };
