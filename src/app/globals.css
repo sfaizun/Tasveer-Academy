@@ -332,6 +332,7 @@ table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background
   tr{break-inside:avoid}
   th.print-only,td.print-only{display:table-cell!important}
   span.print-only{display:inline!important}
+  div.print-only{display:block!important}
   .panel.print-flow{break-inside:auto}
 }
 

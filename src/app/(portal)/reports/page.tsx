@@ -7,6 +7,7 @@ import ExportCsvButton from "@/components/ExportCsvButton";
 import CashFinanceReports from "./CashFinanceReports";
 import MockFeesReport from "./MockFeesReport";
 import TeacherMocksReport from "./TeacherMocksReport";
+import TeacherExpensesReport from "./TeacherExpensesReport";
 import TeacherWorkloadReport from "./TeacherWorkloadReport";
 import TeacherStudentPaymentsReport from "./TeacherStudentPaymentsReport";
 import AnnouncementReachReport from "./AnnouncementReachReport";
@@ -61,7 +62,7 @@ type AdmissionFeeSummary = { total_charged: number; total_discount: number; tota
 export default async function ReportsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ month?: string; cash_date?: string; ann_id?: string }>;
+  searchParams: Promise<{ month?: string; cash_date?: string; ann_id?: string; exp_from?: string; exp_to?: string }>;
 }) {
   const sp = await searchParams;
   const month = typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : null;
@@ -70,6 +71,9 @@ export default async function ReportsPage({
   const today = dhakaTodayISO();
   const cashDate = typeof sp.cash_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(sp.cash_date) ? sp.cash_date : today;
   const annId = typeof sp.ann_id === "string" && sp.ann_id ? sp.ann_id : undefined;
+  const isDay = (v: unknown): v is string => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+  const expFrom = isDay(sp.exp_from) ? sp.exp_from : `${today.slice(0, 7)}-01`;
+  const expTo = isDay(sp.exp_to) ? sp.exp_to : today;
 
   const supabase = await createClient();
   const { me } = await getViewer();
@@ -311,6 +315,10 @@ export default async function ReportsPage({
           </div>
 
           {myTeacherRow?.id && <TeacherMocksReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} forTeacher />}
+
+          {myTeacherRow?.id && (
+            <TeacherExpensesReport supabase={supabase} teacherId={myTeacherRow.id} from={expFrom} to={expTo} month={month} />
+          )}
 
           {myTeacherRow?.id && (
             <TeacherWorkloadReport
