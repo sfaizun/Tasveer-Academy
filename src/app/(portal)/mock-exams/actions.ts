@@ -59,6 +59,27 @@ export async function updateMockExam(_prev: State, formData: FormData): Promise<
   return { ok: true };
 }
 
+/** Teacher: edit a mock exam assigned to them (series, note, registration open/closed only). */
+export async function teacherUpdateMockExam(_prev: State, formData: FormData): Promise<State> {
+  const id = String(formData.get("id") ?? "");
+  const series = String(formData.get("series") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim() || null;
+  const status = String(formData.get("status") ?? "open");
+  if (!series) return { error: "Enter the series name." };
+  if (!["open", "closed"].includes(status)) return { error: "Choose open or closed." };
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("mock_exam")
+    .update({ series, note, status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .neq("status", "cancelled")
+    .select("id");
+  if (error) return { error: nice(error.message) };
+  if (!data || data.length === 0) return { error: "You can only edit mock exams assigned to you." };
+  refresh(id);
+  return { ok: true };
+}
+
 export async function cancelMockExam(_prev: State, formData: FormData): Promise<State> {
   const id = String(formData.get("id") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();

@@ -4,6 +4,14 @@ import { revalidatePath } from "next/cache";
 
 type State = { error?: string; ok?: boolean } | null;
 
+const NO_ACCESS = "You can only schedule your own classes.";
+
+/** The signed-in teacher's own teacher id (null for admin and everyone else). */
+async function myTeacherId(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const { data } = await supabase.rpc("my_teacher_id");
+  return (data as string | null) ?? null;
+}
+
 function parseCapacity(raw: string) {
   const t = raw.trim();
   if (!t) return null;
@@ -16,21 +24,28 @@ export async function addClassSlot(_prev: State, formData: FormData): Promise<St
   const subject_id = String(formData.get("subject_id") ?? "").trim() || null;
   const batch = String(formData.get("batch") ?? "").trim() || "1";
   const class_level_id = String(formData.get("class_level_id") ?? "").trim() || null;
-  const teacher_id = String(formData.get("teacher_id") ?? "").trim() || null;
+  let teacher_id = String(formData.get("teacher_id") ?? "").trim() || null;
   const weekday = Number(formData.get("weekday"));
   const start_time = String(formData.get("start_time") ?? "").trim();
   const end_time = String(formData.get("end_time") ?? "").trim();
   const room = String(formData.get("room") ?? "").trim() || null;
   const capacity = parseCapacity(String(formData.get("capacity") ?? ""));
 
+  const supabase = await createClient();
+  const mine = await myTeacherId(supabase);
+  if (mine) {
+    // A teacher can only add their own subject classes.
+    if (targetType !== "class_group") return { error: NO_ACCESS };
+    teacher_id = mine;
+  }
+
+  if (!room) return { error: "Enter the room number." };
   if (targetType === "class_group" && (!subject_id || !teacher_id)) return { error: "Choose a subject and teacher." };
   if (targetType === "class_level" && !class_level_id) return { error: "Choose a junior class." };
   if (targetType !== "class_group" && targetType !== "class_level") return { error: "Choose what this slot is for." };
   if (Number.isNaN(weekday) || weekday < 0 || weekday > 6) return { error: "Choose a day of the week." };
   if (!start_time || !end_time) return { error: "Enter a start and end time." };
   if (end_time <= start_time) return { error: "End time must be after the start time." };
-
-  const supabase = await createClient();
 
   let class_group_id: string | null = null;
   if (targetType === "class_group") {
@@ -70,12 +85,13 @@ export async function updateClassSlot(_prev: State, formData: FormData): Promise
   const capacity = parseCapacity(String(formData.get("capacity") ?? ""));
 
   if (!id) return { error: "Missing slot." };
+  if (!room) return { error: "Enter the room number." };
   if (Number.isNaN(weekday) || weekday < 0 || weekday > 6) return { error: "Choose a day of the week." };
   if (!start_time || !end_time) return { error: "Enter a start and end time." };
   if (end_time <= start_time) return { error: "End time must be after the start time." };
 
   const supabase = await createClient();
-  const { error } = await supabase
+  const { data: updated, error } = await supabase
     .from("class_slot")
     .update({
       weekday,
@@ -87,8 +103,10 @@ export async function updateClassSlot(_prev: State, formData: FormData): Promise
       // class_group slot's teacher always comes from the class group itself.
       teacher_id: isJunior ? teacher_id : null,
     })
-    .eq("id", id);
+    .eq("id", id)
+    .select("id");
   if (error) return { error: error.code === "23P01" ? error.message : "Could not update the slot: " + error.message };
+  if (!updated || updated.length === 0) return { error: NO_ACCESS };
 
   revalidatePath("/roster");
   return { ok: true };

@@ -6,11 +6,36 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { dhakaTodayISO, taka } from "@/lib/format";
 import { EXAM_STATUS, MOCK_EXAM_COLS, subjectLabel, type MockExam } from "@/lib/mock";
 import MockExamForm from "./MockExamForm";
+import TeacherMockList from "./TeacherMockList";
 
 export const dynamic = "force-dynamic";
 
 export default async function MockExamsPage({ searchParams }: { searchParams: Promise<{ show?: string; series?: string }> }) {
   const { me } = await getViewer();
+  if (me?.role === "teacher") {
+    // A teacher sees and edits only the mock exams assigned to them.
+    const supabase = await createClient();
+    const { data: mineId } = await supabase.rpc("my_teacher_id");
+    const { data: mine } = mineId
+      ? await supabase.from("mock_exam").select(MOCK_EXAM_COLS).eq("teacher_id", mineId as string).order("series")
+      : { data: [] };
+    const exams = ((mine ?? []) as unknown as MockExam[]).sort(
+      (a, b) => a.series.localeCompare(b.series) || subjectLabel(a.subject).localeCompare(subjectLabel(b.subject))
+    );
+    return (
+      <>
+        <header className="top">
+          <h1>Mock exams</h1>
+          <span className="sub">The mock exams assigned to you</span>
+          <div className="spacer" />
+          <ThemeToggle />
+        </header>
+        <div className="content" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <TeacherMockList exams={exams} />
+        </div>
+      </>
+    );
+  }
   if (me?.role !== "admin") redirect("/dashboard");
   const sp = await searchParams;
   const show = sp.show === "cancelled" || sp.show === "all" ? sp.show : "active";

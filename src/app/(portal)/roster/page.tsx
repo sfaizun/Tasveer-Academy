@@ -47,6 +47,7 @@ export default async function RosterPage() {
   const { me } = await getViewer();
 
   const isAdmin = me?.role === "admin";
+  const isTeacher = me?.role === "teacher";
   const isStudentOrGuardian = me?.role === "student" || me?.role === "guardian";
 
   const [{ data: slots }, adminData, myScope] = await Promise.all([
@@ -71,6 +72,18 @@ export default async function RosterPage() {
           supabase.from("teacher").select("id, full_name").eq("active", true).order("full_name"),
           supabase.from("teacher_subject").select("teacher_id, subject_id").eq("active", true),
         ])
+      : isTeacher
+      ? (async () => {
+          // A teacher schedules only their own classes, for the subjects they are mapped to.
+          const { data: mine } = await supabase.from("teacher").select("id, full_name").eq("app_user_id", me!.id).maybeSingle();
+          if (!mine) return null;
+          const { data: ts } = await supabase.from("teacher_subject").select("teacher_id, subject_id").eq("teacher_id", mine.id).eq("active", true);
+          const ids = ((ts ?? []) as any[]).map((t) => t.subject_id);
+          const { data: subs } = ids.length
+            ? await supabase.from("subject").select("id, name, level, programme:programme_id(code, name)").in("id", ids).eq("active", true).order("name")
+            : { data: [] };
+          return [{ data: subs }, { data: [] }, { data: [mine] }, { data: ts }, mine] as const;
+        })()
       : Promise.resolve(null),
     // A student/guardian only ever sees the classes they're actually enrolled in — every
     // active O/A Level class_group from their enrolments, plus their own class_level for
@@ -120,16 +133,18 @@ export default async function RosterPage() {
       <header className="top">
         <h1>Class Schedule</h1>
         <div className="sub">
-          Weekly class timing — {isAdmin ? "admin managed" : isStudentOrGuardian ? "your enrolled classes only" : "read only"}
+          Weekly class timing: {isAdmin ? "admin managed" : isStudentOrGuardian ? "your enrolled classes only" : isTeacher ? "you can schedule your own classes" : "read only"}
         </div>
         <div className="spacer" />
         <span className="no-print"><ThemeToggle /></span>
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        {isAdmin && adminData && (
+        {(isAdmin || isTeacher) && adminData && (
           <div className="no-print">
             <RosterAdmin
+              mode={isAdmin ? "admin" : "teacher"}
+              myTeacherId={isTeacher ? ((adminData as any)[4]?.id ?? null) : null}
               slots={rows.map((r) => ({
                 id: r.id,
                 weekday: r.weekday,
@@ -139,6 +154,7 @@ export default async function RosterPage() {
                 capacity: r.capacity,
                 teacher_id: r.teacher_id,
                 isJunior: !!r.class_level_id,
+                ownerTeacherId: slotInfo(r).teacherId,
                 label: slotInfo(r).title,
               }))}
               subjects={(adminData[0].data ?? []) as any[]}

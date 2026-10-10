@@ -24,6 +24,7 @@ type Slot = {
   capacity: number | null;
   teacher_id: string | null;
   isJunior: boolean;
+  ownerTeacherId: string | null;
   label: string;
 };
 
@@ -72,12 +73,16 @@ function levelLabel(l: ClassLevel) {
 }
 
 function AddSlotForm({
+  mode,
+  myTeacherId,
   slots,
   subjects,
   teachers,
   teacherSubjects,
   classLevels,
 }: {
+  mode: "admin" | "teacher";
+  myTeacherId: string | null;
   slots: Slot[];
   subjects: Subject[];
   teachers: Teacher[];
@@ -113,7 +118,8 @@ function AddSlotForm({
       onChange={(e) => setDraft(readDraft(e.currentTarget))}
       style={{ display: "flex", flexDirection: "column", gap: 12 }}
     >
-      <div className="field" style={{ maxWidth: 260 }}>
+      {mode === "teacher" && <input type="hidden" name="target_type" value="class_group" />}
+      {mode === "admin" && <div className="field" style={{ maxWidth: 260 }}>
         <label className="lbl">This slot is for<Req /></label>
         <select
           style={inputStyle}
@@ -124,7 +130,7 @@ function AddSlotForm({
           <option value="class_group">A subject class (O/A Level)</option>
           <option value="class_level">A junior class</option>
         </select>
-      </div>
+      </div>}
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 10 }}>
         {targetType === "class_group" ? (
@@ -148,6 +154,9 @@ function AddSlotForm({
                 ))}
               </select>
             </div>
+            {mode === "teacher" ? (
+              <input type="hidden" name="teacher_id" value={myTeacherId ?? ""} />
+            ) : (
             <div className="field">
               <label className="lbl">Teacher<Req /></label>
               <select key={subjectId} style={inputStyle} name="teacher_id" required defaultValue="" disabled={!subjectId}>
@@ -159,6 +168,7 @@ function AddSlotForm({
                 ))}
               </select>
             </div>
+            )}
             <div className="field">
               <label className="lbl">Batch</label>
               <input style={inputStyle} type="text" name="batch" placeholder="1" />
@@ -205,8 +215,8 @@ function AddSlotForm({
           <input style={inputStyle} type="time" name="end_time" required />
         </div>
         <div className="field">
-          <label className="lbl">Room (optional)</label>
-          <input style={inputStyle} type="text" name="room" placeholder="e.g. Room 2" />
+          <label className="lbl">Room<Req /></label>
+          <input style={inputStyle} type="text" name="room" required placeholder="e.g. 401" />
         </div>
         <div className="field">
           <label className="lbl">Capacity (optional)</label>
@@ -226,7 +236,7 @@ function AddSlotForm({
   );
 }
 
-function EditSlotForm({ slot, slots, teachers }: { slot: Slot; slots: Slot[]; teachers: Teacher[] }) {
+function EditSlotForm({ slot, slots, teachers, teacherMode }: { slot: Slot; slots: Slot[]; teachers: Teacher[]; teacherMode?: boolean }) {
   const [state, action, pending] = useActionState(updateClassSlot, null);
   const [draft, setDraft] = useState<Draft>({
     weekday: String(slot.weekday), start: slot.start_time.slice(0, 5), end: slot.end_time.slice(0, 5), room: slot.room ?? "",
@@ -240,6 +250,7 @@ function EditSlotForm({ slot, slots, teachers }: { slot: Slot; slots: Slot[]; te
     <form action={action} onChange={(e) => setDraft(readDraft(e.currentTarget))} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <input type="hidden" name="id" value={slot.id} />
       <input type="hidden" name="is_junior" value={String(slot.isJunior)} />
+      {teacherMode && slot.isJunior && <input type="hidden" name="teacher_id" value={slot.teacher_id ?? ""} />}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 10 }}>
         <div className="field">
           <label className="lbl">Day</label>
@@ -258,14 +269,14 @@ function EditSlotForm({ slot, slots, teachers }: { slot: Slot; slots: Slot[]; te
           <input style={inputStyle} type="time" name="end_time" defaultValue={slot.end_time.slice(0, 5)} required />
         </div>
         <div className="field">
-          <label className="lbl">Room</label>
-          <input style={inputStyle} type="text" name="room" defaultValue={slot.room ?? ""} />
+          <label className="lbl">Room<Req /></label>
+          <input style={inputStyle} type="text" name="room" required defaultValue={slot.room ?? ""} />
         </div>
         <div className="field">
           <label className="lbl">Capacity</label>
           <input style={inputStyle} type="number" name="capacity" min="1" step="1" defaultValue={slot.capacity ?? ""} />
         </div>
-        {slot.isJunior && (
+        {slot.isJunior && !teacherMode && (
           <div className="field">
             <label className="lbl">Teacher</label>
             <select style={inputStyle} name="teacher_id" defaultValue={slot.teacher_id ?? ""}>
@@ -290,12 +301,16 @@ function EditSlotForm({ slot, slots, teachers }: { slot: Slot; slots: Slot[]; te
 }
 
 export default function RosterAdmin({
+  mode = "admin",
+  myTeacherId = null,
   slots,
   subjects,
   classLevels,
   teachers,
   teacherSubjects,
 }: {
+  mode?: "admin" | "teacher";
+  myTeacherId?: string | null;
   slots: Slot[];
   subjects: Subject[];
   classLevels: ClassLevel[];
@@ -303,23 +318,32 @@ export default function RosterAdmin({
   teacherSubjects: TeacherSubject[];
 }) {
   const [open, setOpen] = useState<string | null>(null);
-  const sorted = useMemo(() => [...slots].sort((a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time)), [slots]);
+  // A teacher manages only their own slots; every slot still counts for room clashes.
+  const mine = useMemo(
+    () => (mode === "teacher" ? slots.filter((s) => myTeacherId && s.ownerTeacherId === myTeacherId) : slots),
+    [slots, mode, myTeacherId]
+  );
+  const sorted = useMemo(() => [...mine].sort((a, b) => a.weekday - b.weekday || a.start_time.localeCompare(b.start_time)), [mine]);
 
   return (
     <>
       <details className="panel collapsible" open>
         <summary className="phead">
           <div className="ptitle">Add to schedule</div>
-          <div className="sub">Only admin can add, edit or remove a slot.</div>
+          <div className="sub">
+            {mode === "teacher"
+              ? "Your own classes only, for the subjects you teach. A room can't be booked twice at the same time."
+              : "Admin can schedule any class; teachers can schedule their own. A room can't be booked twice at the same time."}
+          </div>
         </summary>
         <div style={{ padding: 16 }}>
-          <AddSlotForm slots={slots} subjects={subjects} teachers={teachers} teacherSubjects={teacherSubjects} classLevels={classLevels} />
+          <AddSlotForm mode={mode} myTeacherId={myTeacherId} slots={slots} subjects={subjects} teachers={teachers} teacherSubjects={teacherSubjects} classLevels={classLevels} />
         </div>
       </details>
 
       <details className="panel collapsible" open>
         <summary className="phead">
-          <div className="ptitle">Manage slots</div>
+          <div className="ptitle">{mode === "teacher" ? "Your classes" : "Manage slots"}</div>
           <div className="sub">{sorted.length} total</div>
         </summary>
         <div className="tblwrap">
@@ -355,7 +379,7 @@ export default function RosterAdmin({
                     {isOpen && (
                       <tr>
                         <td colSpan={4} style={{ padding: "12px 16px", background: "var(--tint)" }}>
-                          <EditSlotForm slot={s} slots={slots} teachers={teachers} />
+                          <EditSlotForm slot={s} slots={slots} teachers={teachers} teacherMode={mode === "teacher"} />
                           <form action={deleteClassSlot} style={{ marginTop: 12 }}>
                             <input type="hidden" name="id" value={s.id} />
                             <button className="btn ghost" type="submit" style={{ fontSize: 12, color: "var(--crit)" }}>
