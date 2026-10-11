@@ -35,7 +35,7 @@ export default async function ExpensesPage({
   const supabase = await createClient();
   let q = supabase
     .from("expense")
-    .select("id, expense_for, teacher_id, expense_date, amount, details, teacher(full_name)")
+    .select("id, expense_for, teacher_id, expense_date, amount, details, attachment_name, teacher(full_name)")
     .gte("expense_date", from)
     .lte("expense_date", to)
     .order("expense_date", { ascending: false })
@@ -50,7 +50,7 @@ export default async function ExpensesPage({
 
   const rows = ((expenses ?? []) as any[]).map((e) => ({
     id: e.id, expense_for: e.expense_for, teacher_id: e.teacher_id, expense_date: e.expense_date,
-    amount: Number(e.amount), details: e.details, teacher_name: e.teacher?.full_name ?? null,
+    amount: Number(e.amount), details: e.details, attachment_name: e.attachment_name ?? null, teacher_name: e.teacher?.full_name ?? null,
   }));
   const allTeachers = (teachers ?? []) as (TeacherOpt & { active: boolean })[];
   const activeTeachers = allTeachers.filter((t) => t.active);
@@ -91,8 +91,8 @@ export default async function ExpensesPage({
             <div className="spacer" />
             <ExportCsvButton
               filename={`expenses-${from}-to-${to}`}
-              headers={["Date", "For", "Teacher", "Details", "Amount"]}
-              rows={rows.map((r) => [r.expense_date, r.expense_for === "office" ? "Office" : "Teacher", r.teacher_name ?? "", r.details, r.amount])}
+              headers={["Date", "For", "Teacher", "Details", "Attachment", "Amount"]}
+              rows={rows.map((r) => [r.expense_date, r.expense_for === "office" ? "Office" : "Teacher", r.teacher_name ?? "", r.details, r.attachment_name ?? "", r.amount])}
             />
             <PrintButton />
           </div>

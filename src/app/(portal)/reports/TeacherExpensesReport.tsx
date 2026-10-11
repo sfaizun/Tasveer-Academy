@@ -22,7 +22,7 @@ export default async function TeacherExpensesReport({
 }) {
   const { data } = await supabase
     .from("expense")
-    .select("id, expense_date, amount, details")
+    .select("id, expense_date, amount, details, attachment_name")
     .eq("teacher_id", teacherId)
     .gte("expense_date", from)
     .lte("expense_date", to)
@@ -39,8 +39,8 @@ export default async function TeacherExpensesReport({
         <div className="spacer" />
         <ExportCsvButton
           filename={`my-expenses-${from}-to-${to}`}
-          headers={["Date", "Details", "Amount"]}
-          rows={rows.map((r) => [r.expense_date, r.details, r.amount])}
+          headers={["Date", "Details", "Attachment", "Amount"]}
+          rows={rows.map((r) => [r.expense_date, r.details, r.attachment_name ?? "", r.amount])}
         />
       </summary>
       <form method="GET" action="/reports#my-expenses" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", padding: "14px 18px 4px" }}>
@@ -55,20 +55,25 @@ export default async function TeacherExpensesReport({
       </div>
       <div className="tblwrap">
         <table>
-          <thead><tr><th>Date</th><th>Details</th><th className="n">Amount</th></tr></thead>
+          <thead><tr><th>Date</th><th>Details</th><th>Attachment</th><th className="n">Amount</th></tr></thead>
           <tbody>
             {rows.map((r) => (
               <tr key={r.id}>
                 <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmtDate(r.expense_date)}</td>
                 <td style={{ whiteSpace: "pre-wrap" }}>{r.details}</td>
+                <td>
+                  {r.attachment_name ? (
+                    <a href={`/expenses/file/${r.id}`} target="_blank" rel="noopener" title={r.attachment_name} style={{ fontSize: 12.5 }}>View file</a>
+                  ) : <span className="sub">-</span>}
+                </td>
                 <td className="n mono">{taka(r.amount)}</td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={3} className="sub">No expenses recorded for you in this period.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={4} className="sub">No expenses recorded for you in this period.</td></tr>}
           </tbody>
           {rows.length > 0 && (
             <tfoot>
-              <tr><td colSpan={2}><b style={{ color: "var(--ink)" }}>Total</b></td><td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(total)}</b></td></tr>
+              <tr><td colSpan={3}><b style={{ color: "var(--ink)" }}>Total</b></td><td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(total)}</b></td></tr>
             </tfoot>
           )}
         </table>

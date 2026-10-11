@@ -19,7 +19,7 @@ export default function ExpenseTable({
     <div className="tblwrap">
       <table>
         <thead>
-          <tr><th>Date</th><th>For</th><th>Teacher</th><th>Details</th><th className="n">Amount</th><th className="n no-print"></th></tr>
+          <tr><th>Date</th><th>For</th><th>Teacher</th><th>Details</th><th>Attachment</th><th className="n">Amount</th><th className="n no-print"></th></tr>
         </thead>
         <tbody>
           {rows.map((r) => (
@@ -31,6 +31,16 @@ export default function ExpenseTable({
                 </td>
                 <td>{r.teacher_name ?? <span className="sub">-</span>}</td>
                 <td style={{ whiteSpace: "pre-wrap" }}>{r.details}</td>
+                <td>
+                  {r.attachment_name ? (
+                    <>
+                      <a className="no-print" href={`/expenses/file/${r.id}`} target="_blank" rel="noopener" title={r.attachment_name} style={{ fontSize: 12.5 }}>
+                        View file
+                      </a>
+                      <span className="print-only" style={{ fontSize: 11 }}>{r.attachment_name}</span>
+                    </>
+                  ) : <span className="sub">-</span>}
+                </td>
                 <td className="n mono">{taka(r.amount)}</td>
                 <td className="n no-print" style={{ whiteSpace: "nowrap" }}>
                   {confirming === r.id ? (
@@ -54,19 +64,19 @@ export default function ExpenseTable({
               </tr>
               {editing === r.id && (
                 <tr className="no-print">
-                  <td colSpan={6} style={{ background: "var(--tint)", padding: "14px 18px" }}>
+                  <td colSpan={7} style={{ background: "var(--tint)", padding: "14px 18px" }}>
                     <ExpenseForm teachers={teachers} today={today} expense={r} onDone={() => setEditing(null)} />
                   </td>
                 </tr>
               )}
             </Fragment>
           ))}
-          {rows.length === 0 && <tr><td colSpan={6} className="sub">No expenses match these filters.</td></tr>}
+          {rows.length === 0 && <tr><td colSpan={7} className="sub">No expenses match these filters.</td></tr>}
         </tbody>
         {rows.length > 0 && (
           <tfoot>
             <tr>
-              <td colSpan={4}><b style={{ color: "var(--ink)" }}>Total</b></td>
+              <td colSpan={5}><b style={{ color: "var(--ink)" }}>Total</b></td>
               <td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(total)}</b></td>
               <td className="no-print"></td>
             </tr>
