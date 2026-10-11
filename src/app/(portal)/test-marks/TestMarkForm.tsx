@@ -53,7 +53,6 @@ export default function TestMarkForm({
   const id = mark?.id ?? "new";
 
   const [studentId, setStudentId] = useState(mark?.student_id ?? defaultStudentId ?? "");
-  const [search, setSearch] = useState("");
   const [subjectId, setSubjectId] = useState(mark?.subject_id ?? "");
   const [marks, setMarks] = useState(mark ? String(mark.marks) : "");
   const [outOf, setOutOf] = useState(mark ? String(mark.out_of) : "100");
@@ -65,11 +64,6 @@ export default function TestMarkForm({
     if (mark && !list.some((s) => s.id === mark.subject_id)) return [{ id: mark.subject_id, label: mark.subject_label }, ...list];
     return list;
   }, [student, mark]);
-  const shownStudents = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return students;
-    return students.filter((s) => s.name.toLowerCase().includes(q) || (s.reg_no ?? "").toLowerCase().includes(q) || s.id === studentId);
-  }, [students, search, studentId]);
 
   useEffect(() => {
     if (subjects.length === 1) setSubjectId(subjects[0].id);
@@ -77,7 +71,7 @@ export default function TestMarkForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId]);
 
-  const pct = percentOf(Number(marks), Number(outOf));
+  const pct = marks.trim() && outOf.trim() ? percentOf(Number(marks), Number(outOf)) : null;
   const autoGrade = marks.trim() && outOf.trim() ? gradeFor(pct) : null;
   const overMax = marks.trim() !== "" && outOf.trim() !== "" && Number(marks) > Number(outOf);
 
@@ -137,18 +131,12 @@ export default function TestMarkForm({
             </div>
           </div>
         ) : (
-          <div className="field" style={{ gridColumn: "span 2" }}>
+          <div className="field">
             <label className="lbl" htmlFor={`tm-s-${id}`}>Student<Req /></label>
-            <div style={{ display: "flex", gap: 8 }}>
-              <input
-                aria-label="Search students" placeholder="Search name or ID" value={search}
-                onChange={(e) => setSearch(e.target.value)} style={{ ...inputStyle, maxWidth: 170 }}
-              />
-              <select id={`tm-s-${id}`} style={inputStyle} name="student_id" required value={studentId} onChange={(e) => setStudentId(e.target.value)}>
-                <option value="" disabled>{shownStudents.length ? "Choose…" : "No match"}</option>
-                {shownStudents.map((s) => <option key={s.id} value={s.id}>{s.name}{s.reg_no ? ` (${s.reg_no})` : ""}</option>)}
-              </select>
-            </div>
+            <select id={`tm-s-${id}`} style={inputStyle} name="student_id" required value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+              <option value="" disabled>Choose…</option>
+              {students.map((s) => <option key={s.id} value={s.id}>{s.name}{s.reg_no ? ` (${s.reg_no})` : ""}</option>)}
+            </select>
           </div>
         )}
         <div className="field">
