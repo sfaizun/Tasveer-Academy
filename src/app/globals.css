@@ -161,6 +161,14 @@ input:focus{outline:2px solid var(--coral);outline-offset:0;border-color:var(--c
 .st.past{background:var(--warn-soft);color:var(--warn)}
 .st.over{background:var(--crit-chip);color:#fff}
 
+/* Test mark grade badges */
+.grade{display:inline-block;min-width:26px;text-align:center;border-radius:999px;padding:2px 8px;
+       font-size:12px;font-weight:700;font-family:var(--mono, ui-monospace, monospace)}
+.grade.g-hi{background:var(--ok-soft);color:var(--ok)}
+.grade.g-mid{background:var(--blue-soft);color:var(--blue)}
+.grade.g-lo{background:var(--warn-soft);color:var(--warn)}
+.grade.g-u{background:var(--crit-soft);color:var(--crit)}
+
 /* Hidden by default (and inert — not just invisible) above the mobile breakpoint below;
    the media query there is what actually turns these on. */
 .menu-btn,.backdrop{display:none}

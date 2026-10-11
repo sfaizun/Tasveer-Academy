@@ -15,6 +15,7 @@ import StudentRoutine, { type RoutineRow } from "./StudentRoutine";
 import MockExamsPanel, { type StudentMockRow } from "./MockExamsPanel";
 import { examTitle } from "@/lib/mock";
 import { isCurrentEnrolment } from "@/lib/enrolment";
+import StudentTestMarksPanel from "../../test-marks/StudentTestMarksPanel";
 
 export const dynamic = "force-dynamic";
 
@@ -339,6 +340,8 @@ export default async function StudentDetail({
             </div>
           </div>
         ) : null}
+
+        <StudentTestMarksPanel supabase={supabase} studentId={id} />
 
         {isAdmin && <AdmissionFeePanel studentId={id} invoices={(invoices ?? []) as any} />}
 
