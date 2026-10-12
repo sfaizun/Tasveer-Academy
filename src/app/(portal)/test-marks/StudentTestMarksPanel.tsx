@@ -37,7 +37,7 @@ export default async function StudentTestMarksPanel({ supabase, studentId }: { s
                   <td>{r.test_name}</td>
                   <td className="n mono" style={{ whiteSpace: "nowrap" }}>{fmtNum(r.marks)} / {fmtNum(r.out_of)}</td>
                   <td className="n mono">{r.percentage.toFixed(2)}</td>
-                  <td><span className={`grade ${gradeTone(r.grade)}`}>{r.grade}</span></td>
+                  <td><span className={`grade ${gradeTone(r.grade, r.grade_scale)}`}>{r.grade}</span></td>
                   <td>{r.attachment_name ? <a href={`/test-marks/file/${r.id}`} target="_blank" rel="noopener" style={{ fontSize: 12.5 }}>View</a> : <span className="sub">-</span>}</td>
                 </tr>
               ))}

@@ -1,6 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import { fmtDate } from "@/lib/format";
-import { fmtNum, gradeTone } from "@/lib/grade";
+import { type GradeScale, fmtNum, gradeTone, scaleText } from "@/lib/grade";
 import { MARK_COLS, toMarkRow } from "./marks";
 import type { MarkRow } from "./TestMarkForm";
 
@@ -40,7 +40,7 @@ export default async function StudentMarks({ supabase }: { supabase: Supabase })
               <div className="panel" style={{ padding: "12px 14px" }}><div className="lbl">Overall average</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{avgOf(list).toFixed(1)}%</b></div>
               <div className="panel" style={{ padding: "12px 14px" }}>
                 <div className="lbl">Latest</div>
-                <b style={{ fontSize: 15, color: "var(--ink)" }}><span className={`grade ${gradeTone(list[0].grade)}`}>{list[0].grade}</span> <span className="sub">{list[0].subject_label}</span></b>
+                <b style={{ fontSize: 15, color: "var(--ink)" }}><span className={`grade ${gradeTone(list[0].grade, list[0].grade_scale)}`}>{list[0].grade}</span> <span className="sub">{list[0].subject_label}</span></b>
               </div>
             </div>
             <div className="panel">
@@ -58,7 +58,9 @@ export default async function StudentMarks({ supabase }: { supabase: Supabase })
           </div>
         );
       })}
-      <div className="sub">Grades: A 90% or above, B 80%, C 70%, D 60%, E 50%, U below 50%.</div>
+      {[...new Set(rows.map((r) => r.grade_scale))].map((sc) => (
+        <div key={sc} className="sub">{scaleText(sc as GradeScale)}</div>
+      ))}
     </div>
   );
 }
@@ -79,7 +81,7 @@ function SubjectRows({ label, marks }: { label: string; marks: MarkRow[] }) {
           <td>{r.test_name}</td>
           <td className="n mono" style={{ whiteSpace: "nowrap" }}>{fmtNum(r.marks)} / {fmtNum(r.out_of)}</td>
           <td className="n mono">{r.percentage.toFixed(2)}</td>
-          <td><span className={`grade ${gradeTone(r.grade)}`}>{r.grade}</span></td>
+          <td><span className={`grade ${gradeTone(r.grade, r.grade_scale)}`}>{r.grade}</span></td>
           <td style={{ whiteSpace: "pre-wrap" }}>{r.remarks ?? <span className="sub">-</span>}</td>
           <td>{r.attachment_name ? <a href={`/test-marks/file/${r.id}`} target="_blank" rel="noopener" style={{ fontSize: 12.5 }}>View file</a> : <span className="sub">-</span>}</td>
         </tr>

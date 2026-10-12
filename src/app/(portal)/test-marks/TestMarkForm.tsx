@@ -3,10 +3,10 @@ import { useActionState, useEffect, useMemo, useRef, useState, useTransition } f
 import Req from "@/components/Req";
 import { createClient } from "@/lib/supabase/client";
 import { ATTACHMENT_ACCEPT, checkAttachment } from "@/lib/attachments";
-import { GRADES, gradeFor, percentOf } from "@/lib/grade";
+import { type GradeScale, gradeFor, percentOf } from "@/lib/grade";
 import { addTestMark, updateTestMark } from "./actions";
 
-export type SubjectOpt = { id: string; label: string };
+export type SubjectOpt = { id: string; label: string; scale: GradeScale };
 export type StudentOpt = { id: string; name: string; reg_no: string | null; subjects: SubjectOpt[] };
 export type MarkRow = {
   id: string;
@@ -23,6 +23,7 @@ export type MarkRow = {
   percentage: number;
   grade: string;
   auto_grade: string | null;
+  grade_scale: GradeScale;
   remarks: string | null;
   attachment_name: string | null;
 };
@@ -34,7 +35,7 @@ const inputStyle: React.CSSProperties = {
 const readOnlyStyle: React.CSSProperties = { ...inputStyle, background: "var(--tint)", fontFamily: "var(--mono, monospace)" };
 
 /** Add test marks, or edit them when `mark` is given. Percentage is worked out from the marks;
- * the grade fills in from the percentage and can be changed. The attachment is optional. */
+ * the grade is worked out from the percentage on the subject's grading scale and cannot be changed by hand. The attachment is optional. */
 export default function TestMarkForm({
   students, today, mark, defaultStudentId, onDone,
 }: {
@@ -56,12 +57,11 @@ export default function TestMarkForm({
   const [subjectId, setSubjectId] = useState(mark?.subject_id ?? "");
   const [marks, setMarks] = useState(mark ? String(mark.marks) : "");
   const [outOf, setOutOf] = useState(mark ? String(mark.out_of) : "100");
-  const [grade, setGrade] = useState(mark && mark.auto_grade !== mark.grade ? mark.grade : "");
 
   const student = students.find((s) => s.id === studentId);
   const subjects = useMemo(() => {
     const list = student?.subjects ?? [];
-    if (mark && !list.some((s) => s.id === mark.subject_id)) return [{ id: mark.subject_id, label: mark.subject_label }, ...list];
+    if (mark && !list.some((s) => s.id === mark.subject_id)) return [{ id: mark.subject_id, label: mark.subject_label, scale: mark.grade_scale }, ...list];
     return list;
   }, [student, mark]);
 
@@ -72,7 +72,9 @@ export default function TestMarkForm({
   }, [studentId]);
 
   const pct = marks.trim() && outOf.trim() ? percentOf(Number(marks), Number(outOf)) : null;
-  const autoGrade = marks.trim() && outOf.trim() ? gradeFor(pct) : null;
+  const scale: GradeScale = subjects.find((s) => s.id === subjectId)?.scale ?? mark?.grade_scale ?? "junior";
+  const autoGrade = marks.trim() && outOf.trim() ? gradeFor(pct, scale) : null;
+
   const overMax = marks.trim() !== "" && outOf.trim() !== "" && Number(marks) > Number(outOf);
 
   useEffect(() => {
@@ -82,7 +84,6 @@ export default function TestMarkForm({
       ref.current?.reset();
       setSubjectId(subjects.length === 1 ? subjects[0].id : "");
       setMarks("");
-      setGrade("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state]);
@@ -170,12 +171,9 @@ export default function TestMarkForm({
           <input aria-label="Percentage" readOnly tabIndex={-1} style={readOnlyStyle} value={overMax ? "Check marks" : pct === null ? "" : `${pct.toFixed(2)}%`} />
         </div>
         <div className="field">
-          <label className="lbl" htmlFor={`tm-g-${id}`}>Grade<Req /></label>
-          <select id={`tm-g-${id}`} style={inputStyle} name="grade" value={grade} onChange={(e) => setGrade(e.target.value)}>
-            <option value="">{autoGrade ? `${autoGrade} (auto)` : "Auto"}</option>
-            {GRADES.map((g) => <option key={g} value={g}>{g}</option>)}
-          </select>
-          {grade && autoGrade && grade !== autoGrade && <span className="sub">Changed from {autoGrade}</span>}
+          <span className="lbl">Grade</span>
+          <input aria-label="Grade" readOnly tabIndex={-1} style={readOnlyStyle} value={overMax ? "" : autoGrade ?? ""} />
+          <span className="sub">Worked out from the percentage</span>
         </div>
       </div>
 

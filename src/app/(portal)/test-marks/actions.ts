@@ -1,7 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { GRADES, gradeFor, percentOf } from "@/lib/grade";
 
 type State = { ok?: boolean; error?: string } | null;
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -17,7 +16,6 @@ function readMark(formData: FormData) {
   const outRaw = String(formData.get("out_of") ?? "").trim();
   const marks = Math.round(Number(marksRaw) * 100) / 100;
   const out_of = Math.round(Number(outRaw) * 100) / 100;
-  const gradeRaw = String(formData.get("grade") ?? "").trim();
   const remarks = String(formData.get("remarks") ?? "").trim().slice(0, 1000) || null;
 
   if (!student_id) return { error: "Choose the student." };
@@ -27,9 +25,7 @@ function readMark(formData: FormData) {
   if (!marksRaw || !Number.isFinite(marks) || marks < 0) return { error: "Enter the marks obtained." };
   if (!outRaw || !Number.isFinite(out_of) || out_of <= 0) return { error: "Enter the total marks (Out of)." };
   if (marks > out_of) return { error: "Marks obtained can't be more than Out of." };
-  const grade = gradeRaw ? gradeRaw : gradeFor(percentOf(marks, out_of));
-  if (!grade || !(GRADES as readonly string[]).includes(grade)) return { error: "Choose a grade." };
-  return { values: { student_id, subject_id, test_name: test_name.slice(0, 200), test_date, marks, out_of, grade, remarks } };
+  return { values: { student_id, subject_id, test_name: test_name.slice(0, 200), test_date, marks, out_of, remarks } };
 }
 
 type Attachment = { attachment_path: string; attachment_name: string; attachment_type: string | null; attachment_size: number | null };

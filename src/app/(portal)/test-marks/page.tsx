@@ -6,6 +6,7 @@ import PrintButton from "@/components/PrintButton";
 import ExportCsvButton from "@/components/ExportCsvButton";
 import { dhakaTodayISO, fmtDate } from "@/lib/format";
 import { subjectLabel } from "@/lib/mock";
+import { type GradeScale, scaleForProgramme, scaleText } from "@/lib/grade";
 import TestMarkForm, { type StudentOpt } from "./TestMarkForm";
 import { MARK_COLS, toMarkRow } from "./marks";
 import TestMarkTable from "./TestMarkTable";
@@ -80,7 +81,7 @@ export default async function TestMarksPage({
     if (!e.student || !e.subject) continue;
     const s: StudentOpt = byStudent.get(e.student_id) ?? { id: e.student_id, name: e.student.full_name, reg_no: e.student.reg_no, subjects: [] };
     const label = subjectLabel(e.subject);
-    if (!s.subjects.some((x) => x.id === e.subject_id)) s.subjects.push({ id: e.subject_id, label });
+    if (!s.subjects.some((x) => x.id === e.subject_id)) s.subjects.push({ id: e.subject_id, label, scale: scaleForProgramme(e.subject.programme?.code) });
     byStudent.set(e.student_id, s);
     subjectNames.set(e.subject_id, label);
   }
@@ -97,8 +98,6 @@ export default async function TestMarksPage({
   const teachers = (teacherData ?? []) as { id: string; full_name: string }[];
 
   const avg = rows.length ? rows.reduce((s, r) => s + r.percentage, 0) / rows.length : null;
-  const gradeA = rows.filter((r) => r.grade === "A").length;
-  const gradeU = rows.filter((r) => r.grade === "U").length;
 
   const studentName = byStudent.get(studentId)?.name;
   const filterText = [
@@ -183,8 +182,6 @@ export default async function TestMarksPage({
           <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", padding: "14px 18px" }}>
             <div><div className="lbl">Tests recorded</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{rows.length}</b></div>
             <div><div className="lbl">Average</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{avg === null ? "-" : `${avg.toFixed(1)}%`}</b></div>
-            <div><div className="lbl">Grade A</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{gradeA}</b></div>
-            <div><div className="lbl">Grade U</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{gradeU}</b></div>
           </div>
 
           <TestMarkTable rows={rows} students={students} today={today} showTeacher={isAdmin} />
@@ -195,7 +192,7 @@ export default async function TestMarksPage({
             <span className="sub" style={{ float: "right" }}>Signature: ____________________</span>
           </div>
           <div className="sub no-print" style={{ padding: "4px 18px 16px" }}>
-            Grades: A 90% or above, B 80%, C 70%, D 60%, E 50%, U below 50%.
+            {(["o_level", "a_level", "junior"] as GradeScale[]).map((sc) => <div key={sc}>{scaleText(sc)}</div>)}
           </div>
         </div>
       </div>

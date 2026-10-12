@@ -21,7 +21,7 @@ export default function TestMarkTable({
   const [confirming, setConfirming] = useState<string | null>(null);
   const cols = 8 + (showStudent ? 1 : 0) + (showTeacher ? 1 : 0);
   return (
-    <div className="tblwrap">
+    <div className="tblwrap tm-print">
       <table>
         <thead>
           <tr>
@@ -33,7 +33,7 @@ export default function TestMarkTable({
             <th className="n">Marks</th>
             <th className="n">%</th>
             <th>Grade</th>
-            <th>Attachment</th>
+            <th className="no-print">Attachment</th>
             <th className="n no-print"></th>
           </tr>
         </thead>
@@ -58,15 +58,11 @@ export default function TestMarkTable({
                 <td className="n mono" style={{ whiteSpace: "nowrap" }}>{fmtNum(r.marks)} / {fmtNum(r.out_of)}</td>
                 <td className="n mono">{Number(r.percentage).toFixed(2)}</td>
                 <td style={{ whiteSpace: "nowrap" }}>
-                  <span className={`grade ${gradeTone(r.grade)}`}>{r.grade}</span>
-                  {r.auto_grade && r.auto_grade !== r.grade && <span className="sub" style={{ fontSize: 10, marginLeft: 4 }} title={`Auto grade was ${r.auto_grade}`}>changed</span>}
+                  <span className={`grade ${gradeTone(r.grade, r.grade_scale)}`}>{r.grade}</span>
                 </td>
-                <td>
+                <td className="no-print">
                   {r.attachment_name ? (
-                    <>
-                      <a className="no-print" href={`/test-marks/file/${r.id}`} target="_blank" rel="noopener" title={r.attachment_name} style={{ fontSize: 12.5 }}>View file</a>
-                      <span className="print-only" style={{ fontSize: 11 }}>{r.attachment_name}</span>
-                    </>
+                    <a href={`/test-marks/file/${r.id}`} target="_blank" rel="noopener" title={r.attachment_name} style={{ fontSize: 12.5 }}>View file</a>
                   ) : <span className="sub">-</span>}
                 </td>
                 <td className="n no-print" style={{ whiteSpace: "nowrap" }}>
