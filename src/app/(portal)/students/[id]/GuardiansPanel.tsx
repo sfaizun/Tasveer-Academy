@@ -44,7 +44,7 @@ function GuardianFields({ guardian }: { guardian?: Guardian }) {
       </div>
       <div className="field">
         <label className="lbl">Phone</label>
-        <input style={inputStyle} type="text" name="phone" defaultValue={guardian?.phone ?? ""} />
+        <input style={inputStyle} type="tel" inputMode="tel" name="phone" placeholder="01XXXXXXXXX" title="11 digits starting with 01, or + and country code" defaultValue={guardian?.phone ?? ""} />
       </div>
       <div className="field">
         <label className="lbl">Email</label>

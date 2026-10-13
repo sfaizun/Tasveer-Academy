@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { submitApplication, type ApplicationPayload } from "./actions";
+import { cleanPhone, PHONE_ERROR, PHONE_HINT, PHONE_PLACEHOLDER } from "@/lib/phone";
 
 export type CatalogueData = {
   admissionFee: number;
@@ -240,10 +241,12 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   function validateClient(): string | null {
     if (!student.full_name.trim()) return "Enter the student's full name.";
     if (!student.phone.trim()) return "Enter the student's WhatsApp/mobile number.";
+    if (!cleanPhone(student.phone)) return "Student WhatsApp/mobile: " + PHONE_ERROR;
     if (!student.email.trim()) return "Enter the student's email. It is used to create the portal login.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email.trim())) return "Enter a valid student email address.";
     if (!guardian.full_name.trim()) return "Enter the guardian's full name.";
     if (!guardian.phone.trim()) return "Enter the guardian's WhatsApp/mobile number.";
+    if (!cleanPhone(guardian.phone)) return "Guardian WhatsApp/mobile: " + PHONE_ERROR;
     if (!programme) return "Choose a programme.";
     if (programme === "junior" && !classLevelCode) return "Choose a class level.";
     if (programme !== "junior") {
@@ -483,9 +486,11 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setStudent({ ...student, nationality: e.target.value })}
                 />
               </Field>
-              <Field label="Student WhatsApp / mobile" hint="A delivery address for class notices" required>
+              <Field label="Student WhatsApp / mobile" hint={PHONE_HINT} required>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder={PHONE_PLACEHOLDER}
                   required
                   value={student.phone}
                   onChange={(e) => setStudent({ ...student, phone: e.target.value })}
@@ -557,9 +562,11 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setGuardian({ ...guardian, mother_name: e.target.value })}
                 />
               </Field>
-              <Field label="Guardian WhatsApp / mobile" required>
+              <Field label="Guardian WhatsApp / mobile" hint={PHONE_HINT} required>
                 <input
-                  type="text"
+                  type="tel"
+                  inputMode="tel"
+                  placeholder={PHONE_PLACEHOLDER}
                   required
                   value={guardian.phone}
                   onChange={(e) => setGuardian({ ...guardian, phone: e.target.value })}

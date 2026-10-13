@@ -72,7 +72,7 @@ export default function EditStudentForm({ studentId, details }: { studentId: str
         </div>
         <div className="field">
           <label className="lbl">WhatsApp / mobile</label>
-          <input style={inputStyle} type="text" name="phone" defaultValue={details.phone ?? ""} />
+          <input style={inputStyle} type="tel" inputMode="tel" name="phone" placeholder="01XXXXXXXXX" title="11 digits starting with 01, or + and country code" defaultValue={details.phone ?? ""} />
         </div>
         <div className="field">
           <label className="lbl">Email<Req /></label>

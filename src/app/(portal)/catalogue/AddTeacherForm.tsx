@@ -19,7 +19,7 @@ export default function AddTeacherForm() {
       </div>
       <div className="field" style={{ minWidth: 160, flex: "1 1 160px" }}>
         <label className="lbl" htmlFor="t-phone">Phone</label>
-        <input id="t-phone" name="phone" type="text" />
+        <input id="t-phone" name="phone" type="tel" inputMode="tel" placeholder="01XXXXXXXXX" title="11 digits starting with 01, or + and country code" />
       </div>
       <div className="field" style={{ minWidth: 180, flex: "1 1 180px" }}>
         <label className="lbl" htmlFor="t-email">Email</label>

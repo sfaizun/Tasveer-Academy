@@ -1,5 +1,6 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
+import { cleanPhone, PHONE_ERROR } from "@/lib/phone";
 
 export type ApplicationPayload = {
   visit_date: string;
@@ -61,6 +62,9 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   if (!payload.student?.phone?.trim()) {
     return { ok: false, error: "Student WhatsApp/mobile number is required." };
   }
+  const studentPhone = cleanPhone(payload.student.phone);
+  if (!studentPhone) return { ok: false, error: "Student WhatsApp/mobile: " + PHONE_ERROR };
+  payload.student.phone = studentPhone;
   const studentEmail = payload.student?.email?.trim() ?? "";
   if (!studentEmail) {
     return { ok: false, error: "Student email is required. It is used to create the portal login." };
@@ -74,6 +78,9 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   if (!payload.guardian?.phone?.trim()) {
     return { ok: false, error: "Guardian WhatsApp/mobile number is required." };
   }
+  const guardianPhone = cleanPhone(payload.guardian.phone);
+  if (!guardianPhone) return { ok: false, error: "Guardian WhatsApp/mobile: " + PHONE_ERROR };
+  payload.guardian.phone = guardianPhone;
   if (!["junior", "o_level", "a_level"].includes(payload.programme_code)) {
     return { ok: false, error: "Choose a programme." };
   }

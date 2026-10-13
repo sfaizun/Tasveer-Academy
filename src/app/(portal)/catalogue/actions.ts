@@ -1,6 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { checkPhone } from "@/lib/phone";
 
 type State = { error?: string; ok?: boolean } | null;
 
@@ -9,11 +10,13 @@ export async function addTeacher(_prev: State, formData: FormData): Promise<Stat
   const phone = String(formData.get("phone") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim();
   if (!full_name) return { error: "Enter the teacher's name." };
+  const phoneCheck = checkPhone(phone);
+  if ("error" in phoneCheck) return { error: phoneCheck.error };
 
   const supabase = await createClient();
   const { error } = await supabase.from("teacher").insert({
     full_name,
-    phone: phone || null,
+    phone: phoneCheck.value,
     email: email || null,
   });
   if (error) return { error: "Could not add teacher — " + error.message };

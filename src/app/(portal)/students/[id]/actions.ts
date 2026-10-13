@@ -1,6 +1,7 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { checkPhone } from "@/lib/phone";
 
 type State = { error?: string; ok?: boolean } | null;
 
@@ -151,6 +152,8 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
   if (genderRaw && !(STUDENT_GENDERS as readonly string[]).includes(genderRaw)) {
     return { error: "Choose a valid gender option." };
   }
+  const phoneCheck = checkPhone(phone);
+  if ("error" in phoneCheck) return { error: phoneCheck.error };
   if (!email) return { error: "Email is required. It is used for the student's portal login." };
   if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
 
@@ -162,7 +165,7 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
       previous_reg_no: previous_reg_no || null,
       gender: genderRaw || null,
       nationality: nationality || null,
-      phone: phone || null,
+      phone: phoneCheck.value,
       email: email || null,
       address: address || null,
       school_name: school_name || null,
@@ -196,6 +199,8 @@ export async function addGuardian(_prev: State, formData: FormData): Promise<Sta
   if (relationRaw && !(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
     return { error: "Choose a valid relation." };
   }
+  const phoneCheck = checkPhone(phone);
+  if ("error" in phoneCheck) return { error: phoneCheck.error };
   if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
 
   const supabase = await createClient();
@@ -213,7 +218,7 @@ export async function addGuardian(_prev: State, formData: FormData): Promise<Sta
     student_id: studentId,
     full_name,
     relation: relationRaw || null,
-    phone: phone || null,
+    phone: phoneCheck.value,
     email: email || null,
     address: address || null,
     is_primary,
@@ -241,6 +246,8 @@ export async function updateGuardian(_prev: State, formData: FormData): Promise<
   if (relationRaw && !(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
     return { error: "Choose a valid relation." };
   }
+  const phoneCheck = checkPhone(phone);
+  if ("error" in phoneCheck) return { error: phoneCheck.error };
   if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
 
   const supabase = await createClient();
@@ -259,7 +266,7 @@ export async function updateGuardian(_prev: State, formData: FormData): Promise<
     .update({
       full_name,
       relation: relationRaw || null,
-      phone: phone || null,
+      phone: phoneCheck.value,
       email: email || null,
       address: address || null,
       is_primary,
