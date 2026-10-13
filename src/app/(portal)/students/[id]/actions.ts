@@ -151,7 +151,8 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
   if (genderRaw && !(STUDENT_GENDERS as readonly string[]).includes(genderRaw)) {
     return { error: "Choose a valid gender option." };
   }
-  if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+  if (!email) return { error: "Email is required. It is used for the student's portal login." };
+  if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
 
   const supabase = await createClient();
   const { error } = await supabase

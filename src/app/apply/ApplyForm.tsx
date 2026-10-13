@@ -240,6 +240,8 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   function validateClient(): string | null {
     if (!student.full_name.trim()) return "Enter the student's full name.";
     if (!student.phone.trim()) return "Enter the student's WhatsApp/mobile number.";
+    if (!student.email.trim()) return "Enter the student's email. It is used to create the portal login.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email.trim())) return "Enter a valid student email address.";
     if (!guardian.full_name.trim()) return "Enter the guardian's full name.";
     if (!guardian.phone.trim()) return "Enter the guardian's WhatsApp/mobile number.";
     if (!programme) return "Choose a programme.";
@@ -489,9 +491,10 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setStudent({ ...student, phone: e.target.value })}
                 />
               </Field>
-              <Field label="Student email" hint="Optional, also used for notices">
+              <Field label="Student email" hint="Used to create the student's portal login" required>
                 <input
                   type="email"
+                  required
                   value={student.email}
                   onChange={(e) => setStudent({ ...student, email: e.target.value })}
                 />
@@ -554,7 +557,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setGuardian({ ...guardian, mother_name: e.target.value })}
                 />
               </Field>
-              <Field label="Guardian WhatsApp / mobile" hint="This is the portal login once enrolled" required>
+              <Field label="Guardian WhatsApp / mobile" required>
                 <input
                   type="text"
                   required

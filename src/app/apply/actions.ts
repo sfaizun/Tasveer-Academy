@@ -61,6 +61,13 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   if (!payload.student?.phone?.trim()) {
     return { ok: false, error: "Student WhatsApp/mobile number is required." };
   }
+  const studentEmail = payload.student?.email?.trim() ?? "";
+  if (!studentEmail) {
+    return { ok: false, error: "Student email is required. It is used to create the portal login." };
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(studentEmail)) {
+    return { ok: false, error: "Enter a valid student email address." };
+  }
   if (!payload.guardian?.full_name?.trim()) {
     return { ok: false, error: "Guardian name is required." };
   }

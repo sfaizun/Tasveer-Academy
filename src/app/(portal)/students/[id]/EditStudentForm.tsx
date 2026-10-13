@@ -75,8 +75,8 @@ export default function EditStudentForm({ studentId, details }: { studentId: str
           <input style={inputStyle} type="text" name="phone" defaultValue={details.phone ?? ""} />
         </div>
         <div className="field">
-          <label className="lbl">Email</label>
-          <input style={inputStyle} type="email" name="email" defaultValue={details.email ?? ""} />
+          <label className="lbl">Email<Req /></label>
+          <input style={inputStyle} type="email" name="email" required defaultValue={details.email ?? ""} />
         </div>
         <div className="field">
           <label className="lbl">School</label>

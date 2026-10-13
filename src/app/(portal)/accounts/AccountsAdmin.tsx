@@ -8,7 +8,7 @@ const inputStyle: React.CSSProperties = {
   fontFamily: "inherit", width: "100%",
 };
 
-type PersonOption = { id: string; label: string };
+type PersonOption = { id: string; label: string; email?: string | null };
 type AppUserRow = {
   id: string;
   full_name: string;
@@ -94,13 +94,18 @@ function CreateCanteenLoginForm() {
 
 function CreateStudentLoginForm({ students }: { students: PersonOption[] }) {
   const [state, action, pending] = useActionState(createStudentLogin, null);
+  // The login email starts as the email given at admission; admin can still change it.
+  const [loginEmail, setLoginEmail] = useState("");
 
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
         <div className="field">
           <label className="lbl">Student</label>
-          <select style={inputStyle} name="student_id" required defaultValue="">
+          <select
+            style={inputStyle} name="student_id" required defaultValue=""
+            onChange={(e) => setLoginEmail(students.find((s) => s.id === e.target.value)?.email ?? "")}
+          >
             <option value="" disabled>Choose…</option>
             {students.map((s) => (
               <option key={s.id} value={s.id}>{s.label}</option>
@@ -109,7 +114,10 @@ function CreateStudentLoginForm({ students }: { students: PersonOption[] }) {
         </div>
         <div className="field">
           <label className="lbl">Login email</label>
-          <input style={inputStyle} type="email" name="email" required placeholder="student@example.com" />
+          <input
+            style={inputStyle} type="email" name="email" required placeholder="student@example.com"
+            value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)}
+          />
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>

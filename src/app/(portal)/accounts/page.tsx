@@ -16,7 +16,7 @@ export default async function AccountsPage() {
     supabase.from("teacher").select("id, full_name").is("app_user_id", null).eq("active", true).order("full_name"),
     supabase
       .from("student")
-      .select("id, full_name, reg_no")
+      .select("id, full_name, reg_no, email")
       .is("app_user_id", null)
       .in("status", ["applicant", "active", "on_hold"])
       .order("full_name"),
@@ -35,7 +35,7 @@ export default async function AccountsPage() {
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <AccountsAdmin
           teachersWithoutLogin={(teachers ?? []).map((t: any) => ({ id: t.id, label: t.full_name }))}
-          studentsWithoutLogin={(students ?? []).map((s: any) => ({ id: s.id, label: `${s.full_name} (${s.reg_no})` }))}
+          studentsWithoutLogin={(students ?? []).map((s: any) => ({ id: s.id, label: `${s.full_name} (${s.reg_no})`, email: s.email }))}
           accounts={(accounts ?? []) as any[]}
           isOwner={!!me?.is_owner}
         />
