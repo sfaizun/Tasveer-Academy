@@ -2,7 +2,8 @@
 import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Req from "@/components/Req";
 import { taka, fmtDate, currentBillingMonth } from "@/lib/format";
-import { addEnrolment, removeEnrolment, setEnrolmentStart, setEnrolmentEnd, setEnrolmentClassGroup, setEnrolmentDiscount } from "./actions";
+import { addEnrolment, removeEnrolment, setEnrolmentStart, setEnrolmentEnd, setEnrolmentClassGroup, setEnrolmentDiscount, setEnrolmentMonths } from "./actions";
+import { type InvoiceLite, type MonthOption, MonthChecklist, addMonths, billingOptions, monthKey, monthLabel } from "./BillMonths";
 import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 
 const inputStyle: React.CSSProperties = {
@@ -30,6 +31,23 @@ export type Enrolment = {
   discount_reason: string | null;
 };
 
+const warnBox: React.CSSProperties = {
+  border: "1px solid var(--warn)", background: "var(--warn-soft)", borderRadius: 8, padding: "12px 14px",
+  display: "flex", flexDirection: "column", gap: 10,
+};
+
+/** Keeps the ticks in step with the month list: months that already have an invoice are
+ * ticked again whenever the list changes (a different start month was picked). Months
+ * with no invoice start unticked, since ticking them creates a new invoice. */
+function useMonthTicks(options: MonthOption[]) {
+  const sig = options.filter((o) => o.selectable && !o.billed && o.invoice).map((o) => o.month).join(",");
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setChecked(new Set(sig ? sig.split(",") : []));
+  }, [sig]);
+  return [checked, setChecked] as const;
+}
+
 function discountLabel(e: Enrolment) {
   if (e.discount_pct) return `${e.discount_pct}%${e.discount_reason ? ` — ${e.discount_reason}` : ""}`;
   if (e.discount_amt) return `${taka(e.discount_amt)}/mo${e.discount_reason ? ` — ${e.discount_reason}` : ""}`;
@@ -42,26 +60,44 @@ function AddSubjectForm({
   teachers,
   teacherSubjects,
   classGroups,
+  invoices,
 }: {
   studentId: string;
   subjects: Subject[];
   teachers: Teacher[];
   teacherSubjects: TeacherSubject[];
   classGroups: ClassGroup[];
+  invoices: InvoiceLite[];
 }) {
   const [state, action, pending] = useActionState(addEnrolment, null);
   const formRef = useRef<HTMLFormElement>(null);
   const [subjectId, setSubjectId] = useState("");
   const [teacherId, setTeacherId] = useState("");
-  const currentMonth = useMemo(() => currentBillingMonth().slice(0, 7), []);
+  const current = useMemo(() => currentBillingMonth(), []);
+  const currentMonth = current.slice(0, 7);
+  const [fromMonth, setFromMonth] = useState(currentMonth);
+
+  // Months from the chosen start up to now that already have an invoice (or would get one).
+  // The admin decides which of them this subject is added to.
+  const options = useMemo(
+    () => (/^\d{4}-\d{2}$/.test(fromMonth) && `${fromMonth}-01` <= current
+      ? billingOptions({ from: `${fromMonth}-01`, to: current, invoices, current })
+      : []),
+    [fromMonth, current, invoices]
+  );
+  const choices = options.filter((o) => o.selectable);
+  const [checked, setChecked] = useMonthTicks(options);
+  const askMonths = choices.length > 0;
+  const existing = choices.filter((o) => o.invoice).length;
 
   useEffect(() => {
     if (state?.ok) {
       formRef.current?.reset();
       setSubjectId("");
       setTeacherId("");
+      setFromMonth(currentMonth);
     }
-  }, [state]);
+  }, [state, currentMonth]);
 
   const subjectGroups = useMemo(() => groupSubjects(subjects), [subjects]);
   const eligibleTeachers = useMemo(() => {
@@ -137,21 +173,43 @@ function AddSubjectForm({
         </div>
         <div className="field">
           <label className="lbl">Starting from</label>
-          <input style={inputStyle} type="month" name="from_month" defaultValue={currentMonth} />
+          <input style={inputStyle} type="month" name="from_month" value={fromMonth} onChange={(e) => setFromMonth(e.target.value)} />
         </div>
       </div>
 
+      {askMonths && (
+        <div style={warnBox} role="alert">
+          <div style={{ fontWeight: 600, color: "var(--warn)" }}>
+            {existing > 0
+              ? `${existing === 1 ? "An invoice already exists" : `Invoices already exist for ${existing} months`} from ${monthLabel(`${fromMonth}-01`)}. Adding a subject does not change them unless you tick them below.`
+              : `Starting in ${monthLabel(`${fromMonth}-01`)} covers months already past. Which months should be billed?`}
+          </div>
+          <div className="sub" style={{ marginTop: -4 }}>
+            Ticked months get this subject&apos;s monthly fee. Unticked months are left as they are; you can add the
+            subject to them later from Manage, under &ldquo;Months billed&rdquo;.
+          </div>
+          <MonthChecklist options={options} checked={checked} onChange={setChecked} mode="choose" />
+          <input type="hidden" name="bill_months" value={JSON.stringify([...checked].sort())} />
+        </div>
+      )}
+
       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
         <button className="btn" type="submit" disabled={pending} style={{ alignSelf: "flex-start" }}>
-          {pending ? "Adding…" : "+ Add subject"}
+          {pending
+            ? "Adding…"
+            : askMonths && checked.size > 0
+              ? `+ Add subject and bill ${checked.size} ${checked.size === 1 ? "month" : "months"}`
+              : askMonths
+                ? "+ Add subject without billing these months"
+                : "+ Add subject"}
         </button>
         {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
         {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Added.</span>}
       </div>
       <div className="sub">
         Pick an existing batch to put this student on the routine they&apos;ll actually attend, or type a
-        new batch name to start one. You can start from a past month: the fee is added to each month&apos;s
-        bill from then up to now (a month with no bill gets one). A future month starts on that month&apos;s bill.
+        new batch name to start one. You can start from a past month: you&apos;ll be asked which of the
+        months up to now should carry this subject&apos;s fee. A future month starts on that month&apos;s bill.
       </div>
     </form>
   );
@@ -161,26 +219,127 @@ function AddSubjectForm({
 // subject has already been billed for a month before the requested start — moving past
 // that would leave this record disagreeing with an invoice that's already gone out, so
 // the database names the exact month and refuses instead of silently allowing it.
-function StartSubjectForm({ studentId, enrolment }: { studentId: string; enrolment: Enrolment }) {
+function StartSubjectForm({ studentId, enrolment, invoices }: { studentId: string; enrolment: Enrolment; invoices: InvoiceLite[] }) {
   const [state, action, pending] = useActionState(setEnrolmentStart, null);
+  const oldFrom = monthKey(enrolment.from_month);
+  const [fromMonth, setFromMonth] = useState(oldFrom.slice(0, 7));
+  const current = useMemo(() => currentBillingMonth(), []);
+
+  // Moving the start earlier: the months between the new and the old start already have
+  // invoices (or would need one). Ask which of them should get this subject.
+  const newFrom = /^\d{4}-\d{2}$/.test(fromMonth) ? `${fromMonth}-01` : oldFrom;
+  const options = useMemo(() => {
+    if (newFrom >= oldFrom) return [];
+    let to = addMonths(oldFrom, -1);
+    if (to > current) to = current;
+    return billingOptions({ from: newFrom, to, invoices, current, enrolmentId: enrolment.id });
+  }, [newFrom, oldFrom, current, invoices, enrolment.id]);
+  const choices = options.filter((o) => o.selectable && !o.billed);
+  const [checked, setChecked] = useMonthTicks(options);
+  const askMonths = choices.length > 0;
 
   return (
-    <form action={action} style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 8 }}>
+        <input type="hidden" name="student_id" value={studentId} />
+        <input type="hidden" name="enrolment_id" value={enrolment.id} />
+        <label className="sub" style={{ whiteSpace: "nowrap" }}>Studying since:</label>
+        <input
+          style={{ ...inputStyle, width: "auto" }}
+          type="month"
+          name="from_month"
+          max={enrolment.to_month ? enrolment.to_month.slice(0, 7) : undefined}
+          value={fromMonth}
+          onChange={(e) => setFromMonth(e.target.value)}
+        />
+        <button className="btn ghost" type="submit" disabled={pending} style={{ fontSize: 12 }}>
+          {pending ? "Saving…" : askMonths && checked.size > 0 ? `Save and bill ${checked.size} ${checked.size === 1 ? "month" : "months"}` : askMonths ? "Save without billing these months" : "Save"}
+        </button>
+        {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+        {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>{state.message ?? "Saved."}</span>}
+      </div>
+      {askMonths && (
+        <div style={warnBox} role="alert">
+          <div style={{ fontWeight: 600, color: "var(--warn)" }}>
+            Moving the start to {monthLabel(newFrom)} does not change invoices already issued. Tick the months this subject should be added to.
+          </div>
+          <div className="sub" style={{ marginTop: -4 }}>
+            Ticked months get this subject&apos;s fee ({taka(enrolment.rate_applied)}
+            {discountLabel(enrolment) ? `, less its discount` : ""}). Unticked months stay as they are.
+          </div>
+          <MonthChecklist options={options} checked={checked} onChange={setChecked} rate={enrolment.rate_applied} mode="choose" />
+          <input type="hidden" name="bill_months" value={JSON.stringify([...checked].sort())} />
+        </div>
+      )}
+    </form>
+  );
+}
+
+// Which months' invoices carry this subject. Tick to add the subject to a month's invoice,
+// untick to take it off. Covers the months the subject is studied, plus any month outside
+// that range where it still appears on an invoice.
+function MonthsBilledForm({ studentId, enrolment, invoices }: { studentId: string; enrolment: Enrolment; invoices: InvoiceLite[] }) {
+  const [state, action, pending] = useActionState(setEnrolmentMonths, null);
+  const current = useMemo(() => currentBillingMonth(), []);
+
+  const options = useMemo(() => {
+    const latest = invoices.reduce((m, i) => (monthKey(i.billing_month) > m ? monthKey(i.billing_month) : m), current);
+    const from = monthKey(enrolment.from_month);
+    const to = enrolment.to_month && monthKey(enrolment.to_month) < latest ? monthKey(enrolment.to_month) : latest;
+    const inRange = from <= to ? billingOptions({ from, to, invoices, current, enrolmentId: enrolment.id }) : [];
+    const outside: MonthOption[] = invoices
+      .filter((i) => i.enrolment_ids.includes(enrolment.id) && !inRange.some((o) => o.month === monthKey(i.billing_month)))
+      .map((i) => ({ month: monthKey(i.billing_month), invoice: i, billed: true, selectable: false, note: "Outside the months studied" }));
+    return [...inRange, ...outside].sort((a, b) => (a.month < b.month ? -1 : 1));
+  }, [invoices, enrolment.from_month, enrolment.to_month, enrolment.id, current]);
+
+  const billedSig = options.filter((o) => o.billed).map((o) => o.month).join(",");
+  const [checked, setChecked] = useState<Set<string>>(new Set());
+  useEffect(() => {
+    setChecked(new Set(billedSig ? billedSig.split(",") : []));
+  }, [billedSig]);
+
+  const add = options.filter((o) => !o.billed && checked.has(o.month)).map((o) => o.month);
+  const remove = options.filter((o) => o.billed && !checked.has(o.month)).map((o) => o.month);
+  const dirty = add.length + remove.length > 0;
+
+  return (
+    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       <input type="hidden" name="student_id" value={studentId} />
       <input type="hidden" name="enrolment_id" value={enrolment.id} />
-      <label className="sub" style={{ whiteSpace: "nowrap" }}>Studying since:</label>
-      <input
-        style={{ ...inputStyle, width: "auto" }}
-        type="month"
-        name="from_month"
-        max={enrolment.to_month ? enrolment.to_month.slice(0, 7) : undefined}
-        defaultValue={enrolment.from_month.slice(0, 7)}
-      />
-      <button className="btn ghost" type="submit" disabled={pending} style={{ fontSize: 12 }}>
-        {pending ? "Saving…" : "Save"}
-      </button>
+      <input type="hidden" name="add" value={JSON.stringify(add)} />
+      <input type="hidden" name="remove" value={JSON.stringify(remove)} />
+      {options.length ? (
+        <MonthChecklist options={options} checked={checked} onChange={setChecked} rate={enrolment.rate_applied} mode="edit" />
+      ) : (
+        <div className="sub">No months to show yet.</div>
+      )}
+      {dirty && (
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <span className="sub">
+            {add.length > 0 && <>Add to {add.map(monthLabel).join(", ")}. </>}
+            {remove.length > 0 && <>Take off {remove.map(monthLabel).join(", ")}.</>}
+          </span>
+          {remove.length > 0 && (
+            <input
+              style={{ ...inputStyle, width: 260 }}
+              type="text"
+              name="reason"
+              required
+              maxLength={300}
+              placeholder="Reason for taking it off (required)"
+            />
+          )}
+          <button className="btn" type="submit" disabled={pending} style={{ fontSize: 12, padding: "7px 14px" }}>
+            {pending ? "Saving…" : "Save months"}
+          </button>
+          <button className="btn ghost" type="button" style={{ fontSize: 12 }} onClick={() => setChecked(new Set(billedSig ? billedSig.split(",") : []))}>
+            Undo
+          </button>
+        </div>
+      )}
       {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
-      {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Saved.</span>}
+      {state?.ok && !dirty && <span className="sub" style={{ color: "var(--ok)" }}>{state.message ?? "Saved."}</span>}
     </form>
   );
 }
@@ -366,6 +525,7 @@ export default function EnrolmentsPanel({
   teachers,
   teacherSubjects,
   classGroups,
+  invoices = [],
   canEdit,
 }: {
   studentId: string;
@@ -374,6 +534,7 @@ export default function EnrolmentsPanel({
   teachers: Teacher[];
   teacherSubjects: TeacherSubject[];
   classGroups: ClassGroup[];
+  invoices?: InvoiceLite[];
   canEdit: boolean;
 }) {
   const [open, setOpen] = useState<string | null>(null);
@@ -407,7 +568,19 @@ export default function EnrolmentsPanel({
                     <td className="n mono">{taka(e.rate_applied)}</td>
                     <td className="sub">{discount ?? "—"}</td>
                     <td className="n">
-                      {ended ? (
+                      {ended && canEdit ? (
+                        <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
+                          <span className="sub">Ended</span>
+                          <button
+                            className="btn ghost"
+                            type="button"
+                            style={{ fontSize: 12, padding: "6px 10px" }}
+                            onClick={() => setOpen(isOpen ? null : e.id)}
+                          >
+                            {isOpen ? "Close" : "Months"}
+                          </button>
+                        </span>
+                      ) : ended ? (
                         <span className="sub">Ended</span>
                       ) : canEdit ? (
                         <button
@@ -423,7 +596,15 @@ export default function EnrolmentsPanel({
                       )}
                     </td>
                   </tr>
-                  {isOpen && canEdit && (
+                  {isOpen && canEdit && ended && (
+                    <tr>
+                      <td colSpan={8} style={{ padding: "12px 16px", background: "var(--tint)" }}>
+                        <div className="lbl" style={{ marginBottom: 6 }}>Months billed</div>
+                        <MonthsBilledForm studentId={studentId} enrolment={e} invoices={invoices} />
+                      </td>
+                    </tr>
+                  )}
+                  {isOpen && canEdit && !ended && (
                     <tr>
                       <td colSpan={8} style={{ padding: "12px 16px", background: "var(--tint)" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -443,7 +624,14 @@ export default function EnrolmentsPanel({
                           </div>
                           <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>Start month</div>
-                            <StartSubjectForm studentId={studentId} enrolment={e} />
+                            <StartSubjectForm studentId={studentId} enrolment={e} invoices={invoices} />
+                          </div>
+                          <div>
+                            <div className="lbl" style={{ marginBottom: 6 }}>Months billed</div>
+                            <div className="sub" style={{ marginBottom: 6 }}>
+                              Tick a month to add this subject to that month&apos;s invoice, untick to take it off.
+                            </div>
+                            <MonthsBilledForm studentId={studentId} enrolment={e} invoices={invoices} />
                           </div>
                           <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>End date</div>
@@ -480,6 +668,7 @@ export default function EnrolmentsPanel({
             teachers={teachers}
             teacherSubjects={teacherSubjects}
             classGroups={classGroups}
+            invoices={invoices}
           />
         </div>
       )}

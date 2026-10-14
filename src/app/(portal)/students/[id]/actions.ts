@@ -3,7 +3,21 @@ import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
 import { checkPhone } from "@/lib/phone";
 
-type State = { error?: string; ok?: boolean } | null;
+type State = { error?: string; ok?: boolean; message?: string } | null;
+
+/** A JSON list of billing months from a form ("YYYY-MM-01" each). null when the field is absent. */
+function readMonths(formData: FormData, field: string): string[] | null | { error: string } {
+  const raw = formData.get(field);
+  if (raw === null) return null;
+  try {
+    const v = JSON.parse(String(raw));
+    if (!Array.isArray(v) || !v.every((m) => typeof m === "string" && /^\d{4}-\d{2}-01$/.test(m))) throw new Error();
+    return [...new Set(v as string[])].sort();
+  } catch {
+    return { error: "Could not read the months. Please try again." };
+  }
+}
+const fmtTk = (n: number) => "৳" + Number(n).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 
 export async function recordPayment(_prev: State, formData: FormData): Promise<State> {
   const studentId = String(formData.get("student_id") ?? "");
@@ -302,6 +316,10 @@ export async function addEnrolment(_prev: State, formData: FormData): Promise<St
   const teacherId = String(formData.get("teacher_id") ?? "");
   const fromMonth = String(formData.get("from_month") ?? "").trim();
   const batch = String(formData.get("batch") ?? "").trim() || "1";
+  // Months the admin ticked when the start month already has invoices. Absent means the
+  // start is this month with no invoice yet, so nothing earlier needs a decision.
+  const billMonths = readMonths(formData, "bill_months");
+  if (billMonths && "error" in billMonths) return billMonths;
 
   if (!studentId) return { error: "Missing student." };
   if (!subjectId) return { error: "Choose a subject." };
@@ -314,6 +332,7 @@ export async function addEnrolment(_prev: State, formData: FormData): Promise<St
     p_teacher_id: teacherId,
     p_from_month: fromMonth ? `${fromMonth}-01` : null,
     p_batch: batch,
+    ...(billMonths ? { p_bill_months: billMonths } : {}),
   });
 
   if (error) return { error: "Could not add the subject — " + error.message };
@@ -420,19 +439,64 @@ export async function setEnrolmentStart(_prev: State, formData: FormData): Promi
   const enrolmentId = String(formData.get("enrolment_id") ?? "");
   const fromMonth = String(formData.get("from_month") ?? "").trim();
 
+  const billMonths = readMonths(formData, "bill_months");
+  if (billMonths && "error" in billMonths) return billMonths;
+
   if (!enrolmentId) return { error: "Missing subject." };
   if (!fromMonth) return { error: "Choose a start month." };
 
   const supabase = await createClient();
-  const { error } = await supabase.rpc("fn_set_enrolment_start", {
+  const { data, error } = await supabase.rpc("fn_set_enrolment_start", {
     p_enrolment_id: enrolmentId,
     p_from_month: `${fromMonth}-01`,
+    p_bill_months: billMonths ?? null,
   });
 
   if (error) return { error: "Could not update the start month — " + error.message };
 
   revalidatePath(`/students/${studentId}`);
-  return { ok: true };
+  revalidatePath("/students");
+  const billed = Number((data as { billed?: number } | null)?.billed ?? 0);
+  return { ok: true, message: billed ? `Saved. Added to ${billed} ${billed === 1 ? "invoice" : "invoices"}.` : "Saved." };
+}
+
+// Adds a subject to, or takes it off, chosen months' invoices.
+export async function setEnrolmentMonths(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const enrolmentId = String(formData.get("enrolment_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const add = readMonths(formData, "add");
+  const remove = readMonths(formData, "remove");
+  if (add && "error" in add) return add;
+  if (remove && "error" in remove) return remove;
+
+  if (!enrolmentId) return { error: "Missing subject." };
+  if (!add?.length && !remove?.length) return { error: "Tick or untick a month first." };
+  if (remove?.length && !reason) return { error: "Add a reason for taking the subject off an invoice." };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("fn_bill_enrolment_months", {
+    p_enrolment_id: enrolmentId,
+    p_add: add ?? [],
+    p_remove: remove ?? [],
+    p_reason: reason || null,
+  });
+  if (error) return { error: "Could not update the invoices: " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/billing");
+  const r = (data ?? {}) as { added?: number; created?: number; removed?: number; moved?: number; credit?: number };
+  const parts: string[] = [];
+  const addedN = (r.added ?? 0) + (r.created ?? 0);
+  if (addedN) parts.push(`Added to ${addedN} ${addedN === 1 ? "invoice" : "invoices"}${r.created ? ` (${r.created} new)` : ""}.`);
+  if (r.removed) parts.push(`Taken off ${r.removed} ${r.removed === 1 ? "invoice" : "invoices"}.`);
+  if (r.moved && Number(r.moved) > 0) {
+    parts.push(Number(r.credit) > 0
+      ? `${fmtTk(Number(r.moved))} already paid was freed; ${fmtTk(Number(r.credit))} is kept as advance credit.`
+      : `${fmtTk(Number(r.moved))} already paid moved to the next open invoice.`);
+  }
+  return { ok: true, message: parts.join(" ") || "Saved." };
 }
 
 export async function setEnrolmentEnd(_prev: State, formData: FormData): Promise<State> {

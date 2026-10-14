@@ -316,6 +316,16 @@ export default async function StudentDetail({
             teachers={(teachers ?? []) as any}
             teacherSubjects={(teacherSubjects ?? []) as any}
             classGroups={(classGroupsData ?? []) as any}
+            invoices={((invoices ?? []) as any[]).map((i) => ({
+              id: i.id,
+              invoice_no: i.invoice_no,
+              billing_month: i.billing_month,
+              status: i.status,
+              net: Number(i.net),
+              paid: Number(i.paid),
+              balance: Number(i.balance),
+              enrolment_ids: ((i.invoice_line ?? []) as any[]).filter((l) => l.type === "tuition" && l.enrolment_id).map((l) => l.enrolment_id),
+            }))}
             canEdit={isAdmin}
           />
         ) : (enrolments ?? []).length > 0 ? (
