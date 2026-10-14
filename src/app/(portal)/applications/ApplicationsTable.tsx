@@ -1,6 +1,7 @@
 "use client";
 import { Fragment, useActionState, useMemo, useState } from "react";
 import { taka, fmtDate, fmtDateTime } from "@/lib/format";
+import type { DupMatch } from "@/lib/duplicates";
 import { setApplicationStatus } from "./actions";
 
 export type ApplicationRow = {
@@ -61,13 +62,62 @@ function MockBadge() {
   );
 }
 
-function ReviewForm({ appId, currentStatus }: { appId: string; currentStatus: string }) {
+function DuplicateBadge() {
+  return (
+    <span className="chip" style={{ fontSize: 11, padding: "3px 8px", color: "var(--warn)", borderColor: "var(--warn)", background: "var(--warn-soft)" }}>
+      Possible duplicate
+    </span>
+  );
+}
+
+/** Existing students (and other open applications) that look like the same person. */
+function DuplicateWarning({ matches }: { matches: DupMatch[] }) {
+  return (
+    <div role="alert" style={{ border: "1px solid var(--warn)", background: "var(--warn-soft)", borderRadius: 8, padding: "12px 14px" }}>
+      <div style={{ fontWeight: 600, color: "var(--warn)", marginBottom: 6 }}>
+        Possible duplicate: {matches.length === 1 ? "this looks like a student already on record" : `${matches.length} records look like this student`}
+      </div>
+      <div className="tblwrap" style={{ background: "var(--paper)", borderRadius: 6 }}>
+        <table>
+          <thead>
+            <tr><th>Record</th><th>Name</th><th>Phone</th><th>Email</th><th>Status</th><th>Matches on</th></tr>
+          </thead>
+          <tbody>
+            {matches.map((m) => (
+              <tr key={m.kind + m.id}>
+                <td className="mono" style={{ whiteSpace: "nowrap" }}>
+                  {m.kind === "student"
+                    ? <a href={`/students/${m.id}`} target="_blank" rel="noopener">{m.ref ?? "Student"}</a>
+                    : <span>{m.ref} <span className="sub">(application)</span></span>}
+                </td>
+                <td>{m.full_name ?? "—"}</td>
+                <td className="mono sub">{m.phone ?? "—"}</td>
+                <td className="sub">{m.email ?? "—"}</td>
+                <td className="sub">{String(m.status ?? "").replace(/_/g, " ")}</td>
+                <td><b style={{ color: "var(--warn)" }}>{m.reasons.join(", ")}</b></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div className="sub" style={{ marginTop: 8 }}>
+        Open the existing record and compare before approving. If it is the same student, reject this application
+        instead (add subjects to the existing student). Brothers and sisters can share a phone number.
+      </div>
+    </div>
+  );
+}
+
+function ReviewForm({ appId, currentStatus, matches }: { appId: string; currentStatus: string; matches: DupMatch[] }) {
   const [state, action, pending] = useActionState(setApplicationStatus, null);
+  const [status, setStatus] = useState(currentStatus);
+  const [confirmed, setConfirmed] = useState(false);
+  const needsConfirm = status === "approved" && currentStatus !== "approved" && matches.length > 0;
 
   return (
     <form action={action} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <input type="hidden" name="id" value={appId} />
-      <select style={selStyle} name="status" defaultValue={currentStatus}>
+      <select style={selStyle} name="status" value={status} onChange={(e) => { setStatus(e.target.value); setConfirmed(false); }}>
         {STATUS_OPTIONS.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
@@ -78,7 +128,13 @@ function ReviewForm({ appId, currentStatus }: { appId: string; currentStatus: st
         placeholder="Note (optional)"
         style={{ ...selStyle, minWidth: 200, flex: "1 1 200px" }}
       />
-      <button className="btn" type="submit" disabled={pending} style={{ fontSize: 12, padding: "8px 14px" }}>
+      {needsConfirm && (
+        <label style={{ flexBasis: "100%", display: "flex", gap: 8, alignItems: "center", fontSize: 13, color: "var(--warn)", fontWeight: 600 }}>
+          <input type="checkbox" name="confirm_duplicate" value="1" checked={confirmed} onChange={(e) => setConfirmed(e.target.checked)} />
+          I have checked the {matches.length === 1 ? "matching record" : `${matches.length} matching records`}: this is a different student, approve anyway
+        </label>
+      )}
+      <button className="btn" type="submit" disabled={pending || (needsConfirm && !confirmed)} style={{ fontSize: 12, padding: "8px 14px" }}>
         {pending ? "Saving…" : "Update status"}
       </button>
       {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
@@ -103,7 +159,7 @@ function Detail({ label, value }: { label: string; value: React.ReactNode }) {
   );
 }
 
-function ApplicationDetail({ app }: { app: ApplicationRow }) {
+function ApplicationDetail({ app, matches }: { app: ApplicationRow; matches: DupMatch[] }) {
   const p = app.payload ?? {};
   const student = p.student ?? {};
   const guardian = p.guardian ?? {};
@@ -121,6 +177,7 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18, padding: "16px 18px", background: "var(--tint)" }}>
+      {matches.length > 0 && <DuplicateWarning matches={matches} />}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
         <Detail label="Visit date" value={p.visit_date ? fmtDate(p.visit_date) : p.visit_date} />
         <Detail
@@ -272,13 +329,18 @@ function ApplicationDetail({ app }: { app: ApplicationRow }) {
             , and generates the first invoice — it can&apos;t be undone from here.
           </div>
         )}
-        <ReviewForm appId={app.id} currentStatus={app.status} />
+        <ReviewForm appId={app.id} currentStatus={app.status} matches={matches} />
       </div>
     </div>
   );
 }
 
-export default function ApplicationsTable({ applications }: { applications: ApplicationRow[] }) {
+export default function ApplicationsTable({
+  applications, duplicates = {},
+}: {
+  applications: ApplicationRow[];
+  duplicates?: Record<string, DupMatch[]>;
+}) {
   const [statusFilter, setStatusFilter] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -325,7 +387,10 @@ export default function ApplicationsTable({ applications }: { applications: Appl
                   <tr>
                     <td className="mono"><b>{app.ref_no}</b></td>
                     <td className="sub">{fmtDateTime(app.submitted_at ?? app.created_at)}</td>
-                    <td><b>{p.student?.full_name ?? "—"}</b></td>
+                    <td>
+                      <b>{p.student?.full_name ?? "—"}</b>
+                      {duplicates[app.id] && <div style={{ marginTop: 4 }}><DuplicateBadge /></div>}
+                    </td>
                     <td>
                       <span style={{ display: "flex", gap: 6, alignItems: "center" }}>
                         {programmeName(p.programme_code)}
@@ -348,7 +413,7 @@ export default function ApplicationsTable({ applications }: { applications: Appl
                   {isOpen && (
                     <tr>
                       <td colSpan={7} style={{ padding: 0 }}>
-                        <ApplicationDetail app={app} />
+                        <ApplicationDetail app={app} matches={duplicates[app.id] ?? []} />
                       </td>
                     </tr>
                   )}

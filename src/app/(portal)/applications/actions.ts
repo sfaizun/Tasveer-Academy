@@ -1,8 +1,9 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { describeMatches, findDuplicates, toCandidates } from "@/lib/duplicates";
 
-type State = { error?: string; ok?: boolean; studentId?: string } | null;
+type State = { error?: string; ok?: boolean; studentId?: string; duplicate?: boolean } | null;
 
 const VALID_STATUSES = ["submitted", "under_review", "changes_requested", "approved", "rejected"];
 
@@ -23,6 +24,24 @@ export async function setApplicationStatus(_prev: State, formData: FormData): Pr
   // an already-approved application just restamps the note, it never duplicates
   // the student.
   if (status === "approved") {
+    // Same check as the warning on the page, repeated here so a duplicate can't slip
+    // through: approving a possible duplicate needs the "different student" tick.
+    if (formData.get("confirm_duplicate") !== "1") {
+      const [{ data: app }, { data: students }, { data: openApps }] = await Promise.all([
+        supabase.from("application").select("id, ref_no, status, payload").eq("id", id).maybeSingle(),
+        supabase.from("student").select("id, reg_no, full_name, phone, email, status, application_id"),
+        supabase.from("application").select("id, ref_no, status, payload").in("status", ["submitted", "under_review", "changes_requested"]),
+      ]);
+      if (app && app.status !== "approved") {
+        const matches = findDuplicates(app, toCandidates((students ?? []) as any[], (openApps ?? []) as any[]));
+        if (matches.length) {
+          return {
+            error: `Possible duplicate: ${describeMatches(matches)}. Check the records, then tick "This is a different student" to approve anyway.`,
+            duplicate: true,
+          };
+        }
+      }
+    }
     const { data, error } = await supabase.rpc("fn_approve_application", {
       p_application_id: id,
       p_review_note: note || null,
