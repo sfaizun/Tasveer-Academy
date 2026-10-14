@@ -164,6 +164,64 @@ export async function acknowledgeAnnouncement(formData: FormData) {
   revalidatePath("/dashboard");
 }
 
+/** Removes an announcement's image rows and, best-effort, their files in storage. */
+async function removeImages(supabase: Awaited<ReturnType<typeof createClient>>, announcementId: string) {
+  const { data: rows } = await supabase
+    .from("announcement_attachment")
+    .select("id, file_path")
+    .eq("announcement_id", announcementId);
+  if (!rows || rows.length === 0) return;
+  const marker = "/announcement-images/";
+  const paths = rows
+    .map((r: any) => String(r.file_path ?? ""))
+    .map((u) => (u.includes(marker) ? decodeURIComponent(u.slice(u.indexOf(marker) + marker.length)) : ""))
+    .filter(Boolean);
+  if (paths.length) {
+    const { error } = await supabase.storage.from("announcement-images").remove(paths);
+    if (error) console.error("announcement image remove failed:", error.message);
+  }
+  await supabase.from("announcement_attachment").delete().eq("announcement_id", announcementId);
+}
+
+/** Admin: edit an announcement's wording, urgency, end time, acknowledgment and image.
+ * The audience stays as posted. */
+export async function updateAnnouncement(_prev: State, formData: FormData): Promise<State> {
+  const id = String(formData.get("id") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+  const urgency = String(formData.get("urgency") ?? "normal") === "urgent" ? "urgent" : "normal";
+  const expiresLocal = String(formData.get("expires_at") ?? "").trim();
+  const requires_ack = formData.get("requires_ack") === "1";
+  const removeImage = formData.get("remove_image") === "1";
+  const image = readImage(formData);
+  const imageError = validateImage(image);
+
+  if (!id) return { error: "Missing announcement." };
+  if (!title) return { error: "Enter a title." };
+  if (!body) return { error: "Enter the announcement text." };
+  if (imageError) return { error: imageError };
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("announcement")
+    .update({ title, body, urgency, requires_ack, expires_at: toIso(expiresLocal) })
+    .eq("id", id)
+    .select("id, status, expires_at");
+  if (error) return { error: "Could not save the announcement: " + error.message };
+  if (!data || data.length === 0) return { error: "Only admin can edit announcements." };
+
+  if (image || removeImage) await removeImages(supabase, id);
+  if (image) await attachImage(supabase, id, image);
+
+  // A live notice given an end time that has already passed is taken down, as on the list.
+  await supabase.rpc("fn_expire_announcements");
+
+  revalidatePath("/announcements");
+  revalidatePath(`/announcements/${id}`);
+  revalidatePath("/dashboard");
+  return { ok: true };
+}
+
 /** Admin: take an announcement already live back down. */
 export async function unpublishAnnouncement(formData: FormData) {
   const id = String(formData.get("id") ?? "");

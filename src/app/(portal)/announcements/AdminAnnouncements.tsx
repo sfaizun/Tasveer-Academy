@@ -1,8 +1,8 @@
 "use client";
 import { Fragment, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import Req from "@/components/Req";
-import { createAnnouncement, decideAnnouncementRequest, unpublishAnnouncement } from "./actions";
-import { fmtDhaka, targetLabel } from "./shared";
+import { createAnnouncement, decideAnnouncementRequest, unpublishAnnouncement, updateAnnouncement } from "./actions";
+import { fmtDhaka, targetLabel, toLocalInput } from "./shared";
 import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 
 const inputStyle: React.CSSProperties = {
@@ -194,22 +194,110 @@ function DecideForm({ id }: { id: string }) {
 
 const PAGE_SIZE = 10;
 
-/** One announcement row, with its expandable detail — shared by the Active and
- * Inactive tables below. */
-function AnnouncementRow({ a, isOpen, onToggle }: { a: any; isOpen: boolean; onToggle: () => void }) {
+/** Admin: edit an announcement's text, urgency, end time, acknowledgment and image. */
+function EditForm({ a, onDone }: { a: any; onDone: () => void }) {
+  const [state, action, pending] = useActionState(updateAnnouncement, null);
+  const [removeImage, setRemoveImage] = useState(false);
+  const image = (a.announcement_attachment ?? [])[0]?.file_path as string | undefined;
+
+  useEffect(() => {
+    if (state?.ok) onDone();
+  }, [state, onDone]);
+
+  return (
+    <form action={action} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <input type="hidden" name="id" value={a.id} />
+      {removeImage && <input type="hidden" name="remove_image" value="1" />}
+      <div className="field">
+        <label className="lbl">Title<Req /></label>
+        <input style={inputStyle} type="text" name="title" required defaultValue={a.title} />
+      </div>
+      <div className="field">
+        <label className="lbl">Message<Req /></label>
+        <textarea style={{ ...inputStyle, minHeight: 100, resize: "vertical" }} name="body" required defaultValue={a.body} />
+      </div>
+      <div className="field">
+        <label className="lbl">{image && !removeImage ? "Replace image" : "Image (optional)"}</label>
+        {image && (
+          <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={image} alt="" style={{ maxHeight: 60, borderRadius: 6, opacity: removeImage ? 0.35 : 1 }} />
+            <button
+              type="button" className="btn ghost"
+              style={{ fontSize: 12, padding: "5px 10px", color: removeImage ? undefined : "var(--crit)" }}
+              onClick={() => setRemoveImage(!removeImage)}
+            >
+              {removeImage ? "Undo" : "Remove image"}
+            </button>
+            {removeImage && <span className="sub">Will be removed when you save</span>}
+          </div>
+        )}
+        <input style={inputStyle} type="file" name="image" accept="image/*" />
+        <div className="sub" style={{ marginTop: 4 }}>Up to 5 MB. {image ? "Choosing a new image replaces the current one." : ""}</div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
+        <div className="field">
+          <span className="lbl">Audience</span>
+          <div style={{ padding: "9px 0", fontSize: 13 }}>{targetLabel((a.announcement_target ?? [])[0] ?? null, a.scope)}</div>
+        </div>
+        <div className="field">
+          <label className="lbl">Urgency</label>
+          <select style={inputStyle} name="urgency" defaultValue={a.urgency ?? "normal"}>
+            <option value="normal">Normal</option>
+            <option value="urgent">Urgent</option>
+          </select>
+        </div>
+        <div className="field">
+          <label className="lbl">Visible until (optional)</label>
+          <input style={inputStyle} type="datetime-local" name="expires_at" defaultValue={toLocalInput(a.expires_at)} />
+        </div>
+      </div>
+      <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13 }}>
+        <input type="checkbox" name="requires_ack" value="1" defaultChecked={!!a.requires_ack} />
+        Require students to acknowledge they&apos;ve read this
+      </label>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <button className="btn" type="submit" disabled={pending}>{pending ? "Saving…" : "Save changes"}</button>
+        <button className="btn ghost" type="button" onClick={onDone}>Cancel</button>
+        {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+        <span className="sub">The audience can&apos;t be changed. To reach a different class, take this down and post a new one.</span>
+      </div>
+    </form>
+  );
+}
+
+type RowMode = "view" | "edit";
+
+/** One announcement row, with its expandable detail or edit form — shared by the Active
+ * and Inactive tables below. */
+function AnnouncementRow({
+  a, mode, onMode,
+}: { a: any; mode: RowMode | null; onMode: (m: RowMode | null) => void }) {
+  const small: React.CSSProperties = { fontSize: 12, padding: "6px 10px" };
   return (
     <Fragment>
       <tr>
         <td><b>{a.title}</b></td>
         <td className="sub">{targetLabel((a.announcement_target ?? [])[0] ?? null, a.scope)}</td>
         <td><StatusChip status={a.status} /></td>
-        <td className="n">
-          <button className="btn ghost" type="button" style={{ fontSize: 12, padding: "6px 10px" }} onClick={onToggle}>
-            {isOpen ? "Close" : "View"}
-          </button>
+        <td className="n" style={{ whiteSpace: "nowrap" }}>
+          <button className="btn ghost" type="button" style={small} onClick={() => onMode(mode === "view" ? null : "view")}>
+            {mode === "view" ? "Close" : "View"}
+          </button>{" "}
+          <button className="btn ghost" type="button" style={small} onClick={() => onMode(mode === "edit" ? null : "edit")}>
+            {mode === "edit" ? "Close" : "Edit"}
+          </button>{" "}
+          <a className="btn ghost" href={`/announcements/${a.id}?print=1`} target="_blank" rel="noopener" style={small}>Print</a>
         </td>
       </tr>
-      {isOpen && (
+      {mode === "edit" && (
+        <tr>
+          <td colSpan={4} style={{ padding: "14px 16px", background: "var(--tint)" }}>
+            <EditForm a={a} onDone={() => onMode(null)} />
+          </td>
+        </tr>
+      )}
+      {mode === "view" && (
         <tr>
           <td colSpan={4} style={{ padding: "12px 16px", background: "var(--tint)" }}>
             <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, marginBottom: 8 }}>{a.body}</div>
@@ -270,7 +358,7 @@ function Pager({ page, totalPages, onChange }: { page: number; totalPages: numbe
 
 /** A paginated (10/page) announcements table with its own row-expand state. */
 function AnnouncementsTable({ items }: { items: any[] }) {
-  const [open, setOpen] = useState<string | null>(null);
+  const [open, setOpen] = useState<{ id: string; mode: RowMode } | null>(null);
   const [page, setPage] = useState(1);
   const totalPages = Math.max(1, Math.ceil(items.length / PAGE_SIZE));
   const pageItems = items.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -289,7 +377,12 @@ function AnnouncementsTable({ items }: { items: any[] }) {
           </thead>
           <tbody>
             {pageItems.map((a) => (
-              <AnnouncementRow key={a.id} a={a} isOpen={open === a.id} onToggle={() => setOpen(open === a.id ? null : a.id)} />
+              <AnnouncementRow
+                key={a.id}
+                a={a}
+                mode={open && open.id === a.id ? open.mode : null}
+                onMode={(m) => setOpen(m ? { id: a.id, mode: m } : null)}
+              />
             ))}
             {items.length === 0 && (
               <tr><td colSpan={4} className="sub">Nothing here yet.</td></tr>

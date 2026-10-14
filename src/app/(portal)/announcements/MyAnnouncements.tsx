@@ -63,9 +63,12 @@ export default function MyAnnouncements({
                     style={{ maxWidth: "100%", maxHeight: 360, borderRadius: 8, display: "block", marginBottom: 8 }}
                   />
                 )}
-                <div className="sub">
-                  Posted {fmtDhaka(a.published_at)}
-                  {a.expires_at ? ` · visible until ${fmtDhaka(a.expires_at)}` : ""}
+                <div className="sub" style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                  <span>
+                    Posted {fmtDhaka(a.published_at)}
+                    {a.expires_at ? ` · visible until ${fmtDhaka(a.expires_at)}` : ""}
+                  </span>
+                  <a href={`/announcements/${a.id}?print=1`} target="_blank" rel="noopener" style={{ fontSize: 12 }}>Print</a>
                 </div>
                 {a.requires_ack && (
                   acknowledgedIds?.has(a.id) ? (
