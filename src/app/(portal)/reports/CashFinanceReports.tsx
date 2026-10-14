@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { createClient } from "@/lib/supabase/server";
 import { taka, fmtDate, monthName, currentBillingMonth } from "@/lib/format";
 import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
@@ -35,21 +36,11 @@ function CashDateFilter({ cashDate, month }: { cashDate: string; month: string |
   );
 }
 
-export default async function CashFinanceReports({
-  supabase,
-  month,
-  monthDate,
-  fileTag,
-  cashDate,
-  today,
-}: {
-  supabase: Supabase;
-  month: string | null;
-  monthDate: string | null;
-  fileTag: string;
-  cashDate: string;
-  today: string;
-}) {
+export type CashFinanceSection = "cash" | "programme" | "discounts" | "aging" | "forecast";
+
+/** Loads and works out every cash and finance figure once per request, so the page can
+ * show these sections in separate places without querying twice. */
+const loadCashFinance = cache(async (supabase: Supabase, monthDate: string | null, cashDate: string, today: string) => {
   const forecastMonth = monthDate ?? currentBillingMonth();
 
   const [
@@ -178,11 +169,32 @@ export default async function CashFinanceReports({
   const totalCollected = forecastRows.reduce((s, r) => s + r.collected, 0);
   const fallingBehind = forecastRows.filter((r) => r.gap > 0);
 
-  return (
-    <>
-      <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Cash &amp; finance</div>
+  return { forecastMonth, progMap, programmeRows, programmeBars, discounts, totalDiscount, cash, cashByMethod, totalCash, openInvoices, bucketOf, buckets, bucketSum, sortedAging, bucketLabel, juniorRate, enrolExpected, collectedMap, billedMap, forecastRows, totalExpected, totalCollected, fallingBehind };
+});
 
-      <details className="panel collapsible" open>
+/** Cash and finance reports. `sections` picks which ones to show, in that order. */
+export default async function CashFinanceReports({
+  supabase,
+  month,
+  monthDate,
+  fileTag,
+  cashDate,
+  today,
+  sections,
+}: {
+  supabase: Supabase;
+  month: string | null;
+  monthDate: string | null;
+  fileTag: string;
+  cashDate: string;
+  today: string;
+  sections: CashFinanceSection[];
+}) {
+  const { forecastMonth, progMap, programmeRows, programmeBars, discounts, totalDiscount, cash, cashByMethod, totalCash, openInvoices, bucketOf, buckets, bucketSum, sortedAging, bucketLabel, juniorRate, enrolExpected, collectedMap, billedMap, forecastRows, totalExpected, totalCollected, fallingBehind } = await loadCashFinance(supabase, monthDate, cashDate, today);
+
+  const blocks: Record<CashFinanceSection, React.ReactNode> = {
+    programme: (
+      <details key="programme" className="panel collapsible" open>
         <summary className="phead">
           <div className="ptitle">Revenue by programme</div>
           <div className="sub">O Level / A Level / Junior split</div>
@@ -197,8 +209,9 @@ export default async function CashFinanceReports({
           <ReportBars rows={programmeBars} emptyLabel="No billing yet." />
         </div>
       </details>
-
-      <details className="panel collapsible" open>
+    ),
+    discounts: (
+      <details key="discounts" className="panel collapsible" open>
         <summary className="phead">
           <div className="ptitle">Discounts &amp; waivers</div>
           <div className="sub">
@@ -246,8 +259,9 @@ export default async function CashFinanceReports({
           <div style={{ padding: 18 }} className="sub">No discounts {month ? "in this month" : "given yet"}.</div>
         )}
       </details>
-
-      <details className="panel collapsible" open>
+    ),
+    cash: (
+      <details key="cash" className="panel collapsible" open>
         <summary className="phead" style={{ flexWrap: "wrap" }}>
           <div className="ptitle">Daily cash collection</div>
           <div className="sub">{fmtDate(cashDate)} — {taka(totalCash)} collected</div>
@@ -290,8 +304,9 @@ export default async function CashFinanceReports({
           <div style={{ padding: "0 16px 18px" }} className="sub">No payments received on this date.</div>
         )}
       </details>
-
-      <details className="panel collapsible" open>
+    ),
+    aging: (
+      <details key="aging" className="panel collapsible" open>
         <summary className="phead">
           <div className="ptitle">Aging / overdue dues</div>
           <div className="sub">As of {fmtDate(today)} — {openInvoices.length} open invoice{openInvoices.length === 1 ? "" : "s"}</div>
@@ -351,8 +366,9 @@ export default async function CashFinanceReports({
           <div style={{ padding: "0 16px 18px" }} className="sub">Nothing outstanding right now.</div>
         )}
       </details>
-
-      <details className="panel collapsible" open>
+    ),
+    forecast: (
+      <details key="forecast" className="panel collapsible" open>
         <summary className="phead">
           <div className="ptitle">Revenue forecast</div>
           <div className="sub">Expected vs collected for {monthName(forecastMonth)}: the invoice total where the month is billed, otherwise an estimate from subjects, rates and recurring discounts</div>
@@ -400,6 +416,8 @@ export default async function CashFinanceReports({
           <div style={{ padding: "0 16px 18px" }} className="sub">Everyone billable this month is fully paid up so far.</div>
         )}
       </details>
-    </>
-  );
+    ),
+  };
+
+  return <>{sections.map((k) => blocks[k])}</>;
 }

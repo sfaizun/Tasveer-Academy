@@ -131,6 +131,8 @@ export default async function ReportsPage({
             <Tile label="Active students" value={String(s?.active_students ?? 0)} />
           </div>
 
+          <CashFinanceReports supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} today={today} sections={["cash"]} />
+
           <details className="panel collapsible" open>
             <summary className="phead">
               <div className="ptitle">Admission fees</div>
@@ -147,11 +149,48 @@ export default async function ReportsPage({
             </div>
           </details>
 
-          <MockFeesReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} />
+          <CashFinanceReports supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} today={today} sections={["programme"]} />
 
-          <CashFinanceReports supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} today={today} />
+          <AnnouncementReachReport supabase={supabase} selectedId={annId} month={month} cashDate={cashDate} />
 
-          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>By student / subject / teacher</div>
+          <details className="panel collapsible" open>
+            <summary className="phead">
+              <div className="ptitle">By subject</div>
+              <div className="sub">
+                O Level / A Level subjects only (Junior bills flat per class). Each subject&apos;s
+                tuition minus its own subject discounts; admission fees and admission discounts
+                are not included.
+              </div>
+              <div className="spacer" />
+              <ExportCsvButton
+                filename={`by-subject-${fileTag}`}
+                headers={["Subject", "Level", "Programme", "Received", "Due"]}
+                rows={subjects.map((r) => [r.subject_name, r.level ? r.level.toUpperCase() : "", r.programme_name, Number(r.total_received), Number(r.total_due)])}
+              />
+            </summary>
+            <div style={{ padding: 18 }}>
+              <ReportBars rows={subjectBars} emptyLabel="No O/A Level subject billing yet." />
+            </div>
+          </details>
+
+          <details className="panel collapsible" open>
+            <summary className="phead">
+              <div className="ptitle">By teacher</div>
+              <div className="sub">
+                Each teacher&apos;s subjects: tuition minus that subject&apos;s own discounts.
+                Admission fees and admission discounts are not included.
+              </div>
+              <div className="spacer" />
+              <ExportCsvButton
+                filename={`by-teacher-${fileTag}`}
+                headers={["Teacher", "Received", "Due"]}
+                rows={teachers.map((r) => [r.full_name, Number(r.total_received), Number(r.total_due)])}
+              />
+            </summary>
+            <div style={{ padding: 18 }}>
+              <ReportBars rows={teacherBars} emptyLabel="No O/A Level enrolments billed to a teacher yet." />
+            </div>
+          </details>
 
           <details className="panel collapsible" open>
             <summary className="phead">
@@ -189,51 +228,6 @@ export default async function ReportsPage({
             )}
           </details>
 
-          <details className="panel collapsible" open>
-            <summary className="phead">
-              <div className="ptitle">By subject</div>
-              <div className="sub">
-                O Level / A Level subjects only (Junior bills flat per class). Each subject&apos;s
-                tuition minus its own subject discounts; admission fees and admission discounts
-                are not included.
-              </div>
-              <div className="spacer" />
-              <ExportCsvButton
-                filename={`by-subject-${fileTag}`}
-                headers={["Subject", "Level", "Programme", "Received", "Due"]}
-                rows={subjects.map((r) => [r.subject_name, r.level ? r.level.toUpperCase() : "", r.programme_name, Number(r.total_received), Number(r.total_due)])}
-              />
-            </summary>
-            <div style={{ padding: 18 }}>
-              <ReportBars rows={subjectBars} emptyLabel="No O/A Level subject billing yet." />
-            </div>
-          </details>
-
-          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Teachers</div>
-
-          <details className="panel collapsible" open>
-            <summary className="phead">
-              <div className="ptitle">By teacher</div>
-              <div className="sub">
-                Each teacher&apos;s subjects: tuition minus that subject&apos;s own discounts.
-                Admission fees and admission discounts are not included.
-              </div>
-              <div className="spacer" />
-              <ExportCsvButton
-                filename={`by-teacher-${fileTag}`}
-                headers={["Teacher", "Received", "Due"]}
-                rows={teachers.map((r) => [r.full_name, Number(r.total_received), Number(r.total_due)])}
-              />
-            </summary>
-            <div style={{ padding: 18 }}>
-              <ReportBars rows={teacherBars} emptyLabel="No O/A Level enrolments billed to a teacher yet." />
-            </div>
-          </details>
-
-          <TeacherMocksReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} linkStudents />
-
-          <TeacherWorkloadReport supabase={supabase} />
-
           <TeacherStudentPaymentsReport
             supabase={supabase}
             monthDate={monthDate}
@@ -243,11 +237,13 @@ export default async function ReportsPage({
             subtitle="Every O/A Level class, expandable to each enrolled student's billing and payments"
           />
 
-          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Communications</div>
+          <MockFeesReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} />
 
-          <AnnouncementReachReport supabase={supabase} selectedId={annId} month={month} cashDate={cashDate} />
+          <TeacherMocksReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} linkStudents />
 
-          <div className="navlbl" style={{ margin: "4px 0 -6px" }}>Operational / admin</div>
+          <CashFinanceReports supabase={supabase} month={month} monthDate={monthDate} fileTag={fileTag} cashDate={cashDate} today={today} sections={["aging", "discounts", "forecast"]} />
+
+          <TeacherWorkloadReport supabase={supabase} />
 
           <UserAccessReport supabase={supabase} />
 
