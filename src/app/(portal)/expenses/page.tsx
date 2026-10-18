@@ -4,6 +4,7 @@ import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import PrintButton from "@/components/PrintButton";
 import ExportCsvButton from "@/components/ExportCsvButton";
+import OfficeTabs from "@/components/OfficeTabs";
 import { dhakaTodayISO, fmtDate, taka } from "@/lib/format";
 import ExpenseForm, { type TeacherOpt } from "./ExpenseForm";
 import ExpenseTable from "./ExpenseTable";
@@ -69,6 +70,8 @@ export default async function ExpensesPage({
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <OfficeTabs active="expenses" />
+
         <details className="panel collapsible no-print" open>
           <summary className="phead">
             <div className="ptitle">Add an expense</div>
