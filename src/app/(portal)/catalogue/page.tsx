@@ -3,6 +3,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import AddSubjectForm from "./AddSubjectForm";
 import TeachersPanel from "./TeachersPanel";
 import { setSubjectActive } from "./actions";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ function subjectLabel(s: { name: string; level: string | null }) {
 }
 
 export default async function Catalogue() {
+  await requirePage("catalogue");
   const supabase = await createClient();
 
   const [{ data: teachers }, { data: subjects }, { data: mappings }, { data: programmes }] = await Promise.all([

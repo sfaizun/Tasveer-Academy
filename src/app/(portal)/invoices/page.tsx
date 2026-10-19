@@ -5,6 +5,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import PrintButton from "@/components/PrintButton";
 import { taka, fmtDate } from "@/lib/format";
 import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -45,6 +46,7 @@ export default async function InvoicesPage({
 }: {
   searchParams: Promise<{ student?: string; teacher?: string; subject?: string; month?: string }>;
 }) {
+  await requirePage("invoices");
   const { me } = await getViewer();
   if (me?.role !== "admin") redirect("/dashboard");
 

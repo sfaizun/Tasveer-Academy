@@ -7,10 +7,12 @@ import { dhakaTodayISO, taka } from "@/lib/format";
 import { EXAM_STATUS, MOCK_EXAM_COLS, subjectLabel, type MockExam } from "@/lib/mock";
 import MockExamForm from "./MockExamForm";
 import TeacherMockList from "./TeacherMockList";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function MockExamsPage({ searchParams }: { searchParams: Promise<{ show?: string; series?: string }> }) {
+  await requirePage("mock_exams");
   const { me } = await getViewer();
   if (me?.role === "teacher") {
     // A teacher sees and edits only the mock exams assigned to them.

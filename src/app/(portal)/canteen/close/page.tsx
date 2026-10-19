@@ -9,6 +9,7 @@ import CloseDayForm, { type LeftLine } from "./CloseDayForm";
 import { ReopenForm } from "./ReopenForm";
 import OfflineWarning from "./OfflineWarning";
 import { DAY_COLS, STOCK_COLS, dayLabel, type CanteenDay, type StockRow } from "@/lib/canteen";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,7 @@ function diffText(n: number) {
 }
 
 export default async function CloseDayPage({ searchParams }: { searchParams: Promise<{ day?: string }> }) {
+  await requirePage("canteen");
   const { isAdmin } = await requireCanteenAccess();
   const supabase = await createClient();
   const { day: wanted } = await searchParams;

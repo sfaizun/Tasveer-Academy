@@ -12,6 +12,7 @@ import TeacherWorkloadReport from "./TeacherWorkloadReport";
 import TeacherStudentPaymentsReport from "./TeacherStudentPaymentsReport";
 import AnnouncementReachReport from "./AnnouncementReachReport";
 import UserAccessReport from "./UserAccessReport";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,7 @@ export default async function ReportsPage({
 }: {
   searchParams: Promise<{ month?: string; cash_date?: string; ann_id?: string; exp_from?: string; exp_to?: string }>;
 }) {
+  await requirePage("reports");
   const sp = await searchParams;
   const month = typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : null;
   const monthDate = month ? `${month}-01` : null;

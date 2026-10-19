@@ -57,7 +57,7 @@ function StatusChip({ status }: { status: string }) {
   );
 }
 
-export default function StudentsTable({ students }: { students: StudentRow[] }) {
+export default function StudentsTable({ students, showFees = true }: { students: StudentRow[]; showFees?: boolean }) {
   const [statusFilter, setStatusFilter] = useState("");
   const [q, setQ] = useState("");
 
@@ -97,7 +97,7 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
         </select>
         <ExportCsvButton
           filename="students"
-          headers={["Reg. no.", "Name", "Programme", "Class", "Phone", "Email", "Admitted on", "Dues", "Status"]}
+          headers={["Reg. no.", "Name", "Programme", "Class", "Phone", "Email", "Admitted on", ...(showFees ? ["Dues"] : []), "Status"]}
           rows={filtered.map((s) => [
             s.reg_no,
             s.full_name,
@@ -106,7 +106,7 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
             s.phone ?? "",
             s.email ?? "",
             s.admitted_on ?? "",
-            duesOf(s),
+            ...(showFees ? [duesOf(s)] : []),
             s.status,
           ])}
         />
@@ -120,7 +120,7 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
               <th>Programme / class</th>
               <th>Contact</th>
               <th>Admitted</th>
-              <th className="n">Dues</th>
+              {showFees && <th className="n">Dues</th>}
               <th className="n">Status</th>
             </tr>
           </thead>
@@ -144,25 +144,27 @@ export default function StudentsTable({ students }: { students: StudentRow[] }) 
                   </td>
                   <td className="sub">{[s.phone, s.email].filter(Boolean).join(" · ") || "—"}</td>
                   <td className="mono sub">{fmtDate(s.admitted_on)}</td>
-                  <td className="n mono">
-                    {dues > 0 ? (
-                      <span className="st due"><span className="dot" />{taka(dues)}</span>
-                    ) : (
-                      <span className="sub">—</span>
-                    )}
-                  </td>
+                  {showFees && (
+                    <td className="n mono">
+                      {dues > 0 ? (
+                        <span className="st due"><span className="dot" />{taka(dues)}</span>
+                      ) : (
+                        <span className="sub">—</span>
+                      )}
+                    </td>
+                  )}
                   <td className="n"><StatusChip status={s.status} /></td>
                 </tr>
               );
             })}
             {filtered.length === 0 && students.length > 0 && (
               <tr>
-                <td colSpan={7} className="sub">No students match this filter.</td>
+                <td colSpan={showFees ? 7 : 6} className="sub">No students match this filter.</td>
               </tr>
             )}
             {students.length === 0 && (
               <tr>
-                <td colSpan={7} className="sub">
+                <td colSpan={showFees ? 7 : 6} className="sub">
                   No students yet — approve a submitted form on the <a href="/applications">Applications</a> page
                   to create one.
                 </td>

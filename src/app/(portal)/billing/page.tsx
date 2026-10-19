@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import { taka, currentBillingMonth, fmtDate } from "@/lib/format";
 import RunBillingForm from "./RunBillingForm";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ const statusMap: Record<string, { cls: string; label: string }> = {
 };
 
 export default async function BillingPage() {
+  await requirePage("billing");
   const supabase = await createClient();
 
   const { data: invoices } = await supabase

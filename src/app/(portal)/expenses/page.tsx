@@ -8,6 +8,7 @@ import OfficeTabs from "@/components/OfficeTabs";
 import { dhakaTodayISO, fmtDate, taka } from "@/lib/format";
 import ExpenseForm, { type TeacherOpt } from "./ExpenseForm";
 import ExpenseTable from "./ExpenseTable";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,7 @@ export default async function ExpensesPage({
 }: {
   searchParams: Promise<{ from?: string; to?: string; for?: string; teacher?: string }>;
 }) {
+  await requirePage("expenses");
   const { me } = await getViewer();
   if (me?.role !== "admin") redirect("/dashboard");
 

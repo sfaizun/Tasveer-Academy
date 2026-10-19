@@ -6,6 +6,7 @@ import AdminDashboard from "./AdminDashboard";
 import TeacherDashboard from "./TeacherDashboard";
 import MyAnnouncements from "../announcements/MyAnnouncements";
 import { markSeenAndGetAcks } from "../announcements/receipts";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ const ANN_SELECT =
   "announcement_attachment(id, file_path, filename)";
 
 export default async function Dashboard() {
+  await requirePage("dashboard");
   const supabase = await createClient();
   const { me } = await getViewer();
 

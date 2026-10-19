@@ -3,10 +3,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { requireCanteenAccess } from "../guard";
 import HoursEditor from "./HoursEditor";
 import { canteenStatus, dhakaNow, statusLabel, type CanteenClosureRow, type CanteenHoursRow } from "@/lib/canteen";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function CanteenHoursPage() {
+  await requirePage("canteen");
   await requireCanteenAccess();
   const supabase = await createClient();
 

@@ -6,10 +6,12 @@ import { loadDays } from "../data";
 import { OpenDayBox, StaleDaysBanner } from "../DayBits";
 import StockEditor, { type StockLine } from "./StockEditor";
 import { STOCK_COLS, dayLabel, type StockRow } from "@/lib/canteen";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function StockPage() {
+  await requirePage("canteen");
   await requireCanteenAccess();
   const supabase = await createClient();
   const { today, day, staleOpen } = await loadDays(supabase);

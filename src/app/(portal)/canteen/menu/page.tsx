@@ -3,10 +3,12 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { requireCanteenAccess } from "../guard";
 import MenuManager, { type PriceRow } from "./MenuManager";
 import type { CanteenCategory, CanteenItem } from "@/lib/canteen";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function CanteenMenuPage() {
+  await requirePage("canteen");
   const { isAdmin } = await requireCanteenAccess();
   const supabase = await createClient();
 

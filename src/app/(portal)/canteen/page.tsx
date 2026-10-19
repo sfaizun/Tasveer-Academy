@@ -10,6 +10,7 @@ import {
   canteenStatus, dayLabel, dhakaNow, hhmm, photoUrl, statusLabel, STOCK_COLS, WEEKDAYS, WEEK_ORDER,
   type CanteenCategory, type CanteenClosureRow, type CanteenHoursRow, type CanteenItem, type StockRow,
 } from "@/lib/canteen";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,7 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub?:
 }
 
 export default async function CanteenHomePage() {
+  await requirePage("canteen");
   const { isAdmin } = await requireCanteenAccess();
   const supabase = await createClient();
   const now = dhakaNow();

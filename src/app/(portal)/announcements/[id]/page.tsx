@@ -4,6 +4,7 @@ import PrintButton from "@/components/PrintButton";
 import { dhakaTodayISO, fmtDate } from "@/lib/format";
 import AutoPrint from "@/app/(portal)/invoices/[id]/AutoPrint";
 import { fmtDhaka, targetLabel } from "../shared";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export default async function AnnouncementPrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ print?: string }>;
 }) {
+  await requirePage("announcements");
   const { id } = await params;
   const { print } = await searchParams;
   const supabase = await createClient();

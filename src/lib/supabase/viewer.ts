@@ -6,6 +6,8 @@ export type AppUser = {
   full_name: string;
   role: string;
   is_owner: boolean;
+  /** Admin logins: their access role (Academy > Access). */
+  admin_role: { name: string; pages: string[] | null; is_super: boolean } | null;
 } | null;
 
 export type Viewer = {
@@ -35,7 +37,7 @@ export const getViewer = cache(async (): Promise<Viewer> => {
 
   const { data: me } = await supabase
     .from("app_user")
-    .select("id, full_name, role, is_owner")
+    .select("id, full_name, role, is_owner, admin_role:admin_role_id(name, pages, is_super)")
     .eq("auth_id", user.id)
     .maybeSingle();
 

@@ -3,10 +3,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountsAdmin from "./AccountsAdmin";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function AccountsPage() {
+  await requirePage("accounts");
   const supabase = await createClient();
   const { me } = await getViewer();
 
@@ -27,7 +29,7 @@ export default async function AccountsPage() {
     <>
       <header className="top">
         <h1>Accounts</h1>
-        <div className="sub">Create teacher, student and canteen logins, and manage existing accounts</div>
+        <div className="sub">Create teacher, student and canteen logins, and manage existing accounts. Admin logins are created on Access.</div>
         <div className="spacer" />
         <ThemeToggle />
       </header>

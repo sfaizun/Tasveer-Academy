@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import PrintButton from "@/components/PrintButton";
 import { fmtDate, taka } from "@/lib/format";
 import AutoPrint from "./AutoPrint";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,7 @@ export default async function InvoicePrintPage({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ print?: string }>;
 }) {
+  await requirePage("invoices");
   const { id } = await params;
   const { print } = await searchParams;
   const supabase = await createClient();

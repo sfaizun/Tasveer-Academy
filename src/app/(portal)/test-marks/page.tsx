@@ -11,6 +11,7 @@ import TestMarkForm, { type StudentOpt } from "./TestMarkForm";
 import { MARK_COLS, toMarkRow } from "./marks";
 import TestMarkTable from "./TestMarkTable";
 import StudentMarks from "./StudentMarks";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +29,7 @@ export default async function TestMarksPage({
 }: {
   searchParams: Promise<{ student?: string; subject?: string; teacher?: string; from?: string; to?: string }>;
 }) {
+  await requirePage("test_marks");
   const { me } = await getViewer();
   if (!me) redirect("/login");
   if (me.role === "canteen_manager") redirect("/canteen");

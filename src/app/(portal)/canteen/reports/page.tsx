@@ -6,6 +6,7 @@ import { fmtDate, fmtDateTime, taka } from "@/lib/format";
 import { dayLabel, dhakaNow, dhakaTime, hhmm, niceError, WEEKDAYS, type CanteenHoursRow } from "@/lib/canteen";
 import { requireCanteenAccess } from "../guard";
 import { classifyMenu, Columns, DailyColumns, diffText, HBars, Heatmap, pct, Section, Tile } from "./parts";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -92,6 +93,7 @@ export default async function CanteenReportsPage({
 }: {
   searchParams: Promise<{ range?: string; from?: string; to?: string }>;
 }) {
+  await requirePage("canteen");
   const { isAdmin } = await requireCanteenAccess();
   const sp = await searchParams;
   const today = dhakaNow().date;

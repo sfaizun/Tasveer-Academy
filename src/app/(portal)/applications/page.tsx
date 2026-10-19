@@ -2,10 +2,12 @@ import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import { type DupMatch, findDuplicates, toCandidates } from "@/lib/duplicates";
 import ApplicationsTable, { type ApplicationRow } from "./ApplicationsTable";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function ApplicationsPage() {
+  await requirePage("applications");
   const supabase = await createClient();
 
   const [{ data }, { data: studentData }] = await Promise.all([

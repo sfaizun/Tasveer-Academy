@@ -10,10 +10,12 @@ import {
   STOCK_COLS, canteenStatus, dayLabel, statusLabel,
   type CanteenCategory, type CanteenClosureRow, type CanteenHoursRow, type StockRow,
 } from "@/lib/canteen";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 export default async function SellPage() {
+  await requirePage("canteen");
   await requireCanteenAccess();
   const supabase = await createClient();
   const { today, day, staleOpen } = await loadDays(supabase);

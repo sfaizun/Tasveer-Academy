@@ -5,6 +5,7 @@ import AdminAnnouncements from "./AdminAnnouncements";
 import TeacherAnnouncements from "./TeacherAnnouncements";
 import MyAnnouncements from "./MyAnnouncements";
 import { markSeenAndGetAcks } from "./receipts";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ const ANN_SELECT =
   "announcement_attachment(id, file_path, filename)";
 
 export default async function AnnouncementsPage() {
+  await requirePage("announcements");
   const supabase = await createClient();
   const { me } = await getViewer();
 

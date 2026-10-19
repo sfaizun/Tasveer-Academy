@@ -1,10 +1,16 @@
 import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import StudentsTable, { type StudentRow } from "./StudentsTable";
+import { requirePage } from "@/lib/require-page";
+import { getViewer } from "@/lib/supabase/viewer";
+import { accessOf, canSeeFees } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
 export default async function StudentsPage() {
+  await requirePage("students");
+  const { me } = await getViewer();
+  const showFees = canSeeFees(accessOf(me));
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -26,7 +32,7 @@ export default async function StudentsPage() {
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <StudentsTable students={students} />
+        <StudentsTable students={students} showFees={showFees} />
       </div>
     </>
   );

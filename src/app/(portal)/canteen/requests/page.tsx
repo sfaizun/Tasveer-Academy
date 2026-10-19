@@ -2,12 +2,14 @@ import { createClient } from "@/lib/supabase/server";
 import ThemeToggle from "@/components/ThemeToggle";
 import { requireCanteenAccess } from "../guard";
 import RequestsManager, { type RequestRow } from "./RequestsManager";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
 const DAY = 24 * 60 * 60 * 1000;
 
 export default async function RequestsPage() {
+  await requirePage("canteen");
   await requireCanteenAccess();
   const supabase = await createClient();
 

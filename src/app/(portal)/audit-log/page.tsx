@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import ActivityAuditReport from "../reports/ActivityAuditReport";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function AuditLogPage({
 }: {
   searchParams: Promise<{ month?: string; entity?: string }>;
 }) {
+  await requirePage("audit_log");
   const sp = await searchParams;
   const month = typeof sp.month === "string" && /^\d{4}-\d{2}$/.test(sp.month) ? sp.month : null;
   const monthDate = month ? `${month}-01` : null;

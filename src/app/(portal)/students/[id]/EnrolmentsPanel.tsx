@@ -61,6 +61,7 @@ function AddSubjectForm({
   teacherSubjects,
   classGroups,
   invoices,
+  showFees,
 }: {
   studentId: string;
   subjects: Subject[];
@@ -68,6 +69,7 @@ function AddSubjectForm({
   teacherSubjects: TeacherSubject[];
   classGroups: ClassGroup[];
   invoices: InvoiceLite[];
+  showFees: boolean;
 }) {
   const [state, action, pending] = useActionState(addEnrolment, null);
   const formRef = useRef<HTMLFormElement>(null);
@@ -87,7 +89,8 @@ function AddSubjectForm({
   );
   const choices = options.filter((o) => o.selectable);
   const [checked, setChecked] = useMonthTicks(options);
-  const askMonths = choices.length > 0;
+  // Without fee access the month choice isn't shown; earlier months are billed as before.
+  const askMonths = showFees && choices.length > 0;
   const existing = choices.filter((o) => o.invoice).length;
 
   useEffect(() => {
@@ -210,6 +213,7 @@ function AddSubjectForm({
         Pick an existing batch to put this student on the routine they&apos;ll actually attend, or type a
         new batch name to start one. You can start from a past month: you&apos;ll be asked which of the
         months up to now should carry this subject&apos;s fee. A future month starts on that month&apos;s bill.
+        {!showFees && " Earlier months' invoices get this subject automatically."}
       </div>
     </form>
   );
@@ -219,7 +223,7 @@ function AddSubjectForm({
 // subject has already been billed for a month before the requested start — moving past
 // that would leave this record disagreeing with an invoice that's already gone out, so
 // the database names the exact month and refuses instead of silently allowing it.
-function StartSubjectForm({ studentId, enrolment, invoices }: { studentId: string; enrolment: Enrolment; invoices: InvoiceLite[] }) {
+function StartSubjectForm({ studentId, enrolment, invoices, showFees }: { studentId: string; enrolment: Enrolment; invoices: InvoiceLite[]; showFees: boolean }) {
   const [state, action, pending] = useActionState(setEnrolmentStart, null);
   const oldFrom = monthKey(enrolment.from_month);
   const [fromMonth, setFromMonth] = useState(oldFrom.slice(0, 7));
@@ -236,7 +240,7 @@ function StartSubjectForm({ studentId, enrolment, invoices }: { studentId: strin
   }, [newFrom, oldFrom, current, invoices, enrolment.id]);
   const choices = options.filter((o) => o.selectable && !o.billed);
   const [checked, setChecked] = useMonthTicks(options);
-  const askMonths = choices.length > 0;
+  const askMonths = showFees && choices.length > 0;
 
   return (
     <form action={action} style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -527,6 +531,7 @@ export default function EnrolmentsPanel({
   classGroups,
   invoices = [],
   canEdit,
+  showFees = true,
 }: {
   studentId: string;
   enrolments: Enrolment[];
@@ -536,6 +541,7 @@ export default function EnrolmentsPanel({
   classGroups: ClassGroup[];
   invoices?: InvoiceLite[];
   canEdit: boolean;
+  showFees?: boolean;
 }) {
   const [open, setOpen] = useState<string | null>(null);
   const today = useMemo(() => currentBillingMonth(), []);
@@ -549,7 +555,7 @@ export default function EnrolmentsPanel({
           <thead>
             <tr>
               <th>Subject</th><th>Teacher</th><th>Batch</th><th>From</th><th>Till</th>
-              <th className="n">Rate / month</th><th>Discount</th><th className="n"></th>
+              {showFees && <><th className="n">Rate / month</th><th>Discount</th></>}<th className="n"></th>
             </tr>
           </thead>
           <tbody>
@@ -565,10 +571,10 @@ export default function EnrolmentsPanel({
                     <td className="mono sub">{e.batch_name ?? "—"}</td>
                     <td className="mono sub">{fmtDate(e.from_month)}</td>
                     <td className="mono sub">{e.to_month ? fmtDate(e.to_month) : "—"}</td>
-                    <td className="n mono">{taka(e.rate_applied)}</td>
-                    <td className="sub">{discount ?? "—"}</td>
+                    {showFees && <td className="n mono">{taka(e.rate_applied)}</td>}
+                    {showFees && <td className="sub">{discount ?? "—"}</td>}
                     <td className="n">
-                      {ended && canEdit ? (
+                      {ended && canEdit && showFees ? (
                         <span style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
                           <span className="sub">Ended</span>
                           <button
@@ -598,7 +604,7 @@ export default function EnrolmentsPanel({
                   </tr>
                   {isOpen && canEdit && ended && (
                     <tr>
-                      <td colSpan={8} style={{ padding: "12px 16px", background: "var(--tint)" }}>
+                      <td colSpan={showFees ? 8 : 6} style={{ padding: "12px 16px", background: "var(--tint)" }}>
                         <div className="lbl" style={{ marginBottom: 6 }}>Months billed</div>
                         <MonthsBilledForm studentId={studentId} enrolment={e} invoices={invoices} />
                       </td>
@@ -606,7 +612,7 @@ export default function EnrolmentsPanel({
                   )}
                   {isOpen && canEdit && !ended && (
                     <tr>
-                      <td colSpan={8} style={{ padding: "12px 16px", background: "var(--tint)" }}>
+                      <td colSpan={showFees ? 8 : 6} style={{ padding: "12px 16px", background: "var(--tint)" }}>
                         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                           <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>Change class (teacher / batch)</div>
@@ -618,21 +624,23 @@ export default function EnrolmentsPanel({
                               classGroups={classGroups}
                             />
                           </div>
-                          <div>
-                            <div className="lbl" style={{ marginBottom: 6 }}>Subject discount</div>
-                            <DiscountForm studentId={studentId} enrolment={e} />
-                          </div>
+                          {showFees && (
+                            <div>
+                              <div className="lbl" style={{ marginBottom: 6 }}>Subject discount</div>
+                              <DiscountForm studentId={studentId} enrolment={e} />
+                            </div>
+                          )}
                           <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>Start month</div>
-                            <StartSubjectForm studentId={studentId} enrolment={e} invoices={invoices} />
+                            <StartSubjectForm studentId={studentId} enrolment={e} invoices={invoices} showFees={showFees} />
                           </div>
-                          <div>
+                          {showFees && <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>Months billed</div>
                             <div className="sub" style={{ marginBottom: 6 }}>
                               Tick a month to add this subject to that month&apos;s invoice, untick to take it off.
                             </div>
                             <MonthsBilledForm studentId={studentId} enrolment={e} invoices={invoices} />
-                          </div>
+                          </div>}
                           <div>
                             <div className="lbl" style={{ marginBottom: 6 }}>End date</div>
                             <EndSubjectForm studentId={studentId} enrolment={e} />
@@ -653,7 +661,7 @@ export default function EnrolmentsPanel({
               );
             })}
             {enrolments.length === 0 && (
-              <tr><td colSpan={8} className="sub">No subjects yet.</td></tr>
+              <tr><td colSpan={showFees ? 8 : 6} className="sub">No subjects yet.</td></tr>
             )}
           </tbody>
         </table>
@@ -669,6 +677,7 @@ export default function EnrolmentsPanel({
             teacherSubjects={teacherSubjects}
             classGroups={classGroups}
             invoices={invoices}
+            showFees={showFees}
           />
         </div>
       )}

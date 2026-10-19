@@ -16,6 +16,8 @@ import MockExamsPanel, { type StudentMockRow } from "./MockExamsPanel";
 import { examTitle } from "@/lib/mock";
 import { isCurrentEnrolment } from "@/lib/enrolment";
 import StudentTestMarksPanel from "../../test-marks/StudentTestMarksPanel";
+import { requirePage } from "@/lib/require-page";
+import { accessOf, canSeeFees } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +46,7 @@ export default async function StudentDetail({
   params: Promise<{ id: string }>;
   searchParams: Promise<{ invoice?: string }>;
 }) {
+  await requirePage("students");
   const { id } = await params;
   const { invoice: openInvoiceId } = await searchParams;
   const supabase = await createClient();
@@ -84,6 +87,8 @@ export default async function StudentDetail({
 
   const isOwner = !!me?.is_owner;
   const isAdmin = me?.role === "admin";
+  // Admins whose access has no fee pages (e.g. Student Admin) see no invoices, payments or rates.
+  const showFees = !isAdmin || canSeeFees(accessOf(me));
   const s: any = student;
   const isSubjectBased = s.programme?.code === "o_level" || s.programme?.code === "a_level";
   const isMockOnly = s.enrolment_type === "mock_only";
@@ -305,7 +310,7 @@ export default async function StudentDetail({
         )}
 
         {isSubjectBased && (isMockOnly || mockRows.length > 0 || isAdmin) && (
-          <MockExamsPanel studentId={id} rows={mockRows} openExams={openExamOptions} canEdit={isAdmin} isMockOnly={isMockOnly} />
+          <MockExamsPanel studentId={id} rows={mockRows} openExams={openExamOptions} canEdit={isAdmin} isMockOnly={isMockOnly} showFees={showFees} />
         )}
 
         {isSubjectBased ? (
@@ -327,13 +332,14 @@ export default async function StudentDetail({
               enrolment_ids: ((i.invoice_line ?? []) as any[]).filter((l) => l.type === "tuition" && l.enrolment_id).map((l) => l.enrolment_id),
             }))}
             canEdit={isAdmin}
+            showFees={showFees}
           />
         ) : (enrolments ?? []).length > 0 ? (
           <div className="panel">
             <div className="phead"><div className="ptitle">Enrolments</div></div>
             <div className="tblwrap">
               <table>
-                <thead><tr><th>Subject</th><th>Teacher</th><th>From</th><th>To</th><th className="n">Rate</th><th className="n">Status</th></tr></thead>
+                <thead><tr><th>Subject</th><th>Teacher</th><th>From</th><th>To</th>{showFees && <th className="n">Rate</th>}<th className="n">Status</th></tr></thead>
                 <tbody>
                   {(enrolments ?? []).map((e: any) => (
                     <tr key={e.id}>
@@ -341,7 +347,7 @@ export default async function StudentDetail({
                       <td className="sub">{e.teacher?.full_name}</td>
                       <td className="mono sub">{fmtDate(e.from_month)}</td>
                       <td className="mono sub">{e.to_month ? fmtDate(e.to_month) : "—"}</td>
-                      <td className="n mono">{taka(e.rate_applied)}</td>
+                      {showFees && <td className="n mono">{taka(e.rate_applied)}</td>}
                       <td className="n sub">{e.status}</td>
                     </tr>
                   ))}
@@ -353,9 +359,9 @@ export default async function StudentDetail({
 
         <StudentTestMarksPanel supabase={supabase} studentId={id} />
 
-        {isAdmin && <AdmissionFeePanel studentId={id} invoices={(invoices ?? []) as any} />}
+        {isAdmin && showFees && <AdmissionFeePanel studentId={id} invoices={(invoices ?? []) as any} />}
 
-        <InvoicesList
+        {showFees && <InvoicesList
           studentId={id}
           invoices={(invoices ?? []) as any}
           payments={(payments ?? []) as PaymentRow[]}
@@ -363,9 +369,9 @@ export default async function StudentDetail({
           canEdit={isAdmin}
           canVoid={isOwner}
           initialOpen={openInvoiceId ?? null}
-        />
+        />}
 
-        <div className="panel">
+        {showFees && <div className="panel">
           <div className="phead"><div className="ptitle">Payment history</div></div>
           {isAdmin && (
             <details className="advance-pay">
@@ -381,7 +387,7 @@ export default async function StudentDetail({
             canEdit={isAdmin}
             canVoid={isOwner}
           />
-        </div>
+        </div>}
       </div>
 
       {isAdmin && (

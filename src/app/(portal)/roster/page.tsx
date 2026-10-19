@@ -5,6 +5,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import RosterAdmin from "./RosterAdmin";
 import ScheduleView from "./ScheduleView";
 import { myStudentIds } from "../announcements/receipts";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +44,7 @@ function slotInfo(row: any) {
 }
 
 export default async function RosterPage() {
+  await requirePage("roster");
   const supabase = await createClient();
   const { me } = await getViewer();
 

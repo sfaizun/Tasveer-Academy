@@ -5,6 +5,7 @@ import { dayLabel, dhakaNow, dhakaTime, hhmm, WEEKDAYS, type CanteenClosureRow, 
 import { buildPlan, type PlanHistoryDay, type PlanItem } from "@/lib/canteen-plan";
 import { requireCanteenAccess } from "../guard";
 import PlanEditor from "./PlanEditor";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ const dhakaDateOf = (ts: string) =>
   new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
 
 export default async function PlanPage({ searchParams }: { searchParams: Promise<{ date?: string }> }) {
+  await requirePage("canteen");
   await requireCanteenAccess();
   const sp = await searchParams;
   const now = dhakaNow();

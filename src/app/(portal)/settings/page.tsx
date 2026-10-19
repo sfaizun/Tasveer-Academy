@@ -3,6 +3,7 @@ import { getViewer } from "@/lib/supabase/viewer";
 import { taka, fmtDate } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 import AddFeeRateForm from "./AddFeeRateForm";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ function groupKey(r: { kind: string; programme_id: string; level: string | null;
 const LEVEL_NAME: Record<string, string> = { as: "AS", a2: "A2" };
 
 export default async function Settings() {
+  await requirePage("settings");
   const supabase = await createClient();
   const { me } = await getViewer();
 

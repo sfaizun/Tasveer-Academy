@@ -20,13 +20,14 @@ const PAY: Record<string, string> = { paid: "Paid", partly_paid: "Part paid", un
 /** A student's mock exams: what they're registered for, with fee and attendance, and (admin) a
  * way to register them for another open exam or withdraw them. */
 export default function MockExamsPanel({
-  studentId, rows, openExams, canEdit, isMockOnly,
+  studentId, rows, openExams, canEdit, isMockOnly, showFees = true,
 }: {
   studentId: string;
   rows: StudentMockRow[];
   openExams: { id: string; label: string }[];
   canEdit: boolean;
   isMockOnly: boolean;
+  showFees?: boolean;
 }) {
   const shown = rows.filter((r) => r.status !== "withdrawn");
   const withdrawn = rows.filter((r) => r.status === "withdrawn");
@@ -47,7 +48,7 @@ export default function MockExamsPanel({
       <div className="tblwrap">
         <table>
           <thead>
-            <tr><th>Exam</th><th>Fee</th><th>Attendance</th>{canEdit && <th></th>}</tr>
+            <tr><th>Exam</th>{showFees && <th>Fee</th>}<th>Attendance</th>{canEdit && <th></th>}</tr>
           </thead>
           <tbody>
             {shown.map((r) => {
@@ -62,14 +63,14 @@ export default function MockExamsPanel({
                     )}
                     <div className="sub">{r.exam?.series ?? "Subject only"}{r.exam?.status === "cancelled" ? " · cancelled" : ""}</div>
                   </td>
-                  <td style={{ whiteSpace: "nowrap" }}>
+                  {showFees && <td style={{ whiteSpace: "nowrap" }}>
                     <span className="mono">{taka(r.fee ?? 0)}</span>
                     {r.invoice ? (
                       <div className="sub">{PAY[r.invoice.status] ?? r.invoice.status} · {r.invoice.invoice_no}</div>
                     ) : r.status !== "withdrawn" && (
                       <div className="sub" style={{ color: "var(--crit)" }}>Not on any invoice. Add the exam again to bill it.</div>
                     )}
-                  </td>
+                  </td>}
                   <td><span className={`st ${rs.cls}`}><span className="dot" />{rs.text}</span></td>
                   {canEdit && (
                     <td className="n">

@@ -8,6 +8,7 @@ import { fmtDateTime, taka } from "@/lib/format";
 import { EXAM_STATUS, MOCK_EXAM_COLS, REG_STATUS, subjectLabel, type MockExam } from "@/lib/mock";
 import MockExamForm from "../MockExamForm";
 import { AttendanceSelect, CancelExamForm, RegisterForm, WithdrawButton } from "../MockBits";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,7 @@ const PAY: Record<string, { text: string; cls: string }> = {
 };
 
 export default async function MockExamPage({ params }: { params: Promise<{ id: string }> }) {
+  await requirePage("mock_exams");
   const { me } = await getViewer();
   if (me?.role !== "admin") redirect("/dashboard");
   const { id } = await params;
@@ -30,7 +32,7 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
     supabase
       .from("mock_registration")
       .select(
-        `id, status, fee, created_at, withdrawn_reason, withdrawn_at,
+        `id, status, fee, created_at, withdrawn_reason, withdrawn_at, invoice_line_id,
          student(id, full_name, reg_no, phone, enrolment_type, programme(code)),
          invoice_line(id, invoice(id, invoice_no, status))`
       )
@@ -51,7 +53,8 @@ export default async function MockExamPage({ params }: { params: Promise<{ id: s
 
   // Students who can be added: active O/A Level students not already on this exam.
   // Candidates whose fee is missing from every invoice can be registered again to bill it.
-  const taken = new Set(active.filter((r) => r.invoice_line).map((r) => r.student?.id));
+  // invoice_line_id rather than the joined line: an admin without fee access can't read invoice lines.
+  const taken = new Set(active.filter((r) => r.invoice_line_id || r.invoice_line).map((r) => r.student?.id));
   const { data: studentRows } = await supabase
     .from("student")
     .select("id, full_name, reg_no, programme(code)")

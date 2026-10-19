@@ -8,6 +8,7 @@ import OfficeTabs from "@/components/OfficeTabs";
 import { dhakaTodayISO, fmtDate, taka } from "@/lib/format";
 import IncomeForm from "./IncomeForm";
 import IncomeTable from "./IncomeTable";
+import { requirePage } from "@/lib/require-page";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,7 @@ export default async function IncomePage({
 }: {
   searchParams: Promise<{ from?: string; to?: string }>;
 }) {
+  await requirePage("income");
   const { me } = await getViewer();
   if (me?.role !== "admin") redirect("/dashboard");
 
