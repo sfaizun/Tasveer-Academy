@@ -22,19 +22,33 @@ export default function PortalNav({ children }: { children: React.ReactNode }) {
     setOpen(false);
   }, [pathname]);
 
+  // Lock the page behind the open drawer so scrolling the menu doesn't scroll the page.
+  useEffect(() => {
+    document.body.classList.toggle("nav-open", open);
+    return () => document.body.classList.remove("nav-open");
+  }, [open]);
+
   return (
     <>
-      <button
-        type="button"
-        className={`menu-btn${open ? " open" : ""}`}
-        aria-label={open ? "Close menu" : "Open menu"}
-        aria-expanded={open}
-        onClick={() => setOpen((o) => !o)}
-      >
-        <span />
-        <span />
-        <span />
-      </button>
+      {/* Phone app bar (hidden on desktop): stays at the top while the page scrolls. */}
+      <div className="mbar">
+        <button
+          type="button"
+          className={`menu-btn${open ? " open" : ""}`}
+          aria-label={open ? "Close menu" : "Open menu"}
+          aria-expanded={open}
+          onClick={() => setOpen((o) => !o)}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
+        <a href="/dashboard" className="mbar-brand">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" width={26} height={26} />
+          Tasveer Academy
+        </a>
+      </div>
       {open && <div className="backdrop" onClick={() => setOpen(false)} />}
       <nav className={`side${open ? " open" : ""}`}>{children}</nav>
     </>

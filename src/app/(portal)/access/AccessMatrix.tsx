@@ -69,7 +69,7 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
           name="changes"
           value={JSON.stringify(changed.map((r) => ({ id: r.id, name: r.name, pages: [...ticks[r.id]] })))}
         />
-        <div className="tblwrap">
+        <div className="tblwrap keep-table">
           <table>
             <thead>
               <tr>

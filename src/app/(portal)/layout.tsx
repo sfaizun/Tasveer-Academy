@@ -110,6 +110,8 @@ export default async function PortalLayout({ children }: { children: React.React
         )}
 
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
+          {/* On phones the page headers hide their theme switch to save room; it lives here instead. */}
+          <div className="nav-theme"><ThemeToggle /></div>
           <NavLink href="/account">Change password</NavLink>
           <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 8px" }}>
             <div
