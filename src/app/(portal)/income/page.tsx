@@ -9,6 +9,7 @@ import { dhakaTodayISO, fmtDate, taka } from "@/lib/format";
 import IncomeForm from "./IncomeForm";
 import IncomeTable from "./IncomeTable";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin, viewReadOnly } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,8 @@ export default async function IncomePage({
 }) {
   await requirePage("income");
   const { me } = await getViewer();
-  if (me?.role !== "admin") redirect("/dashboard");
+  if (!actsAsAdmin(me, "income")) redirect("/dashboard");
+  const readOnly = viewReadOnly(me);
 
   const sp = await searchParams;
   const today = dhakaTodayISO();
@@ -97,7 +99,7 @@ export default async function IncomePage({
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <OfficeTabs active="income" />
 
-        <details className="panel collapsible no-print" open>
+        {!readOnly && <details className="panel collapsible no-print" open>
           <summary className="phead">
             <div className="ptitle">Add income</div>
             <div className="sub">Office only. Student fees are recorded as payments on the student&apos;s page.</div>
@@ -105,7 +107,7 @@ export default async function IncomePage({
           <div style={{ padding: 18 }}>
             <IncomeForm today={today} />
           </div>
-        </details>
+        </details>}
 
         <div className="panel print-flow">
           <div className="print-only" style={{ padding: "4px 0 12px", borderBottom: "2px solid #000", marginBottom: 12 }}>
@@ -138,7 +140,7 @@ export default async function IncomePage({
             <div><div className="lbl">Entries</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{rows.length}</b></div>
           </div>
 
-          <IncomeTable rows={rows} today={today} />
+          <IncomeTable rows={rows} today={today} readOnly={readOnly} />
 
           {/* Office profit or loss for the same dates */}
           <div style={{ padding: "18px 18px 6px", borderTop: "1px solid var(--line)", marginTop: 8 }}>

@@ -12,6 +12,7 @@ import { MARK_COLS, toMarkRow } from "./marks";
 import TestMarkTable from "./TestMarkTable";
 import StudentMarks from "./StudentMarks";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -32,11 +33,12 @@ export default async function TestMarksPage({
   await requirePage("test_marks");
   const { me } = await getViewer();
   if (!me) redirect("/login");
-  if (me.role === "canteen_manager") redirect("/canteen");
+  const isAdmin = actsAsAdmin(me, "test_marks");
+  if (me.role === "canteen_manager" && !isAdmin) redirect("/canteen");
   const supabase = await createClient();
   const today = dhakaTodayISO();
 
-  if (me.role !== "admin" && me.role !== "teacher") {
+  if (!isAdmin && me.role !== "teacher") {
     return (
       <>
         <header className="top">
@@ -52,7 +54,6 @@ export default async function TestMarksPage({
     );
   }
 
-  const isAdmin = me.role === "admin";
   const sp = await searchParams;
   const studentId = isId(sp.student) ? sp.student : "";
   const subjectId = isId(sp.subject) ? sp.subject : "";
@@ -67,13 +68,30 @@ export default async function TestMarksPage({
   if (subjectId) q = q.eq("subject_id", subjectId);
   if (teacherId) q = q.eq("teacher_id", teacherId);
 
-  const [{ data: marksData }, { data: enrolData }, { data: teacherData }] = await Promise.all([
+  // A teacher's own view: only their own students and subjects. RLS already limits a plain
+  // teacher; this keeps it so for a teacher whose access role can see more (that shows when
+  // viewing as the role).
+  let mine: string | null = null;
+  if (!isAdmin) {
+    const { data: t } = await supabase.from("teacher").select("id").eq("app_user_id", me.id).maybeSingle();
+    const { data: g } = t ? await supabase.from("class_group").select("id").eq("teacher_id", t.id) : { data: [] as { id: string }[] };
+    const groups = (g ?? []).map((x) => x.id);
+    mine = t ? `teacher_id.eq.${t.id}${groups.length ? `,class_group_id.in.(${groups.join(",")})` : ""}` : "id.eq.00000000-0000-0000-0000-000000000000";
+  }
+  let enrolQ = supabase.from("enrolment")
+    .select("student_id, subject_id, student(full_name, reg_no), subject(name, level, sort_order, programme(code))")
+    .eq("status", "active");
+  if (mine) enrolQ = enrolQ.or(mine);
+  // Marks stay visible after a subject ends, so the teacher's subjects include past enrolments.
+  const pairsQ = mine
+    ? supabase.from("enrolment").select("student_id, subject_id").or(mine)
+    : Promise.resolve({ data: [] as { student_id: string; subject_id: string }[] });
+
+  const [{ data: marksData }, { data: enrolData }, { data: teacherData }, { data: pairData }] = await Promise.all([
     q,
-    // RLS limits a teacher to enrolments in their own classes.
-    supabase.from("enrolment")
-      .select("student_id, subject_id, student(full_name, reg_no), subject(name, level, sort_order, programme(code))")
-      .eq("status", "active"),
+    enrolQ,
     isAdmin ? supabase.from("teacher").select("id, full_name").order("full_name") : Promise.resolve({ data: [] as any[] }),
+    pairsQ,
   ]);
 
   // Students and the subjects each is enrolled in, for the form and filters.
@@ -90,7 +108,8 @@ export default async function TestMarksPage({
   const students = [...byStudent.values()].sort((a, b) => a.name.localeCompare(b.name));
   for (const s of students) s.subjects.sort((a, b) => a.label.localeCompare(b.label));
 
-  const rows = ((marksData ?? []) as any[]).map(toMarkRow);
+  const myPairs = new Set(((pairData ?? []) as any[]).map((e) => `${e.student_id}|${e.subject_id}`));
+  const rows = ((marksData ?? []) as any[]).map(toMarkRow).filter((r) => isAdmin || myPairs.has(`${r.student_id}|${r.subject_id}`));
   for (const r of rows) {
     if (!subjectNames.has(r.subject_id)) subjectNames.set(r.subject_id, r.subject_label);
     if (!byStudent.has(r.student_id)) byStudent.set(r.student_id, { id: r.student_id, name: r.student_name, reg_no: r.reg_no, subjects: [] });

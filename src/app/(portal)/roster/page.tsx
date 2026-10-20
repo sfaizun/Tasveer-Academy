@@ -6,6 +6,7 @@ import RosterAdmin from "./RosterAdmin";
 import ScheduleView from "./ScheduleView";
 import { myStudentIds } from "../announcements/receipts";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -48,8 +49,8 @@ export default async function RosterPage() {
   const supabase = await createClient();
   const { me } = await getViewer();
 
-  const isAdmin = me?.role === "admin";
-  const isTeacher = me?.role === "teacher";
+  const isAdmin = actsAsAdmin(me, "roster");
+  const isTeacher = me?.role === "teacher" && !isAdmin;
   const isStudentOrGuardian = me?.role === "student" || me?.role === "guardian";
 
   const [{ data: slots }, adminData, myScope] = await Promise.all([

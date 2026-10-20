@@ -40,26 +40,67 @@ export const ASSIGNABLE_PAGES = PAGES.filter((p) => p.key !== "access");
 /** Pages that show fees and payments. Having any of them lets the admin see money on a student's page. */
 export const FEE_PAGES: PageKey[] = ["billing", "invoices", "reports", "dashboard"];
 
-export type AdminAccess = { full: boolean; pages: Set<PageKey> };
+export type AdminAccess = { full: boolean; pages: Set<PageKey>; readOnly: boolean };
 
-type Me = {
-  role: string;
-  is_owner: boolean;
-  admin_role?: { name: string; pages: string[] | null; is_super: boolean } | null;
-} | null;
+type ViewLike = { key: string; kind: "own" | "role"; role: { pages: string[] | null; is_super: boolean; read_only: boolean } | null } | null;
+type Me = { role: string; is_owner: boolean; view: ViewLike; views?: { key: string }[] } | null;
 
-/** What an admin login can open. Non-admins get no admin pages (their own pages are role based). */
-export function accessOf(me: Me): AdminAccess {
-  if (!me || me.role !== "admin") return { full: false, pages: new Set() };
-  if (me.is_owner || me.admin_role?.is_super) return { full: true, pages: new Set(PAGES.map((p) => p.key)) };
-  return { full: false, pages: new Set((me.admin_role?.pages ?? []) as PageKey[]) };
+/** Logins that can carry access roles on top of their own portal. */
+export const STAFF_ROLES = ["admin", "teacher", "canteen_manager"];
+
+/** Each login's own portal: the pages of its "own" view. */
+export const BASE_PAGES: Record<string, PageKey[]> = {
+  teacher: ["dashboard", "roster", "test_marks", "announcements", "mock_exams", "reports"],
+  // Students and guardians read announcements on their dashboard and can open one to print it.
+  student: ["dashboard", "roster", "test_marks", "reports", "announcements"],
+  guardian: ["dashboard", "roster", "test_marks", "reports", "announcements"],
+  canteen_manager: ["canteen"],
+  admin: [],
+};
+
+const NONE: AdminAccess = { full: false, pages: new Set(), readOnly: false };
+
+/** The admin pages of one view (Academy > Access). Super Admin gets every page; a login's own
+ * portal view has none. */
+export function accessOfView(v: ViewLike, role?: string): AdminAccess {
+  if (!v || v.kind !== "role" || !v.role || (role && !STAFF_ROLES.includes(role))) return NONE;
+  if (v.role.is_super) return { full: true, pages: new Set(PAGES.map((p) => p.key)), readOnly: v.role.read_only };
+  return { full: false, pages: new Set((v.role.pages ?? []) as PageKey[]), readOnly: v.role.read_only };
 }
+
+/** The admin pages of the view in use now. */
+export const accessOf = (me: Me): AdminAccess => (me ? accessOfView(me.view, me.role) : NONE);
 
 export const canOpen = (a: AdminAccess, key: PageKey) => a.full || a.pages.has(key);
 export const canSeeFees = (a: AdminAccess) => a.full || FEE_PAGES.some((k) => a.pages.has(k));
 
-/** Where an admin lands: Dashboard when allowed, otherwise the first page they can open. */
-export function homeFor(a: AdminAccess): string {
+/** True when the view in use works on the page with admin rights. */
+export const actsAsAdmin = (me: Me, key: PageKey) => canOpen(accessOf(me), key);
+
+/** True when the view in use is view only: pages open, but nothing can be changed. */
+export const viewReadOnly = (me: Me) => accessOf(me).readOnly;
+
+/** True when the view in use is the login's own portal and the page is part of it. */
+export const inOwnPortal = (me: Me, key: PageKey) =>
+  !!me && me.view?.kind === "own" && (BASE_PAGES[me.role] ?? []).includes(key);
+
+/** True when the view lets the login open the page. */
+export function viewAllows(me: NonNullable<Me>, v: ViewLike, key: PageKey) {
+  if (!v) return false;
+  if (v.kind === "own") return (BASE_PAGES[me.role] ?? []).includes(key);
+  return canOpen(accessOfView(v, me.role), key);
+}
+
+/** Where a view lands: the canteen manager's canteen, a portal's dashboard, or for an access
+ * role its Dashboard when allowed, otherwise the first page it can open. */
+export function homeFor(a: AdminAccess, me?: Me): string {
+  if (me?.view?.kind === "own") return me.role === "canteen_manager" ? "/canteen" : "/dashboard";
   if (canOpen(a, "dashboard")) return "/dashboard";
   return PAGES.find((p) => canOpen(a, p.key))?.href ?? "/account";
+}
+
+/** The page key for a path, for the pages listed in PAGES. */
+export function pageKeyForPath(path: string): PageKey | null {
+  const hit = PAGES.filter((p) => path === p.href || path.startsWith(p.href + "/")).sort((a, b) => b.href.length - a.href.length)[0];
+  return hit?.key ?? null;
 }

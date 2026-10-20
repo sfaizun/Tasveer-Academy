@@ -9,6 +9,7 @@ import { dhakaTodayISO, fmtDate, taka } from "@/lib/format";
 import ExpenseForm, { type TeacherOpt } from "./ExpenseForm";
 import ExpenseTable from "./ExpenseTable";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin, viewReadOnly } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,8 @@ export default async function ExpensesPage({
 }) {
   await requirePage("expenses");
   const { me } = await getViewer();
-  if (me?.role !== "admin") redirect("/dashboard");
+  if (!actsAsAdmin(me, "expenses")) redirect("/dashboard");
+  const readOnly = viewReadOnly(me);
 
   const sp = await searchParams;
   const today = dhakaTodayISO();
@@ -74,7 +76,7 @@ export default async function ExpensesPage({
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <OfficeTabs active="expenses" />
 
-        <details className="panel collapsible no-print" open>
+        {!readOnly && <details className="panel collapsible no-print" open>
           <summary className="phead">
             <div className="ptitle">Add an expense</div>
             <div className="sub">Teacher expenses show on that teacher&apos;s own Reports page</div>
@@ -82,7 +84,7 @@ export default async function ExpensesPage({
           <div style={{ padding: 18 }}>
             <ExpenseForm teachers={activeTeachers} today={today} />
           </div>
-        </details>
+        </details>}
 
         <div className="panel print-flow">
           <div className="print-only" style={{ padding: "4px 0 12px", borderBottom: "2px solid #000", marginBottom: 12 }}>
@@ -131,7 +133,7 @@ export default async function ExpensesPage({
             <div><div className="lbl">Entries</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{rows.length}</b></div>
           </div>
 
-          <ExpenseTable rows={rows} teachers={activeTeachers} today={today} />
+          <ExpenseTable rows={rows} teachers={activeTeachers} today={today} readOnly={readOnly} />
 
           <div className="print-only" style={{ marginTop: 28 }}>
             <span className="sub">Printed {fmtDate(today)} by {me?.full_name ?? "admin"}</span>

@@ -18,6 +18,7 @@ import { isCurrentEnrolment } from "@/lib/enrolment";
 import StudentTestMarksPanel from "../../test-marks/StudentTestMarksPanel";
 import { requirePage } from "@/lib/require-page";
 import { accessOf, canSeeFees } from "@/lib/access";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -86,7 +87,7 @@ export default async function StudentDetail({
   if (!student) notFound();
 
   const isOwner = !!me?.is_owner;
-  const isAdmin = me?.role === "admin";
+  const isAdmin = actsAsAdmin(me, "students");
   // Admins whose access has no fee pages (e.g. Student Admin) see no invoices, payments or rates.
   const showFees = !isAdmin || canSeeFees(accessOf(me));
   const s: any = student;

@@ -8,13 +8,14 @@ import { EXAM_STATUS, MOCK_EXAM_COLS, subjectLabel, type MockExam } from "@/lib/
 import MockExamForm from "./MockExamForm";
 import TeacherMockList from "./TeacherMockList";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
 export default async function MockExamsPage({ searchParams }: { searchParams: Promise<{ show?: string; series?: string }> }) {
   await requirePage("mock_exams");
   const { me } = await getViewer();
-  if (me?.role === "teacher") {
+  if (me?.role === "teacher" && !actsAsAdmin(me, "mock_exams")) {
     // A teacher sees and edits only the mock exams assigned to them.
     const supabase = await createClient();
     const { data: mineId } = await supabase.rpc("my_teacher_id");
@@ -38,7 +39,7 @@ export default async function MockExamsPage({ searchParams }: { searchParams: Pr
       </>
     );
   }
-  if (me?.role !== "admin") redirect("/dashboard");
+  if (!actsAsAdmin(me, "mock_exams")) redirect("/dashboard");
   const sp = await searchParams;
   const show = sp.show === "cancelled" || sp.show === "all" ? sp.show : "active";
   const today = dhakaTodayISO();

@@ -3,6 +3,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { taka, currentBillingMonth, fmtDate } from "@/lib/format";
 import RunBillingForm from "./RunBillingForm";
 import { requirePage } from "@/lib/require-page";
+import { getViewer } from "@/lib/supabase/viewer";
+import { viewReadOnly } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ const statusMap: Record<string, { cls: string; label: string }> = {
 
 export default async function BillingPage() {
   await requirePage("billing");
+  const readOnly = viewReadOnly((await getViewer()).me);
   const supabase = await createClient();
 
   const { data: invoices } = await supabase
@@ -38,12 +41,14 @@ export default async function BillingPage() {
       </header>
 
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-        <div className="panel">
-          <div className="phead"><div className="ptitle">Run monthly billing</div></div>
-          <div style={{ padding: 18 }}>
-            <RunBillingForm defaultMonth={defaultMonth} />
+        {!readOnly && (
+          <div className="panel">
+            <div className="phead"><div className="ptitle">Run monthly billing</div></div>
+            <div style={{ padding: 18 }}>
+              <RunBillingForm defaultMonth={defaultMonth} />
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="panel">
           <div className="phead">

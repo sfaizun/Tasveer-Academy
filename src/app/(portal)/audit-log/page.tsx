@@ -4,6 +4,7 @@ import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import ActivityAuditReport from "../reports/ActivityAuditReport";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function AuditLogPage({
   const supabase = await createClient();
   const { me } = await getViewer();
 
-  if (me?.role !== "admin") redirect("/dashboard");
+  if (!actsAsAdmin(me, "audit_log")) redirect("/dashboard");
 
   return (
     <>

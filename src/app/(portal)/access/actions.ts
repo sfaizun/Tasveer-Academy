@@ -15,7 +15,7 @@ function refresh() {
 
 /** Saves the ticked pages for every role whose column changed. */
 export async function saveMatrix(_prev: State, formData: FormData): Promise<State> {
-  let changes: { id: string; name: string; pages: string[] }[];
+  let changes: { id: string; name: string; pages: string[]; read_only?: boolean }[];
   try {
     changes = JSON.parse(String(formData.get("changes") ?? "[]"));
     if (!Array.isArray(changes)) throw new Error();
@@ -26,7 +26,7 @@ export async function saveMatrix(_prev: State, formData: FormData): Promise<Stat
   const supabase = await createClient();
   for (const c of changes) {
     if (!isId(c.id) || !Array.isArray(c.pages) || !c.pages.every((p) => KEYS.has(p))) return { error: "Could not read the changes." };
-    const { error } = await supabase.rpc("fn_save_admin_role", { p_id: c.id, p_name: c.name, p_pages: c.pages });
+    const { error } = await supabase.rpc("fn_save_admin_role", { p_id: c.id, p_name: c.name, p_pages: c.pages, p_read_only: c.read_only === true });
     if (error) return { error: `Could not save ${c.name}: ${error.message}` };
   }
   refresh();
@@ -36,6 +36,7 @@ export async function saveMatrix(_prev: State, formData: FormData): Promise<Stat
 export async function addRole(_prev: State, formData: FormData): Promise<State> {
   const name = String(formData.get("name") ?? "").trim();
   const copyFrom = String(formData.get("copy_from") ?? "");
+  const readOnly = formData.get("read_only") === "1";
   if (!name) return { error: "Enter a name for the role." };
   if (name.length > 60) return { error: "Keep the name under 60 characters." };
   const supabase = await createClient();
@@ -44,7 +45,7 @@ export async function addRole(_prev: State, formData: FormData): Promise<State> 
     const { data } = await supabase.from("admin_role").select("pages, is_super").eq("id", copyFrom).maybeSingle();
     pages = data?.is_super ? [...KEYS] : ((data?.pages ?? []) as string[]);
   }
-  const { error } = await supabase.rpc("fn_save_admin_role", { p_id: null, p_name: name, p_pages: pages });
+  const { error } = await supabase.rpc("fn_save_admin_role", { p_id: null, p_name: name, p_pages: pages, p_read_only: readOnly });
   if (error) return { error: error.message.includes("duplicate") ? "A role with this name already exists." : "Could not add the role: " + error.message };
   refresh();
   return { ok: true, message: `Added ${name}. Tick its pages in the table and save.` };
@@ -59,17 +60,6 @@ export async function removeRoleChecked(_prev: State, formData: FormData): Promi
   if (error) return { error: error.message };
   refresh();
   return { ok: true };
-}
-
-export async function setUserRole(_prev: State, formData: FormData): Promise<State> {
-  const userId = String(formData.get("user_id") ?? "");
-  const roleId = String(formData.get("role_id") ?? "");
-  if (!isId(userId)) return { error: "Missing login." };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("fn_set_user_admin_role", { p_user_id: userId, p_role_id: isId(roleId) ? roleId : null });
-  if (error) return { error: error.message };
-  refresh();
-  return { ok: true, message: "Saved." };
 }
 
 export async function createAdminLogin(_prev: State, formData: FormData): Promise<State> {

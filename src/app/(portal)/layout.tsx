@@ -6,7 +6,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import NavLink from "@/components/NavLink";
 import Logo from "@/components/Logo";
 import PortalNav from "@/components/PortalNav";
-import { PAGES, accessOf, canOpen } from "@/lib/access";
+import ViewPicker from "@/components/ViewPicker";
+import { PAGES, accessOf, canOpen, homeFor, pageKeyForPath } from "@/lib/access";
 
 const ADMIN_GROUPS = ["Overview", "Admissions", "Billing", "Office Accounts", "Academy"];
 
@@ -15,25 +16,32 @@ export default async function PortalLayout({ children }: { children: React.React
   if (!user) redirect("/login");
   if (!me) redirect("/no-access");
 
-  const isAdmin = me.role === "admin";
+  // The view in use ("Viewing as"): the login's own portal, or one of its access roles. The menu
+  // shows only that view's pages; the menu at the top switches between views.
+  const ownView = me.view?.kind === "own";
   const isTeacher = me.role === "teacher";
   const isCanteen = me.role === "canteen_manager";
+  const access = accessOf(me);
 
-  // The canteen manager only ever works in the canteen section (plus their own password page).
-  // Academy data is already hidden from them in the database; this keeps them off the
-  // academy pages too, e.g. the /dashboard landing page after sign-in.
-  if (isCanteen) {
+  // The canteen manager's own view is the canteen section only (plus their own password page).
+  // Academy data is already hidden from them in the database; this keeps them off the academy
+  // pages too, e.g. the /dashboard landing page after sign-in.
+  if (isCanteen && ownView) {
     const path = (await headers()).get("x-pathname") ?? "";
-    const allowed = path === "/canteen" || path.startsWith("/canteen/") || path === "/account" || path.startsWith("/account/");
+    const key = pageKeyForPath(path);
+    const allowed = path === "/canteen" || path.startsWith("/canteen/") || path === "/account" || path.startsWith("/account/")
+      || path.startsWith("/view") || (key !== null && me.views.some((v) => v.kind === "role" && v.role && (v.role.is_super || (v.role.pages ?? []).includes(key))));
     if (!allowed) redirect("/canteen");
   }
-  const access = accessOf(me);
-  const roleName = me.is_owner ? "Owner" : isCanteen ? "Canteen manager" : isAdmin ? (me.admin_role?.name ?? "No access set") : me.role;
+  const roleName = me.is_owner && !ownView ? `Owner · ${me.view?.label ?? "Super Admin"}` : me.view?.label ?? "No access set";
+  const readOnly = access.readOnly;
+  const home = homeFor(access, me);
+  const views = me.views.map((v) => ({ key: v.key, label: v.label + (v.role?.read_only ? " (view only)" : "") }));
   const initials = me.full_name.split(" ").map((p: string) => p[0]).slice(0, 2).join("");
 
   return (
     <div className="shell">
-      <PortalNav>
+      <PortalNav home={home} bar={<ViewPicker views={views} current={me.view?.key ?? null} compact />}>
         <div className="brand">
           <Logo size={32} />
           <div>
@@ -46,7 +54,9 @@ export default async function PortalLayout({ children }: { children: React.React
           </div>
         </div>
 
-        {isCanteen ? (
+        <ViewPicker views={views} current={me.view?.key ?? null} />
+
+        {ownView && isCanteen ? (
           <>
             <div className="navlbl">Canteen</div>
             <NavLink href="/canteen" exact>Canteen home</NavLink>
@@ -60,44 +70,7 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
             <NavLink href="/canteen/hours">Opening hours</NavLink>
           </>
-        ) : isAdmin ? (
-          <>
-            {/* Admin menu: only the pages this login's access role allows (Academy > Access). */}
-            {ADMIN_GROUPS.map((g) => {
-              const pages = PAGES.filter((p) => p.group === g && p.key !== "canteen" && canOpen(access, p.key));
-              if (!pages.length) return null;
-              return (
-                <div key={g} style={{ display: "contents" }}>
-                  <div className="navlbl">{g}</div>
-                  {pages.map((p) => <NavLink key={p.key} href={p.href}>{p.label}</NavLink>)}
-                </div>
-              );
-            })}
-
-            {/* The canteen is a separate business: its own boxed, differently coloured group at the end. */}
-            {canOpen(access, "canteen") && (
-                <div className="navgroup-canteen">
-                <div className="navgroup-head">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                    <path d="M4 8h13v5a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6V8z" />
-                    <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
-                    <path d="M8 2.5v2.5M11.5 2.5v2.5" />
-                  </svg>
-                  Canteen
-                </div>
-                <NavLink href="/canteen" exact>Canteen overview</NavLink>
-                <NavLink href="/canteen/reports">Sales reports</NavLink>
-                <NavLink href="/canteen/sell">Sell</NavLink>
-                <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
-                <NavLink href="/canteen/close">Cash &amp; day close</NavLink>
-                <NavLink href="/canteen/plan">Prep plan</NavLink>
-                <NavLink href="/canteen/requests">Requests</NavLink>
-                <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
-                <NavLink href="/canteen/hours">Opening hours</NavLink>
-              </div>
-            )}
-          </>
-        ) : (
+        ) : ownView ? (
           <>
             <div className="navlbl">Overview</div>
             <NavLink href="/dashboard">Dashboard</NavLink>
@@ -107,6 +80,41 @@ export default async function PortalLayout({ children }: { children: React.React
             {isTeacher && <NavLink href="/mock-exams">Mock exams</NavLink>}
             <NavLink href="/reports">Reports</NavLink>
           </>
+        ) : (
+          // An access role's pages (Academy > Access).
+          ADMIN_GROUPS.map((g) => {
+            const pages = PAGES.filter((p) => p.group === g && p.key !== "canteen" && canOpen(access, p.key));
+            if (!pages.length) return null;
+            return (
+              <div key={g} style={{ display: "contents" }}>
+                <div className="navlbl">{g}</div>
+                {pages.map((p) => <NavLink key={p.key} href={p.href}>{p.label}</NavLink>)}
+              </div>
+            );
+          })
+        )}
+
+        {/* The canteen is a separate business: its own boxed, differently coloured group at the end. */}
+        {!ownView && canOpen(access, "canteen") && (
+          <div className="navgroup-canteen">
+            <div className="navgroup-head">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <path d="M4 8h13v5a6 6 0 0 1-6 6H10a6 6 0 0 1-6-6V8z" />
+                <path d="M17 10h1.5a2.5 2.5 0 0 1 0 5H17" />
+                <path d="M8 2.5v2.5M11.5 2.5v2.5" />
+              </svg>
+              Canteen
+            </div>
+            <NavLink href="/canteen" exact>Canteen overview</NavLink>
+            <NavLink href="/canteen/reports">Sales reports</NavLink>
+            <NavLink href="/canteen/sell">Sell</NavLink>
+            <NavLink href="/canteen/stock">Today&apos;s stock</NavLink>
+            <NavLink href="/canteen/close">Cash &amp; day close</NavLink>
+            <NavLink href="/canteen/plan">Prep plan</NavLink>
+            <NavLink href="/canteen/requests">Requests</NavLink>
+            <NavLink href="/canteen/menu">Menu &amp; prices</NavLink>
+            <NavLink href="/canteen/hours">Opening hours</NavLink>
+          </div>
         )}
 
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
@@ -139,7 +147,14 @@ export default async function PortalLayout({ children }: { children: React.React
         </div>
       </PortalNav>
 
-      <div className="main">{children}</div>
+      <div className="main">
+        {readOnly && (
+          <div className="viewonly-bar" role="note">
+            <b>View only.</b> You are viewing as {me.view?.label}: you can open these pages but can&apos;t change anything.
+          </div>
+        )}
+        {children}
+      </div>
     </div>
   );
 }

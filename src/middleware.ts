@@ -5,9 +5,11 @@ import { SUPABASE_URL, SUPABASE_ANON_KEY } from "@/lib/supabase/config";
 const PUBLIC = ["/login", "/no-access", "/apply"];
 
 export async function middleware(request: NextRequest) {
-  // Lets the portal layout know which page is being opened, so it can keep the canteen
-  // manager inside the canteen section.
+  // Lets the portal know which page is being opened: the layout keeps the canteen manager
+  // inside the canteen section, and a page that belongs to another view can switch to it and
+  // come back to the same address.
   request.headers.set("x-pathname", request.nextUrl.pathname);
+  request.headers.set("x-search", request.nextUrl.search);
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(

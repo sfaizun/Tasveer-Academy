@@ -9,6 +9,7 @@ import { EXAM_STATUS, MOCK_EXAM_COLS, REG_STATUS, subjectLabel, type MockExam } 
 import MockExamForm from "../MockExamForm";
 import { AttendanceSelect, CancelExamForm, RegisterForm, WithdrawButton } from "../MockBits";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ const PAY: Record<string, { text: string; cls: string }> = {
 export default async function MockExamPage({ params }: { params: Promise<{ id: string }> }) {
   await requirePage("mock_exams");
   const { me } = await getViewer();
-  if (me?.role !== "admin") redirect("/dashboard");
+  if (!actsAsAdmin(me, "mock_exams")) redirect("/dashboard");
   const { id } = await params;
   const supabase = await createClient();
 

@@ -6,6 +6,7 @@ import PrintButton from "@/components/PrintButton";
 import { taka, fmtDate } from "@/lib/format";
 import { groupSubjects, type SubjectForGrouping } from "@/lib/subjectGroups";
 import { requirePage } from "@/lib/require-page";
+import { accessOf, actsAsAdmin, canOpen } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,11 @@ export default async function InvoicesPage({
 }) {
   await requirePage("invoices");
   const { me } = await getViewer();
-  if (me?.role !== "admin") redirect("/dashboard");
+  if (!actsAsAdmin(me, "invoices")) redirect("/dashboard");
+  // Paying and editing happen on the student's page; a view-only role (or one without
+  // Students) gets the printable invoice instead.
+  const access = accessOf(me);
+  const canEdit = !access.readOnly && canOpen(access, "students");
 
   const sp = await searchParams;
   const studentId = typeof sp.student === "string" && sp.student ? sp.student : null;
@@ -219,9 +224,13 @@ export default async function InvoicesPage({
                     <div className="ptitle mono">{inv.invoice_no}</div>
                     <div className="sub">
                       {inv.student?.full_name} <span className="mono">({inv.student?.reg_no})</span>
-                      {inv.student?.id && (
+                      {inv.student?.id && canEdit ? (
                         <a className="no-print" href={`/students/${inv.student.id}?invoice=${inv.id}#invoices`} style={{ marginLeft: 8 }}>
                           Open to pay or edit
+                        </a>
+                      ) : (
+                        <a className="no-print" href={`/invoices/${inv.id}`} style={{ marginLeft: 8 }}>
+                          View invoice
                         </a>
                       )}
                     </div>

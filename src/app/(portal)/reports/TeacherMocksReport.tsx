@@ -46,15 +46,17 @@ function sum(rows: Row[]) {
  * their own class teacher; anyone else counts for the teacher set on the exam. Kept separate
  * from the tuition figures. Admin sees every teacher; a teacher sees only their own. */
 export default async function TeacherMocksReport({
-  supabase, monthDate, fileTag, forTeacher, linkStudents,
+  supabase, monthDate, fileTag, forTeacher, linkStudents, mine = false,
 }: {
   supabase: Supabase;
   monthDate: string | null;
   fileTag: string;
   forTeacher?: boolean;
+  /** Only the signed-in teacher's own mock exams, even when their access role sees everyone. */
+  mine?: boolean;
   linkStudents?: boolean;
 }) {
-  const { data } = await supabase.rpc("fn_report_teacher_mocks", { p_month: monthDate });
+  const { data } = await supabase.rpc("fn_report_teacher_mocks", { p_month: monthDate, p_mine: mine });
   const rows = ((data ?? []) as Row[]).map((r) => ({ ...r, charged: Number(r.charged), collected: Number(r.collected), due: Number(r.due) }));
 
   // Group: teacher -> exam -> candidates

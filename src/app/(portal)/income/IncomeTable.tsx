@@ -5,7 +5,8 @@ import IncomeForm, { type IncomeRow } from "./IncomeForm";
 import { removeIncome } from "./actions";
 
 /** The filtered income list with Edit and Remove per row (admin). */
-export default function IncomeTable({ rows, today }: { rows: IncomeRow[]; today: string }) {
+/** readOnly (view-only role): no Edit or Remove. */
+export default function IncomeTable({ rows, today, readOnly = false }: { rows: IncomeRow[]; today: string; readOnly?: boolean }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
   const total = rows.reduce((s, r) => s + Number(r.amount), 0);
@@ -13,7 +14,7 @@ export default function IncomeTable({ rows, today }: { rows: IncomeRow[]; today:
     <div className="tblwrap">
       <table>
         <thead>
-          <tr><th>Date</th><th>Details</th><th>Attachment</th><th className="n">Amount</th><th className="n no-print"></th></tr>
+          <tr><th>Date</th><th>Details</th><th>Attachment</th><th className="n">Amount</th>{!readOnly && <th className="n no-print"></th>}</tr>
         </thead>
         <tbody>
           {rows.map((r) => (
@@ -32,7 +33,7 @@ export default function IncomeTable({ rows, today }: { rows: IncomeRow[]; today:
                   ) : <span className="sub">-</span>}
                 </td>
                 <td className="n mono">{taka(r.amount)}</td>
-                <td className="n no-print" style={{ whiteSpace: "nowrap" }}>
+                {!readOnly && <td className="n no-print" style={{ whiteSpace: "nowrap" }}>
                   {confirming === r.id ? (
                     <form action={removeIncome} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
                       <input type="hidden" name="id" value={r.id} />
@@ -50,9 +51,9 @@ export default function IncomeTable({ rows, today }: { rows: IncomeRow[]; today:
                       </button>
                     </>
                   )}
-                </td>
+                </td>}
               </tr>
-              {editing === r.id && (
+              {!readOnly && editing === r.id && (
                 <tr className="no-print">
                   <td colSpan={5} style={{ background: "var(--tint)", padding: "14px 18px" }}>
                     <IncomeForm today={today} income={r} onDone={() => setEditing(null)} />
@@ -68,7 +69,7 @@ export default function IncomeTable({ rows, today }: { rows: IncomeRow[]; today:
             <tr>
               <td colSpan={3}><b style={{ color: "var(--ink)" }}>Total</b></td>
               <td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(total)}</b></td>
-              <td className="no-print"></td>
+              {!readOnly && <td className="no-print"></td>}
             </tr>
           </tfoot>
         )}

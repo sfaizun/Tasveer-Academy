@@ -93,6 +93,20 @@ button{font-family:inherit}
 .nav.on:hover{background:var(--coral);color:#fff}
 
 .main{flex:1;min-width:0;display:flex;flex-direction:column}
+
+/* "Viewing as" menu: switches between a login's own portal and its access roles. */
+.viewpick{display:flex;flex-direction:column;gap:5px;margin:0 0 6px;padding:10px 8px;border:1px solid var(--line);
+          border-radius:8px;background:var(--paper)}
+.viewpick-lbl{font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--faint);font-weight:600}
+.viewpick select{width:100%;border:1px solid var(--line);border-radius:6px;padding:7px 9px;font-size:13px;font-weight:600;
+                 background:var(--paper);color:var(--ink);font-family:inherit;cursor:pointer}
+.viewpick.compact{flex-direction:row;align-items:center;margin:0 0 0 auto;padding:0;border:0;background:none;min-width:0}
+.viewpick.compact .viewpick-lbl{display:none}
+.viewpick.compact select{max-width:min(58vw,240px);padding:6px 8px;text-overflow:ellipsis}
+/* Shown across the top of every page while a view-only role is in use. */
+.viewonly-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:12.5px;color:var(--ink);
+              background:var(--tint2);border-bottom:1px solid var(--line)}
+.viewonly-bar b{font-weight:700;white-space:nowrap}
 .top{min-height:64px;border-bottom:1px solid var(--line);background:var(--paper);
      display:flex;align-items:center;gap:14px;padding:12px 28px;flex-wrap:wrap}
 h1{margin:0;font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.015em}
@@ -185,11 +199,16 @@ input:focus{outline:2px solid var(--coral);outline-offset:0;border-color:var(--c
   }
   .mbar-brand{display:flex;align-items:center;gap:8px;font-weight:700;font-size:15px;color:var(--ink)}
   .mbar-brand img{border-radius:50%;border:1px solid var(--line)}
+  .mbar-brand{min-width:0}
+  .mbar-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .side{position:fixed;top:0;left:0;z-index:20;height:100vh;height:100dvh;width:min(290px,86vw);flex:none;
         overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;
         padding-bottom:calc(16px + env(safe-area-inset-bottom));
         transform:translateX(-100%);transition:transform .22s ease;box-shadow:2px 0 24px rgba(0,0,0,.18)}
   .side.open{transform:translateX(0)}
+  /* On phones the "Viewing as" menu sits in the app bar instead. */
+  .side .viewpick{display:none}
+  @media (max-width: 400px){ .mbar:has(.viewpick) .mbar-name{display:none} }
   .nav{padding:11px 10px;font-size:15px}
   .nav-theme{display:block;padding:4px 8px 10px}
   body.nav-open{overflow:hidden}
@@ -398,7 +417,7 @@ table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background
     --day0:#fde2e1; --day1:#e1ecfd; --day2:#e1f7ea; --day3:#fdf0da;
     --day4:#f0e1fb; --day5:#daf5f5; --day6:#fdeaf6;
   }
-  .side,.menu-btn,.backdrop,.mbar,.nav-theme,.no-print{display:none!important}
+  .side,.menu-btn,.backdrop,.mbar,.nav-theme,.viewonly-bar,.no-print{display:none!important}
   .shell{display:block}
   .main{width:100%}
   .content{padding:0}

@@ -6,6 +6,7 @@ import TeacherAnnouncements from "./TeacherAnnouncements";
 import MyAnnouncements from "./MyAnnouncements";
 import { markSeenAndGetAcks } from "./receipts";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,8 @@ export default async function AnnouncementsPage() {
   const supabase = await createClient();
   const { me } = await getViewer();
 
-  const isAdmin = me?.role === "admin";
-  const isTeacher = me?.role === "teacher";
+  const isAdmin = actsAsAdmin(me, "announcements");
+  const isTeacher = me?.role === "teacher" && !isAdmin;
 
   // Flip any "published" announcement whose "visible until" time has passed to
   // "unpublished" before anyone's list is read, so an expired notice reads as taken

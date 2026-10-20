@@ -3,7 +3,7 @@ import { Fragment, useActionState, useEffect, useMemo, useState } from "react";
 import { ASSIGNABLE_PAGES, FEE_PAGES, PAGES } from "@/lib/access";
 import { addRole, removeRoleChecked, saveMatrix } from "./actions";
 
-export type RoleRow = { id: string; name: string; pages: string[]; is_super: boolean; is_system: boolean; users: number };
+export type RoleRow = { id: string; name: string; pages: string[]; is_super: boolean; is_system: boolean; read_only: boolean; users: number };
 
 const inputStyle: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "8px 11px",
@@ -39,13 +39,17 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
   const initial = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, new Set(r.pages)])), [roles]);
   const [ticks, setTicks] = useState<Record<string, Set<string>>>(initial);
   useEffect(() => setTicks(initial), [initial]);
+  // View only: the role opens its pages but can't change anything (e.g. an investor).
+  const initialRo = useMemo(() => Object.fromEntries(roles.map((r) => [r.id, r.read_only])), [roles]);
+  const [ro, setRo] = useState<Record<string, boolean>>(initialRo);
+  useEffect(() => setRo(initialRo), [initialRo]);
   const [state, action, pending] = useActionState(saveMatrix, null);
   const [addState, addAction, adding] = useActionState(addRole, null);
 
   const editable = roles.filter((r) => !r.is_super);
   const changed = editable.filter((r) => {
     const a = initial[r.id], b = ticks[r.id];
-    return a.size !== b.size || [...a].some((k) => !b.has(k));
+    return a.size !== b.size || [...a].some((k) => !b.has(k)) || initialRo[r.id] !== ro[r.id];
   });
 
   const toggle = (roleId: string, key: string, on: boolean) =>
@@ -67,7 +71,7 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
         <input
           type="hidden"
           name="changes"
-          value={JSON.stringify(changed.map((r) => ({ id: r.id, name: r.name, pages: [...ticks[r.id]] })))}
+          value={JSON.stringify(changed.map((r) => ({ id: r.id, name: r.name, pages: [...ticks[r.id]], read_only: !!ro[r.id] })))}
         />
         <div className="tblwrap keep-table">
           <table>
@@ -77,6 +81,7 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
                 {roles.map((r) => (
                   <th key={r.id} className="n" style={{ textAlign: "center", verticalAlign: "top", minWidth: 110 }}>
                     <div style={{ color: "var(--ink)" }}>{r.name}</div>
+                    {r.read_only && <div className="sub" style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>view only</div>}
                     <div className="sub" style={{ fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>
                       {r.users} {r.users === 1 ? "login" : "logins"}
                     </div>
@@ -91,6 +96,24 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
               </tr>
             </thead>
             <tbody>
+              <tr>
+                <td>
+                  <b style={{ color: "var(--ink)" }}>View only</b>
+                  <div className="sub">Opens the ticked pages but can&apos;t add, edit or remove anything</div>
+                </td>
+                {roles.map((r) => (
+                  <td key={r.id} style={{ textAlign: "center" }}>
+                    <input
+                      type="checkbox"
+                      aria-label={`${r.name}: view only`}
+                      checked={!r.is_super && !!ro[r.id]}
+                      disabled={r.is_super}
+                      onChange={(e) => setRo((x) => ({ ...x, [r.id]: e.target.checked }))}
+                      style={{ width: 16, height: 16, cursor: r.is_super ? "not-allowed" : "pointer" }}
+                    />
+                  </td>
+                ))}
+              </tr>
               {GROUPS.map((g) => (
                 <Fragment key={g}>
                   <tr>
@@ -131,7 +154,7 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
             {pending ? "Saving…" : changed.length ? `Save changes (${changed.map((r) => r.name).join(", ")})` : "Save changes"}
           </button>
           {changed.length > 0 && (
-            <button className="btn ghost" type="button" onClick={() => setTicks(initial)}>Undo</button>
+            <button className="btn ghost" type="button" onClick={() => { setTicks(initial); setRo(initialRo); }}>Undo</button>
           )}
           {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
           {state?.ok && changed.length === 0 && <span className="sub" style={{ color: "var(--ok)" }}>{state.message}</span>}
@@ -146,8 +169,9 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
       </div>
       <div className="sub" style={{ padding: "0 18px 14px" }}>
         A role with any page marked &ldquo;shows fees&rdquo; also sees invoices, payments and rates on a student&apos;s page.
-        Without them, the student page shows details, subjects, guardians and marks only. Changes apply the next time
-        the person opens a page.
+        Without them, the student page shows details, subjects, guardians and marks only. A login can hold several
+        roles and picks which one to use from the &ldquo;Viewing as&rdquo; menu at the top of the portal. Changes apply
+        the next time the person opens a page.
       </div>
 
       <form action={addAction} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", padding: "14px 18px 18px", borderTop: "1px solid var(--line)" }}>
@@ -162,6 +186,9 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
             {roles.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         </div>
+        <label style={{ display: "flex", gap: 6, alignItems: "center", fontSize: 13, paddingBottom: 9 }}>
+          <input type="checkbox" name="read_only" value="1" /> View only
+        </label>
         <button className="btn ghost" type="submit" disabled={adding}>{adding ? "Adding…" : "+ Add role"}</button>
         {addState?.error && <span className="sub" style={{ color: "var(--crit)" }}>{addState.error}</span>}
         {addState?.ok && <span className="sub" style={{ color: "var(--ok)" }}>{addState.message}</span>}

@@ -13,6 +13,7 @@ import TeacherStudentPaymentsReport from "./TeacherStudentPaymentsReport";
 import AnnouncementReachReport from "./AnnouncementReachReport";
 import UserAccessReport from "./UserAccessReport";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -80,8 +81,10 @@ export default async function ReportsPage({
   const supabase = await createClient();
   const { me } = await getViewer();
 
-  const isAdmin = me?.role === "admin";
-  const isTeacher = me?.role === "teacher";
+  // The view in use decides: an access role with Reports sees the academy-wide reports, a
+  // teacher's own view their own reports.
+  const isAdmin = actsAsAdmin(me, "reports");
+  const isTeacher = !isAdmin && me?.role === "teacher";
 
   if (isAdmin) {
     const [byStudent, bySubject, byTeacher, summary, admissionFees] = await Promise.all([
@@ -260,8 +263,8 @@ export default async function ReportsPage({
 
   if (isTeacher) {
     const [byTeacher, bySubject, { data: myTeacherRow }] = await Promise.all([
-      supabase.rpc("fn_report_by_teacher", { p_month: monthDate }),
-      supabase.rpc("fn_report_by_subject", { p_month: monthDate }),
+      supabase.rpc("fn_report_by_teacher", { p_month: monthDate, p_mine: true }),
+      supabase.rpc("fn_report_by_subject", { p_month: monthDate, p_mine: true }),
       supabase.from("teacher").select("id").eq("app_user_id", me!.id).maybeSingle(),
     ]);
 
@@ -312,7 +315,7 @@ export default async function ReportsPage({
             </div>
           </div>
 
-          {myTeacherRow?.id && <TeacherMocksReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} forTeacher />}
+          {myTeacherRow?.id && <TeacherMocksReport supabase={supabase} monthDate={monthDate} fileTag={fileTag} forTeacher mine />}
 
           {myTeacherRow?.id && (
             <TeacherExpensesReport supabase={supabase} teacherId={myTeacherRow.id} from={expFrom} to={expTo} month={month} />
@@ -331,6 +334,7 @@ export default async function ReportsPage({
             <TeacherStudentPaymentsReport
               supabase={supabase}
               monthDate={monthDate}
+              mine
               title="Your students' payments"
               subtitle="Expand a subject you teach to see each enrolled student's billing and payments"
             />

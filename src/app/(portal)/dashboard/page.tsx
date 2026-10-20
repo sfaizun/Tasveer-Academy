@@ -7,6 +7,7 @@ import TeacherDashboard from "./TeacherDashboard";
 import MyAnnouncements from "../announcements/MyAnnouncements";
 import { markSeenAndGetAcks } from "../announcements/receipts";
 import { requirePage } from "@/lib/require-page";
+import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,11 @@ export default async function Dashboard() {
   await requirePage("dashboard");
   const supabase = await createClient();
   const { me } = await getViewer();
+  const academyAccess = actsAsAdmin(me, "dashboard");
 
-  if (me?.role === "admin") return <AdminDashboard />;
+  // The view in use decides: an access role with the Dashboard sees the academy dashboard, a
+  // teacher's own view their own dashboard.
+  if (academyAccess) return <AdminDashboard />;
   if (me?.role === "teacher") return <TeacherDashboard appUserId={me.id} fullName={me.full_name} />;
 
   // Student / guardian: aggregate published announcements from every class they're

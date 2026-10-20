@@ -6,11 +6,13 @@ import { removeExpense } from "./actions";
 
 /** The filtered expenses list with Edit and Remove per row (admin). */
 export default function ExpenseTable({
-  rows, teachers, today,
+  rows, teachers, today, readOnly = false,
 }: {
   rows: (ExpenseRow & { teacher_name: string | null })[];
   teachers: TeacherOpt[];
   today: string;
+  /** View-only role: no Edit or Remove. */
+  readOnly?: boolean;
 }) {
   const [editing, setEditing] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -19,7 +21,7 @@ export default function ExpenseTable({
     <div className="tblwrap">
       <table>
         <thead>
-          <tr><th>Date</th><th>For</th><th>Teacher</th><th>Details</th><th>Attachment</th><th className="n">Amount</th><th className="n no-print"></th></tr>
+          <tr><th>Date</th><th>For</th><th>Teacher</th><th>Details</th><th>Attachment</th><th className="n">Amount</th>{!readOnly && <th className="n no-print"></th>}</tr>
         </thead>
         <tbody>
           {rows.map((r) => (
@@ -42,7 +44,7 @@ export default function ExpenseTable({
                   ) : <span className="sub">-</span>}
                 </td>
                 <td className="n mono">{taka(r.amount)}</td>
-                <td className="n no-print" style={{ whiteSpace: "nowrap" }}>
+                {!readOnly && <td className="n no-print" style={{ whiteSpace: "nowrap" }}>
                   {confirming === r.id ? (
                     <form action={removeExpense} style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
                       <input type="hidden" name="id" value={r.id} />
@@ -60,9 +62,9 @@ export default function ExpenseTable({
                       </button>
                     </>
                   )}
-                </td>
+                </td>}
               </tr>
-              {editing === r.id && (
+              {!readOnly && editing === r.id && (
                 <tr className="no-print">
                   <td colSpan={7} style={{ background: "var(--tint)", padding: "14px 18px" }}>
                     <ExpenseForm teachers={teachers} today={today} expense={r} onDone={() => setEditing(null)} />
@@ -78,7 +80,7 @@ export default function ExpenseTable({
             <tr>
               <td colSpan={5}><b style={{ color: "var(--ink)" }}>Total</b></td>
               <td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(total)}</b></td>
-              <td className="no-print"></td>
+              {!readOnly && <td className="no-print"></td>}
             </tr>
           </tfoot>
         )}

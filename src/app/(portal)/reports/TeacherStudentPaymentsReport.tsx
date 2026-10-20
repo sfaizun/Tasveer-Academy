@@ -39,6 +39,7 @@ export default async function TeacherStudentPaymentsReport({
   linkStudents = false,
   title = "Student payments by subject",
   subtitle = "Expand a subject to see each enrolled student's billing and payments",
+  mine = false,
 }: {
   supabase: Supabase;
   monthDate: string | null;
@@ -46,8 +47,10 @@ export default async function TeacherStudentPaymentsReport({
   linkStudents?: boolean;
   title?: string;
   subtitle?: string;
+  /** Only the signed-in teacher's own classes, even when their access role sees everyone. */
+  mine?: boolean;
 }) {
-  const { data } = await supabase.rpc("fn_report_teacher_student_payments", { p_month: monthDate });
+  const { data } = await supabase.rpc("fn_report_teacher_student_payments", { p_month: monthDate, p_mine: mine });
   const rows = (data ?? []) as Row[];
 
   const groups = new Map<string, SubjectGroup>();

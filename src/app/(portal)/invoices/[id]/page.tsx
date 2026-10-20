@@ -5,6 +5,8 @@ import PrintButton from "@/components/PrintButton";
 import { fmtDate, taka } from "@/lib/format";
 import AutoPrint from "./AutoPrint";
 import { requirePage } from "@/lib/require-page";
+import { getViewer } from "@/lib/supabase/viewer";
+import { accessOf, canOpen } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +68,7 @@ export default async function InvoicePrintPage({
       <header className="top no-print">
         <h1>Invoice {i.invoice_no}</h1>
         <div className="spacer" />
-        {s.id && (
+        {s.id && canOpen(accessOf((await getViewer()).me), "students") && (
           <a className="btn ghost" href={`/students/${s.id}`} style={{ fontSize: 12, padding: "6px 10px" }}>
             Back to student
           </a>

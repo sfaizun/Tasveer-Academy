@@ -96,3 +96,18 @@ export async function setAppUserActive(formData: FormData) {
   await supabase.from("app_user").update({ active }).eq("id", id);
   revalidatePath("/accounts");
 }
+
+/** Sets the access role a login carries on top of its own portal ("none" removes it).
+ * Super Admin only; checked again in the database. */
+/** Sets every access role a login holds (Academy > Access). */
+export async function setLoginRoles(_prev: State, formData: FormData): Promise<State> {
+  const id = String(formData.get("user_id") ?? "");
+  const roleIds = formData.getAll("role_id").map(String);
+  if (!/^[0-9a-f-]{36}$/.test(id) || roleIds.some((r) => !/^[0-9a-f-]{36}$/.test(r))) return { error: "Choose the roles again." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_login_roles", { p_user_id: id, p_role_ids: roleIds });
+  if (error) return { error: error.message };
+  revalidatePath("/accounts");
+  revalidatePath("/access");
+  return { ok: true };
+}
