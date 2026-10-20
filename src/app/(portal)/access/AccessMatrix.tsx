@@ -48,13 +48,14 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
 
   const editable = roles.filter((r) => !r.is_super);
   const changed = editable.filter((r) => {
-    const a = initial[r.id], b = ticks[r.id];
-    return a.size !== b.size || [...a].some((k) => !b.has(k)) || initialRo[r.id] !== ro[r.id];
+    // A role just added has no ticks yet until the effect above copies them in.
+    const a = initial[r.id], b = ticks[r.id] ?? a;
+    return a.size !== b.size || [...a].some((k) => !b.has(k)) || initialRo[r.id] !== (ro[r.id] ?? initialRo[r.id]);
   });
 
   const toggle = (roleId: string, key: string, on: boolean) =>
     setTicks((t) => {
-      const next = new Set(t[roleId]);
+      const next = new Set(t[roleId] ?? initial[roleId]);
       if (on) next.add(key); else next.delete(key);
       return { ...t, [roleId]: next };
     });
@@ -71,7 +72,7 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
         <input
           type="hidden"
           name="changes"
-          value={JSON.stringify(changed.map((r) => ({ id: r.id, name: r.name, pages: [...ticks[r.id]], read_only: !!ro[r.id] })))}
+          value={JSON.stringify(changed.map((r) => ({ id: r.id, name: r.name, pages: [...(ticks[r.id] ?? initial[r.id])], read_only: !!(ro[r.id] ?? initialRo[r.id]) })))}
         />
         <div className="tblwrap keep-table">
           <table>
@@ -106,7 +107,7 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
                     <input
                       type="checkbox"
                       aria-label={`${r.name}: view only`}
-                      checked={!r.is_super && !!ro[r.id]}
+                      checked={!r.is_super && !!(ro[r.id] ?? initialRo[r.id])}
                       disabled={r.is_super}
                       onChange={(e) => setRo((x) => ({ ...x, [r.id]: e.target.checked }))}
                       style={{ width: 16, height: 16, cursor: r.is_super ? "not-allowed" : "pointer" }}
@@ -128,7 +129,7 @@ export default function AccessMatrix({ roles }: { roles: RoleRow[] }) {
                       </td>
                       {roles.map((r) => {
                         const fixed = r.is_super || p.key === "access";
-                        const on = r.is_super || (p.key !== "access" && ticks[r.id]?.has(p.key));
+                        const on = r.is_super || (p.key !== "access" && (ticks[r.id] ?? initial[r.id])?.has(p.key));
                         return (
                           <td key={r.id} style={{ textAlign: "center" }}>
                             <input

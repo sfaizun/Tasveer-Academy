@@ -190,7 +190,7 @@ function AccessRoles({ a, roles, isMe }: { a: AppUserRow; roles: RoleOption[]; i
     <div style={{ display: "flex", flexDirection: "column", gap: 6, alignItems: "flex-start" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
         <span>{accessLabel(a, roles)}</span>
-        <button className="linkbtn" type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open}>
+        <button className="btn ghost" type="button" onClick={() => setOpen((o) => !o)} aria-expanded={open} style={{ fontSize: 12, padding: "4px 10px" }}>
           {open ? "Close" : "Change"}
         </button>
         {state?.ok && !pending && !open && <span className="sub" style={{ color: "var(--ok)" }}>Saved</span>}
