@@ -120,7 +120,6 @@ export default async function PortalLayout({ children }: { children: React.React
         <div style={{ marginTop: "auto", borderTop: "1px solid var(--line)", paddingTop: 12 }}>
           {/* On phones the page headers hide their theme switch to save room; it lives here instead. */}
           <div className="nav-theme"><ThemeToggle /></div>
-          <NavLink href="/account">Change password</NavLink>
           <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "10px 8px" }}>
             <div
               style={{
@@ -138,6 +137,12 @@ export default async function PortalLayout({ children }: { children: React.React
               </div>
               <div className="sub" style={{ fontSize: 10.5 }}>{user.email}</div>
             </div>
+          </div>
+          {/* Same outlined button style as Sign out, so it's easy to spot. */}
+          <div style={{ padding: "0 8px 8px" }}>
+            <a className="btn ghost" href="/account" style={{ width: "100%", justifyContent: "center", fontSize: 12 }}>
+              Change password
+            </a>
           </div>
           <form action={signOut} style={{ padding: "0 8px" }}>
             <button className="btn ghost" type="submit" style={{ width: "100%", justifyContent: "center", fontSize: 12 }}>
