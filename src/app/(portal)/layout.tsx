@@ -76,6 +76,8 @@ export default async function PortalLayout({ children }: { children: React.React
             <NavLink href="/dashboard">Dashboard</NavLink>
             <NavLink href="/roster">Class Schedule</NavLink>
             <NavLink href="/test-marks">Test marks</NavLink>
+            <NavLink href="/course-materials">Course materials</NavLink>
+            <NavLink href="/homework">Homework</NavLink>
             {isTeacher && <NavLink href="/announcements">Announcements</NavLink>}
             {isTeacher && <NavLink href="/mock-exams">Mock exams</NavLink>}
             <NavLink href="/reports">Reports</NavLink>
