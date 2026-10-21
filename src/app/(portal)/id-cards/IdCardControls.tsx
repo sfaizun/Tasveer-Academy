@@ -1,7 +1,6 @@
 "use client";
-import { useActionState, useEffect, useRef, useState, useTransition } from "react";
-import { PHOTO_ACCEPT, uploadStudentPhoto } from "@/lib/photo-upload";
-import { issueIdCard, recordIdCardPrint, setStudentPhoto } from "./actions";
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { issueIdCard, recordIdCardPrint } from "./actions";
 
 const input: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "8px 10px", fontSize: 13,
@@ -32,41 +31,6 @@ export function IssueCard({ studentId, hasCard }: { studentId: string; hasCard: 
     </form>
   ) : (
     <button className="btn ghost" type="button" onClick={() => setOpen(true)}>Reissue card</button>
-  );
-}
-
-/** Upload or replace the student's photo (shown on the ID card). */
-export function PhotoForm({ studentId, hasPhoto }: { studentId: string; hasPhoto: boolean }) {
-  const [state, action, pending] = useActionState(setStudentPhoto, null);
-  const [busy, start] = useTransition();
-  const [err, setErr] = useState<string | null>(null);
-  const ref = useRef<HTMLInputElement>(null);
-  function pick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setErr(null);
-    start(async () => {
-      try {
-        const path = await uploadStudentPhoto(file);
-        const fd = new FormData();
-        fd.set("student_id", studentId);
-        fd.set("photo_path", path);
-        start(() => action(fd));
-      } catch (x) {
-        setErr((x as Error).message);
-      }
-      if (ref.current) ref.current.value = "";
-    });
-  }
-  return (
-    <span style={{ display: "inline-flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-      <button className="btn ghost" type="button" disabled={busy || pending} onClick={() => ref.current?.click()}>
-        {busy || pending ? "Uploading…" : hasPhoto ? "Change photo" : "Add photo"}
-      </button>
-      <input ref={ref} type="file" accept={PHOTO_ACCEPT} onChange={pick} hidden aria-label="Student photo" />
-      {(err || state?.error) && <span className="sub" style={{ color: "var(--crit)" }}>{err ?? state?.error}</span>}
-      {state?.ok && !busy && !pending && <span className="sub" style={{ color: "var(--ok)" }}>Photo saved.</span>}
-    </span>
   );
 }
 

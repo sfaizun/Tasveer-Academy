@@ -30,19 +30,3 @@ export async function recordIdCardPrint(cardId: string): Promise<void> {
   const supabase = await createClient();
   await supabase.rpc("fn_record_id_card_print", { p_card_id: cardId });
 }
-
-/** Set a student's photo; the file was uploaded from the browser to student-photos first. */
-export async function setStudentPhoto(_prev: State, formData: FormData): Promise<State> {
-  const studentId = String(formData.get("student_id") ?? "");
-  const path = String(formData.get("photo_path") ?? "");
-  if (!isId(studentId) || !path) return { error: "Choose a photo." };
-  const supabase = await createClient();
-  const { data: old, error } = await supabase.rpc("fn_set_student_photo", { p_student_id: studentId, p_path: path });
-  if (error) {
-    await supabase.storage.from("student-photos").remove([path]);
-    return { error: tidy(error.message) };
-  }
-  if (typeof old === "string" && old && old !== path) await supabase.storage.from("student-photos").remove([old]);
-  refresh(studentId);
-  return { ok: true };
-}

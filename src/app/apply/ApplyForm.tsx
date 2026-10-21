@@ -351,8 +351,8 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
               {result.ref}
             </div>
             <p className="sub" style={{ fontSize: 12.5, marginBottom: 22 }}>
-              Bring the student&apos;s photo and any required documents on your next visit to the
-              academy. Admission fee and first month&apos;s fee are collected on approval.
+              Bring any required documents on your next visit to the academy. Admission fee and
+              first month&apos;s fee are collected on approval.
             </p>
             <a
               href="/login"
@@ -519,10 +519,6 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                 onChange={(e) => setStudent({ ...student, address: e.target.value })}
               />
             </Field>
-            <div className="sub">
-              A student photo is collected in person at the academy — there&apos;s no need to
-              upload one here.
-            </div>
           </Section>
 
           <Section title="Guardian Details">

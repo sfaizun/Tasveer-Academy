@@ -7,7 +7,7 @@ import { requirePage } from "@/lib/require-page";
 import { viewReadOnly } from "@/lib/access";
 import { loadIdCard } from "@/lib/id-card";
 import { fmtDate, fmtDateTime } from "@/lib/format";
-import { IssueCard, PhotoForm, PrintCard } from "../../../id-cards/IdCardControls";
+import { IssueCard, PrintCard } from "../../../id-cards/IdCardControls";
 
 export const dynamic = "force-dynamic";
 
@@ -44,14 +44,12 @@ export default async function StudentIdCardPage({ params }: { params: Promise<{ 
               </span>
               <div className="spacer" style={{ flex: 1 }} />
               {canEdit && <PrintCard cardId={card.id} />}
-              {canEdit && <PhotoForm studentId={id} hasPhoto={!!data.student.photoUrl} />}
               {canEdit && <IssueCard studentId={id} hasCard />}
             </>
           ) : (
             <>
               <span className="st due"><span className="dot" />No ID card yet</span>
               <div className="spacer" style={{ flex: 1 }} />
-              {canEdit && <PhotoForm studentId={id} hasPhoto={!!data.student.photoUrl} />}
               {canEdit && <IssueCard studentId={id} hasCard={false} />}
             </>
           )}

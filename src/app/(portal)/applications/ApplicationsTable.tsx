@@ -1,9 +1,8 @@
 "use client";
-import { Fragment, useActionState, useMemo, useState, useTransition } from "react";
+import { Fragment, useActionState, useMemo, useState } from "react";
 import { taka, fmtDate, fmtDateTime } from "@/lib/format";
 import type { DupMatch } from "@/lib/duplicates";
 import { setApplicationStatus } from "./actions";
-import { PHOTO_ACCEPT, uploadStudentPhoto } from "@/lib/photo-upload";
 
 export type ApplicationRow = {
   id: string;
@@ -113,33 +112,12 @@ function ReviewForm({ appId, currentStatus, matches, canApprove }: { appId: stri
   const [state, action, pending] = useActionState(setApplicationStatus, null);
   const [status, setStatus] = useState(currentStatus);
   const [confirmed, setConfirmed] = useState(false);
-  const [uploading, start] = useTransition();
-  const [photoErr, setPhotoErr] = useState<string | null>(null);
   const needsConfirm = status === "approved" && currentStatus !== "approved" && matches.length > 0;
   // Approving creates the student and their ID card in one step.
   const approving = status === "approved" && currentStatus !== "approved";
 
-  function onSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setPhotoErr(null);
-    const fd = new FormData(e.currentTarget);
-    const photo = fd.get("photo");
-    fd.delete("photo");
-    start(async () => {
-      if (approving && photo instanceof File && photo.size > 0) {
-        try {
-          fd.set("photo_path", await uploadStudentPhoto(photo));
-        } catch (x) {
-          setPhotoErr((x as Error).message);
-          return;
-        }
-      }
-      start(() => action(fd));
-    });
-  }
-
   return (
-    <form onSubmit={onSubmit} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+    <form action={action} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
       <input type="hidden" name="id" value={appId} />
       <select style={selStyle} name="status" value={status} onChange={(e) => { setStatus(e.target.value); setConfirmed(false); }}>
         {STATUS_OPTIONS.map((o) => (
@@ -164,19 +142,15 @@ function ReviewForm({ appId, currentStatus, matches, canApprove }: { appId: stri
         <div style={{ flexBasis: "100%", display: "flex", flexDirection: "column", gap: 8, padding: "12px 14px", background: "var(--tint)", border: "1px solid var(--line)", borderRadius: 8 }}>
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--ink)" }}>Student ID card</div>
           <div className="sub">Approving creates the student&apos;s ID card (student and guardian details, student ID, barcode and QR codes). An application can&apos;t be approved without it.</div>
-          <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12.5 }}>
-            <span className="lbl">Student photo (optional, can be added later)</span>
-            <input type="file" name="photo" accept={PHOTO_ACCEPT} style={{ ...selStyle, padding: 6 }} />
-          </label>
           <label style={{ display: "flex", gap: 8, alignItems: "center", fontSize: 13 }}>
             <input type="checkbox" name="create_card" value="1" required defaultChecked /> Create the student ID card
           </label>
         </div>
       )}
-      <button className="btn" type="submit" disabled={pending || uploading || (needsConfirm && !confirmed)} style={{ fontSize: 12, padding: "8px 14px" }}>
-        {uploading && !pending ? "Uploading photo…" : pending ? "Saving…" : approving ? "Create ID card and approve" : "Update status"}
+      <button className="btn" type="submit" disabled={pending || (needsConfirm && !confirmed)} style={{ fontSize: 12, padding: "8px 14px" }}>
+        {pending ? "Saving…" : approving ? "Create ID card and approve" : "Update status"}
       </button>
-      {photoErr && <span className="sub" style={{ color: "var(--crit)" }}>{photoErr}</span>}
+
       {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
       {state?.ok && !state.studentId && <span className="sub" style={{ color: "var(--ok)" }}>Updated.</span>}
       {state?.ok && state.studentId && (

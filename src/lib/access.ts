@@ -4,7 +4,7 @@
 
 export type PageKey =
   | "dashboard" | "roster" | "test_marks" | "course_materials" | "homework" | "announcements" | "reports"
-  | "applications" | "students" | "mock_exams"
+  | "applications" | "students" | "id_cards" | "mock_exams"
   | "billing" | "invoices"
   | "expenses" | "income"
   | "catalogue" | "accounts" | "settings" | "audit_log" | "access"
@@ -23,6 +23,7 @@ export const PAGES: PageDef[] = [
   { key: "reports", label: "Reports", href: "/reports", group: "Overview" },
   { key: "applications", label: "Applications", href: "/applications", group: "Admissions" },
   { key: "students", label: "Students", href: "/students", group: "Admissions" },
+  { key: "id_cards", label: "Student ID cards", href: "/id-cards", group: "Admissions" },
   { key: "mock_exams", label: "Mock exams", href: "/mock-exams", group: "Admissions" },
   { key: "billing", label: "Billing run", href: "/billing", group: "Billing" },
   { key: "invoices", label: "Invoices", href: "/invoices", group: "Billing" },

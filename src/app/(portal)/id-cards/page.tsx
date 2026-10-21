@@ -14,7 +14,7 @@ export default async function IdCardsPage({ searchParams }: { searchParams: Prom
   const q = typeof sp.q === "string" ? sp.q.trim().toLowerCase() : "";
   const supabase = await createClient();
   const [{ data: students }, { data: cards }] = await Promise.all([
-    supabase.from("student").select("id, full_name, reg_no, status, photo_path").in("status", ["active", "on_hold"]).order("full_name"),
+    supabase.from("student").select("id, full_name, reg_no, status").in("status", ["active", "on_hold"]).order("full_name"),
     supabase.from("student_id_card").select("student_id, issue_no, issued_at, print_count").eq("status", "active"),
   ]);
   const byStudent = new Map(((cards ?? []) as any[]).map((c) => [c.student_id as string, c]));
@@ -53,13 +53,12 @@ export default async function IdCardsPage({ searchParams }: { searchParams: Prom
           </div>
           <div className="tblwrap">
             <table>
-              <thead><tr><th>Student</th><th>Student ID</th><th>Photo</th><th>ID card</th><th>Printed</th><th className="n"></th></tr></thead>
+              <thead><tr><th>Student</th><th>Student ID</th><th>ID card</th><th>Printed</th><th className="n"></th></tr></thead>
               <tbody>
                 {rows.map((s) => (
                   <tr key={s.id}>
                     <td><a href={`/students/${s.id}`}><b>{s.full_name}</b></a></td>
                     <td className="mono">{s.reg_no}</td>
-                    <td>{s.photo_path ? "Yes" : <span className="sub">No photo</span>}</td>
                     <td>{s.card
                       ? <span className="st paid"><span className="dot" />Card {s.card.issue_no} · {fmtDate(s.card.issued_at)}</span>
                       : <span className="st due"><span className="dot" />Not created</span>}</td>
@@ -67,7 +66,7 @@ export default async function IdCardsPage({ searchParams }: { searchParams: Prom
                     <td className="n"><a className={s.card ? "btn ghost" : "btn"} href={`/students/${s.id}/id-card`} style={{ fontSize: 12, padding: "6px 10px" }}>{s.card ? "Open card" : "Create card"}</a></td>
                   </tr>
                 ))}
-                {rows.length === 0 && <tr><td colSpan={6} className="sub">No students match.</td></tr>}
+                {rows.length === 0 && <tr><td colSpan={5} className="sub">No students match.</td></tr>}
               </tbody>
             </table>
           </div>
