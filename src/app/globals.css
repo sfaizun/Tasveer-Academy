@@ -241,6 +241,13 @@ input:focus{outline:2px solid var(--coral);outline-offset:0;border-color:var(--c
   .content .field{min-width:0;max-width:100%}
   .content .field > input:not([type=checkbox]):not([type=radio]),.content .field > select,.content .field > textarea{min-width:0!important;width:100%!important}
   form .field{flex:1 1 150px}
+  /* Date pickers: iPhones give them a fixed built-in width (and centre the text), so From and To
+     spilled into each other and under the Filter button. Let them shrink to their field, left-aligned;
+     From and To share a row and the buttons wrap below. */
+  input[type=date],input[type=month],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;min-height:40px;box-sizing:border-box}
+  input[type=date]::-webkit-date-and-time-value,input[type=month]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left}
+  form .field:has(> input[type=date]){flex:1 1 130px;min-width:0}
+  form .field > input[type=date]{width:100%}
 
   /* Easier to tap. */
   .btn{min-height:40px;justify-content:center}

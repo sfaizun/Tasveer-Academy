@@ -1,9 +1,11 @@
 import { fmtDhaka, isCurrentlyVisible, targetLabel } from "./shared";
 import { acknowledgeAnnouncement } from "./actions";
 
-function UrgencyChip({ urgency }: { urgency: string }) {
+/** Urgent stays red. A notice is green while it is live (published and inside its visible
+ * dates) and grey once it is out of date. */
+function UrgencyChip({ urgency, live }: { urgency: string; live: boolean }) {
   if (urgency === "urgent") return <span className="st over"><span className="dot" />Urgent</span>;
-  return <span className="st due"><span className="dot" />Notice</span>;
+  return <span className={`st ${live ? "paid" : "due"}`}><span className="dot" />Notice</span>;
 }
 
 export default function MyAnnouncements({
@@ -53,7 +55,7 @@ export default function MyAnnouncements({
               <div key={a.id} style={{ padding: "14px 16px", borderBottom: "1px solid var(--line2)" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
                   <b style={{ color: "var(--ink)" }}>{a.title}</b>
-                  <UrgencyChip urgency={a.urgency} />
+                  <UrgencyChip urgency={a.urgency} live={(a.status ?? "published") === "published" && isCurrentlyVisible(a.publish_at, a.expires_at)} />
                 </div>
                 <div style={{ whiteSpace: "pre-wrap", fontSize: 13.5, marginBottom: 6 }}>{a.body}</div>
                 {(a.announcement_attachment ?? [])[0]?.file_path && (
