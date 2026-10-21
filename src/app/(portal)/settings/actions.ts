@@ -47,7 +47,7 @@ export async function saveIdCardLinks(_prev: { ok?: boolean; error?: string } | 
   const get = (k: string) => String(formData.get(k) ?? "").trim();
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_set_id_card_links", { p_portal: get("portal_url"), p_facebook: get("facebook_url"), p_instagram: get("instagram_url") });
-  if (error) return { error: error.message.charAt(0).toUpperCase() + error.message.slice(1) + "." };
+  if (error) return { error: error.message.charAt(0).toUpperCase() + error.message.slice(1).replace(/\.$/, "") + "." };
   revalidatePath("/settings");
   return { ok: true };
 }

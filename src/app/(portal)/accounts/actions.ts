@@ -93,7 +93,8 @@ export async function setAppUserActive(formData: FormData) {
   const active = formData.get("active") === "true";
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("app_user").update({ active }).eq("id", id);
+  const { error } = await supabase.from("app_user").update({ active }).eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/accounts");
 }
 

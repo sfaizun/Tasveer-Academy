@@ -116,6 +116,7 @@ export async function deleteClassSlot(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("class_slot").delete().eq("id", id);
+  const { error } = await supabase.from("class_slot").delete().eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/roster");
 }

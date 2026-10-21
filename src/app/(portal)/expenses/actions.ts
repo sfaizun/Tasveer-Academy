@@ -107,7 +107,8 @@ export async function removeExpense(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
-  const { data } = await supabase.from("expense").delete().eq("id", id).select("attachment_path");
+  const { data, error } = await supabase.from("expense").delete().eq("id", id).select("attachment_path");
+  if (error) throw new Error(error.message);
   if (data && data.length > 0) await removeFile(supabase, data[0].attachment_path);
   refresh();
 }

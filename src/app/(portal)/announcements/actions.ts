@@ -153,12 +153,13 @@ export async function acknowledgeAnnouncement(formData: FormData) {
   if (studentIds.length === 0) return;
 
   const now = new Date().toISOString();
-  await supabase
+  const { error } = await supabase
     .from("announcement_receipt")
     .upsert(
       studentIds.map((student_id) => ({ announcement_id: id, student_id, acknowledged_at: now })),
       { onConflict: "announcement_id,student_id" }
     );
+  if (error) throw new Error(error.message);
 
   revalidatePath("/announcements");
   revalidatePath("/dashboard");
@@ -224,7 +225,8 @@ export async function unpublishAnnouncement(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("announcement").update({ status: "unpublished" }).eq("id", id);
+  const { error } = await supabase.from("announcement").update({ status: "unpublished" }).eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/announcements");
   revalidatePath("/dashboard");
 }
@@ -304,7 +306,8 @@ export async function withdrawAnnouncementRequest(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("announcement").delete().eq("id", id).eq("status", "pending_review");
+  const { error } = await supabase.from("announcement").delete().eq("id", id).eq("status", "pending_review");
+  if (error) throw new Error(error.message);
   revalidatePath("/announcements");
 }
 

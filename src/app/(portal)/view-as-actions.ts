@@ -12,7 +12,7 @@ export async function startViewAs(_prev: State, formData: FormData): Promise<Sta
   if (!/^[0-9a-f-]{36}$/.test(id)) return { error: "Missing login." };
   const supabase = await createClient();
   const { error } = await supabase.rpc("fn_start_impersonation", { p_user_id: id });
-  if (error) return { error: error.message.charAt(0).toUpperCase() + error.message.slice(1) + "." };
+  if (error) return { error: error.message.charAt(0).toUpperCase() + error.message.slice(1).replace(/\.$/, "") + "." };
   // Start in that person's default view, not the one this admin last picked.
   (await cookies()).delete(VIEW_COOKIE);
   redirect("/dashboard");

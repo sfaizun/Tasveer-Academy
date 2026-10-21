@@ -14,6 +14,9 @@ export async function changePassword(_prev: State, formData: FormData): Promise<
   if (newPassword === currentPassword) return { error: "Choose a different password than your current one." };
 
   const supabase = await createClient();
+  // While a Super Admin is viewing as someone, this page would change the admin's own password.
+  const { data: viewingAs } = await supabase.rpc("is_impersonating");
+  if (viewingAs) return { error: "View only: stop viewing as someone before changing a password." };
   const {
     data: { user },
   } = await supabase.auth.getUser();

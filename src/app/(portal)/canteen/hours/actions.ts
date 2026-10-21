@@ -68,6 +68,7 @@ export async function removeClosure(formData: FormData) {
   const id = String(formData.get("id") ?? "");
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("canteen_closure").delete().eq("id", id);
+  const { error } = await supabase.from("canteen_closure").delete().eq("id", id);
+  if (error) throw new Error(error.message);
   revalidate();
 }

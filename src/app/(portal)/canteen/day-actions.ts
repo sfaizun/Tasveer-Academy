@@ -176,7 +176,8 @@ export async function plusOneRequest(formData: FormData) {
   const requestId = String(formData.get("request_id") ?? "");
   if (!requestId) return;
   const supabase = await createClient();
-  await supabase.rpc("fn_canteen_log_request", { p_request_id: requestId, p_name: null, p_who: null, p_note: null });
+  const { error } = await supabase.rpc("fn_canteen_log_request", { p_request_id: requestId, p_name: null, p_who: null, p_note: null });
+  if (error) throw new Error(error.message);
   refresh();
 }
 

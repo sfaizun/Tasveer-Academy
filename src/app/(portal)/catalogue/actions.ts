@@ -29,7 +29,8 @@ export async function setTeacherActive(formData: FormData) {
   const id = String(formData.get("id"));
   const active = formData.get("active") === "true";
   const supabase = await createClient();
-  await supabase.from("teacher").update({ active }).eq("id", id);
+  const { error } = await supabase.from("teacher").update({ active }).eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/catalogue");
 }
 
@@ -76,7 +77,8 @@ export async function setSubjectActive(formData: FormData) {
   const id = String(formData.get("id"));
   const active = formData.get("active") === "true";
   const supabase = await createClient();
-  await supabase.from("subject").update({ active }).eq("id", id);
+  const { error } = await supabase.from("subject").update({ active }).eq("id", id);
+  if (error) throw new Error(error.message);
   revalidatePath("/catalogue");
   revalidatePath("/apply");
 }
@@ -102,7 +104,8 @@ export async function setMappingActive(formData: FormData) {
   const subject_id = String(formData.get("subject_id"));
   const active = formData.get("active") === "true";
   const supabase = await createClient();
-  await supabase.from("teacher_subject").update({ active }).eq("teacher_id", teacher_id).eq("subject_id", subject_id);
+  const { error } = await supabase.from("teacher_subject").update({ active }).eq("teacher_id", teacher_id).eq("subject_id", subject_id);
+  if (error) throw new Error(error.message);
   revalidatePath("/catalogue");
   revalidatePath("/apply");
 }

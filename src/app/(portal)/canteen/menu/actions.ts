@@ -165,7 +165,8 @@ export async function setItemStock(formData: FormData) {
   const out = formData.get("out_of_stock") === "true";
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("canteen_item").update({ out_of_stock: out, updated_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await supabase.from("canteen_item").update({ out_of_stock: out, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw new Error(error.message);
   revalidate();
 }
 
@@ -174,7 +175,8 @@ export async function setItemArchived(formData: FormData) {
   const archived = formData.get("archived") === "true";
   if (!id) return;
   const supabase = await createClient();
-  await supabase.from("canteen_item").update({ archived, updated_at: new Date().toISOString() }).eq("id", id);
+  const { error } = await supabase.from("canteen_item").update({ archived, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw new Error(error.message);
   revalidate();
 }
 

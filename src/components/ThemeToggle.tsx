@@ -4,25 +4,23 @@ import { useEffect, useState } from "react";
 type Mode = "system" | "light" | "dark";
 
 export default function ThemeToggle() {
-  const [mode, setMode] = useState<Mode>("system");
+  const [mode, setMode] = useState<Mode>("dark");
 
   useEffect(() => {
     try {
       const saved = localStorage.getItem("ta-theme");
-      if (saved === "light" || saved === "dark") setMode(saved);
+      if (saved === "light" || saved === "system") setMode(saved);
+      else setMode("dark");
     } catch {}
   }, []);
 
   function apply(next: Mode) {
     setMode(next);
     try {
-      if (next === "system") {
-        localStorage.removeItem("ta-theme");
-        document.documentElement.removeAttribute("data-theme");
-      } else {
-        localStorage.setItem("ta-theme", next);
-        document.documentElement.setAttribute("data-theme", next);
-      }
+      // Dark is the default; any choice (including Auto) is saved so it sticks.
+      localStorage.setItem("ta-theme", next);
+      if (next === "system") document.documentElement.removeAttribute("data-theme");
+      else document.documentElement.setAttribute("data-theme", next);
     } catch {}
   }
 
@@ -47,6 +45,7 @@ export default function ThemeToggle() {
       {opts.map((o) => (
         <button
           key={o.key}
+          type="button"
           onClick={() => apply(o.key)}
           aria-pressed={mode === o.key}
           style={{

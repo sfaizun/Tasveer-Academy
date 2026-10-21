@@ -132,6 +132,7 @@ export async function setMockAttendance(formData: FormData) {
   const status = String(formData.get("status") ?? "");
   const examId = String(formData.get("mock_exam_id") ?? "") || null;
   const supabase = await createClient();
-  await supabase.rpc("fn_set_mock_attendance", { p_registration_id: regId, p_status: status });
+  const { error } = await supabase.rpc("fn_set_mock_attendance", { p_registration_id: regId, p_status: status });
+  if (error) throw new Error(error.message);
   refresh(examId);
 }

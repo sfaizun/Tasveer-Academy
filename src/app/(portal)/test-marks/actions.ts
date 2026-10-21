@@ -121,6 +121,7 @@ export async function removeTestMark(formData: FormData) {
   if (!row) return;
   // Remove the file while it is still linked to the marks (that link is what grants access to it).
   await removeFile(supabase, row.attachment_path);
-  await supabase.from("test_mark").delete().eq("id", id);
+  const { error } = await supabase.from("test_mark").delete().eq("id", id);
+  if (error) throw new Error(error.message);
   refresh();
 }

@@ -52,7 +52,7 @@ export default async function IdCard({ d }: { d: IdCardData }) {
           <div className="idc-mid">
             <div className="idc-kicker">STUDENT ID CARD</div>
             <div className="idc-student">{s.name}</div>
-            <div className="idc-prog">{[s.programme, s.subjects].filter(Boolean).join(" · ")}</div>
+            <div className="idc-prog">{s.programme}</div>
           </div>
           <div className="idc-facts">
             <div><div className="idc-k">STUDENT ID</div><div className="idc-v idc-mono">{s.regNo}</div></div>
@@ -102,9 +102,10 @@ export default async function IdCard({ d }: { d: IdCardData }) {
               </div>
             </div>
           )}
+          <div className="idc-valid">This ID card is valid for two years from the date of admission</div>
           <div className="idc-return">
             <b>If found, please return to {d.academy.name}</b>
-            <span>{d.academy.address} · {d.academy.phone}</span>
+            <span className="idc-raddr">{d.academy.address} · {d.academy.phone}</span>
             <span className="idc-small">This card belongs to {d.academy.name} and is not transferable.</span>
           </div>
           <div className="idc-foot" />

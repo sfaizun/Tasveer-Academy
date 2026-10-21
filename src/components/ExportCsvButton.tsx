@@ -43,7 +43,9 @@ export default function ExportCsvButton({
         e.stopPropagation();
         handleClick();
       }}
+      // Only active when there is something to export (greyed out otherwise).
       disabled={rows.length === 0}
+      title={rows.length === 0 ? "Nothing to export for these dates" : undefined}
     >
       {label}
     </button>

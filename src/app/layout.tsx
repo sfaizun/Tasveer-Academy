@@ -16,8 +16,9 @@ export const metadata: Metadata = {
 const THEME_BOOT = `
 try {
   var t = localStorage.getItem('ta-theme');
-  if (t === 'dark' || t === 'light') document.documentElement.setAttribute('data-theme', t);
-} catch (e) {}
+  if (t !== 'light' && t !== 'system') t = 'dark';
+  if (t !== 'system') document.documentElement.setAttribute('data-theme', t);
+} catch (e) { document.documentElement.setAttribute('data-theme', 'dark'); }
 `;
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
