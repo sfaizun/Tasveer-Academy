@@ -6,6 +6,7 @@ import AdminDashboard from "./AdminDashboard";
 import TeacherDashboard from "./TeacherDashboard";
 import MyAnnouncements from "../announcements/MyAnnouncements";
 import { markSeenAndGetAcks } from "../announcements/receipts";
+import { feedOf } from "../announcements/shared";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin } from "@/lib/access";
 
@@ -27,20 +28,18 @@ export default async function Dashboard() {
   if (academyAccess) return <AdminDashboard />;
   if (me?.role === "teacher") return <TeacherDashboard appUserId={me.id} fullName={me.full_name} />;
 
-  // Student / guardian: aggregate published announcements from every class they're
-  // enrolled in (RLS on `announcement` already scopes this to the viewer's own classes
-  // plus academy-wide notices — no extra filtering needed here).
-  // Flip any announcement whose "visible until" time has passed before reading, so an
-  // expired one never shows here as still live (see the Announcements page for the
-  // admin-facing Active/Inactive split of the same underlying status change).
-  await supabase.rpc("fn_expire_announcements");
+  // Student / guardian: published announcements from every class they're enrolled in (RLS on
+  // `announcement` already scopes this to the viewer's own classes plus academy-wide notices).
+  // Ended ones stay published and readable; the dashboard shows the live ones and the 3 latest
+  // ended ones, with a link to the full list.
   const { data: announcements } = await supabase
     .from("announcement")
     .select(ANN_SELECT)
     .eq("status", "published")
     .order("published_at", { ascending: false });
 
-  const acknowledgedIds = await markSeenAndGetAcks(supabase, (announcements ?? []).map((a: any) => a.id));
+  const shown = feedOf((announcements ?? []) as any[], 3).list;
+  const acknowledgedIds = await markSeenAndGetAcks(supabase, shown.map((a: any) => a.id));
 
   return (
     <>
@@ -59,7 +58,7 @@ export default async function Dashboard() {
         </div>
         <div>
           <div className="lbl" style={{ margin: "4px 0 10px" }}>Announcements</div>
-          <MyAnnouncements announcements={(announcements ?? []) as any[]} acknowledgedIds={acknowledgedIds} />
+          <MyAnnouncements announcements={(announcements ?? []) as any[]} acknowledgedIds={acknowledgedIds} pastLimit={3} />
         </div>
       </div>
     </>

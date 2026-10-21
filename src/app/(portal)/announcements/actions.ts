@@ -213,9 +213,6 @@ export async function updateAnnouncement(_prev: State, formData: FormData): Prom
   if (image || removeImage) await removeImages(supabase, id);
   if (image) await attachImage(supabase, id, image);
 
-  // A live notice given an end time that has already passed is taken down, as on the list.
-  await supabase.rpc("fn_expire_announcements");
-
   revalidatePath("/announcements");
   revalidatePath(`/announcements/${id}`);
   revalidatePath("/dashboard");

@@ -14,7 +14,8 @@ const inputStyle: React.CSSProperties = {
 
 type Subject = SubjectForGrouping;
 
-function StatusChip({ status }: { status: string }) {
+function StatusChip({ status, expires_at }: { status: string; expires_at?: string | null }) {
+  if (status === "published" && expires_at && new Date(expires_at).getTime() < Date.now()) return <span className="st due"><span className="dot" />Ended</span>;
   if (status === "published") return <span className="st paid"><span className="dot" />Approved &amp; live</span>;
   if (status === "declined") return <span className="st over"><span className="dot" />Declined</span>;
   if (status === "unpublished") return <span className="st past"><span className="dot" />Taken down</span>;
@@ -141,7 +142,7 @@ export default function TeacherAnnouncements({
                   <td className="sub">{targetLabel((r.announcement_target ?? [])[0] ?? null, r.scope)}</td>
                   <td><b>{r.title}</b></td>
                   <td className="sub">{fmtDhaka(r.publish_at)} – {fmtDhaka(r.expires_at)}</td>
-                  <td><StatusChip status={r.status} />{r.status === "declined" && r.decision_note && (
+                  <td><StatusChip status={r.status} expires_at={r.expires_at} />{r.status === "declined" && r.decision_note && (
                     <div className="sub" style={{ marginTop: 4 }}>“{r.decision_note}”</div>
                   )}</td>
                   <td className="n">
@@ -165,7 +166,7 @@ export default function TeacherAnnouncements({
       </div>
 
       <div>
-        <div className="lbl" style={{ margin: "4px 0 10px" }}>Live announcements for your classes</div>
+        <div className="lbl" style={{ margin: "4px 0 10px" }}>Announcements for your classes</div>
         <MyAnnouncements announcements={published} />
       </div>
     </>

@@ -32,3 +32,18 @@ export function isCurrentlyVisible(publish_at: string | null, expires_at: string
   if (expires_at && new Date(expires_at).getTime() < now) return false;
   return true;
 }
+
+const postedAt = (a: any) => new Date(a.published_at ?? a.publish_at ?? a.created_at ?? 0).getTime();
+
+/** The announcement feed for students, guardians and teachers: newest first, ended ones kept
+ * (marked not live). Scheduled ones are left out before their publish time. With `pastLimit`,
+ * only that many ended ones are kept (the dashboard). */
+export function feedOf<T extends { publish_at: string | null; expires_at: string | null; status?: string }>(announcements: T[], pastLimit?: number) {
+  const all = announcements
+    .filter((a) => !a.publish_at || new Date(a.publish_at).getTime() <= Date.now())
+    .map((a) => ({ ...a, live: (a.status ?? "published") === "published" && isCurrentlyVisible(a.publish_at, a.expires_at) }))
+    .sort((x, y) => postedAt(y) - postedAt(x));
+  let past = 0;
+  const list = pastLimit === undefined ? all : all.filter((a) => a.live || past++ < pastLimit);
+  return { list, total: all.length };
+}

@@ -5,6 +5,7 @@ import AdminAnnouncements from "./AdminAnnouncements";
 import TeacherAnnouncements from "./TeacherAnnouncements";
 import MyAnnouncements from "./MyAnnouncements";
 import { markSeenAndGetAcks } from "./receipts";
+import { isCurrentlyVisible } from "./shared";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin } from "@/lib/access";
 
@@ -23,16 +24,13 @@ export default async function AnnouncementsPage() {
   const isAdmin = actsAsAdmin(me, "announcements");
   const isTeacher = me?.role === "teacher" && !isAdmin;
 
-  // Flip any "published" announcement whose "visible until" time has passed to
-  // "unpublished" before anyone's list is read, so an expired notice reads as taken
-  // down everywhere (admin's Active/Inactive split, the teacher/student feeds, and the
-  // dashboard panel) rather than lingering as "live" past its own end time.
-  await supabase.rpc("fn_expire_announcements");
+  // An announcement whose "visible until" time has passed stays published, so students,
+  // guardians and teachers can still read it (shown as ended). Only "Take down" hides it.
 
   if (isAdmin) {
     const [{ data: pending }, { data: active }, { data: inactive }, { data: subjects }, { data: classLevels }, { data: teachers }, { data: teacherSubjects }] = await Promise.all([
       supabase.from("announcement").select(ANN_SELECT).eq("status", "pending_review").order("created_at"),
-      supabase.from("announcement").select(ANN_SELECT).eq("status", "published").order("published_at", { ascending: false }).limit(200),
+      supabase.from("announcement").select(ANN_SELECT).eq("status", "published").order("published_at", { ascending: false }).limit(400),
       supabase.from("announcement").select(ANN_SELECT).in("status", ["unpublished", "declined"]).order("created_at", { ascending: false }).limit(200),
       supabase.from("subject").select("id, name, level, programme:programme_id(code, name)").eq("active", true).order("name"),
       supabase.from("class_level").select("id, name, programme(code, name)").order("sort_order"),
@@ -51,8 +49,11 @@ export default async function AnnouncementsPage() {
         <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <AdminAnnouncements
             pending={(pending ?? []) as any[]}
-            active={(active ?? []) as any[]}
-            inactive={(inactive ?? []) as any[]}
+            active={((active ?? []) as any[]).filter((a) => isCurrentlyVisible(a.publish_at, a.expires_at) || (a.publish_at && new Date(a.publish_at).getTime() > Date.now()))}
+            inactive={[
+              ...((active ?? []) as any[]).filter((a) => a.expires_at && new Date(a.expires_at).getTime() < Date.now()),
+              ...((inactive ?? []) as any[]),
+            ].sort((x, y) => new Date(y.published_at ?? y.created_at).getTime() - new Date(x.published_at ?? x.created_at).getTime())}
             subjects={(subjects ?? []) as any[]}
             classLevels={(classLevels ?? []) as any[]}
             teachers={(teachers ?? []) as any[]}

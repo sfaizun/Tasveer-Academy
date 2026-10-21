@@ -20,7 +20,9 @@ function levelLabel(l: ClassLevel) {
   return `${l.programme?.name ?? ""} — ${l.name}`;
 }
 
-function StatusChip({ status }: { status: string }) {
+function StatusChip({ status, expires_at }: { status: string; expires_at?: string | null }) {
+  // Past its visible-until time: still readable by students and teachers, shown as ended.
+  if (status === "published" && expires_at && new Date(expires_at).getTime() < Date.now()) return <span className="st due"><span className="dot" />Ended</span>;
   if (status === "published") return <span className="st paid"><span className="dot" />Live</span>;
   if (status === "declined") return <span className="st over"><span className="dot" />Declined</span>;
   if (status === "unpublished") return <span className="st past"><span className="dot" />Taken down</span>;
@@ -279,7 +281,7 @@ function AnnouncementRow({
       <tr>
         <td><b>{a.title}</b></td>
         <td className="sub">{targetLabel((a.announcement_target ?? [])[0] ?? null, a.scope)}</td>
-        <td><StatusChip status={a.status} /></td>
+        <td><StatusChip status={a.status} expires_at={a.expires_at} /></td>
         <td className="n" style={{ whiteSpace: "nowrap" }}>
           <button className="btn ghost" type="button" style={small} onClick={() => onMode(mode === "view" ? null : "view")}>
             {mode === "view" ? "Close" : "View"}
@@ -466,7 +468,7 @@ export default function AdminAnnouncements({
       <details className="panel collapsible">
         <summary className="phead">
           <div className="ptitle">Inactive</div>
-          <div className="sub">{inactive.length} declined or taken down</div>
+          <div className="sub">{inactive.length} ended, declined or taken down</div>
         </summary>
         <AnnouncementsTable items={inactive} />
       </details>
