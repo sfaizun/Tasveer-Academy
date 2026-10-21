@@ -250,6 +250,11 @@ input:focus{outline:2px solid var(--coral);outline-offset:0;border-color:var(--c
      spilled into each other and under the Filter button. Let them shrink to their field, left-aligned;
      From and To share a row and the buttons wrap below. */
   input[type=date],input[type=month],input[type=time]{-webkit-appearance:none;appearance:none;display:block;min-width:0;min-height:40px;box-sizing:border-box}
+  /* Outside a .field (e.g. the Month filter on Reports and Activity log) nothing sets a width, and with
+     appearance:none an iPhone shrinks an empty picker to a sliver. Give them a usable width. */
+  input[type=date],input[type=month]{min-width:150px}
+  input[type=time]{min-width:110px}
+  form > input[type=date],form > input[type=month]{flex:0 1 170px}
   input[type=date]::-webkit-date-and-time-value,input[type=month]::-webkit-date-and-time-value,input[type=time]::-webkit-date-and-time-value{text-align:left}
   form .field:has(> input[type=date]){flex:1 1 130px;min-width:0}
   form .field > input[type=date]{width:100%}
