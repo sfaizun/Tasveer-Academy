@@ -17,7 +17,7 @@ import { examTitle } from "@/lib/mock";
 import { isCurrentEnrolment } from "@/lib/enrolment";
 import StudentTestMarksPanel from "../../test-marks/StudentTestMarksPanel";
 import { requirePage } from "@/lib/require-page";
-import { accessOf, canSeeFees } from "@/lib/access";
+import { accessOf, canOpen, canSeeFees } from "@/lib/access";
 import { actsAsAdmin } from "@/lib/access";
 
 export const dynamic = "force-dynamic";
@@ -87,6 +87,11 @@ export default async function StudentDetail({
   if (!student) notFound();
 
   const isOwner = !!me?.is_owner;
+  // Student ID card (Super Admin and Office Admin: Access page "Student ID cards").
+  const showCard = canOpen(accessOf(me), "id_cards");
+  const { data: idCard } = showCard
+    ? await supabase.from("student_id_card").select("issue_no, issued_at, print_count").eq("student_id", id).eq("status", "active").maybeSingle()
+    : { data: null };
   const isAdmin = actsAsAdmin(me, "students");
   // Admins whose access has no fee pages (e.g. Student Admin) see no invoices, payments or rates.
   const showFees = !isAdmin || canSeeFees(accessOf(me));
@@ -296,6 +301,24 @@ export default async function StudentDetail({
         </div>
 
         <GuardiansPanel studentId={id} guardians={(guardians ?? []) as any} canEdit={isAdmin} />
+
+        {showCard && (
+          <div className="panel no-print">
+            <div className="phead" style={{ flexWrap: "wrap", gap: 10 }}>
+              <div className="ptitle">Student ID card</div>
+              {idCard
+                ? <span className="st paid"><span className="dot" />Issued</span>
+                : <span className="st due"><span className="dot" />Not created</span>}
+              <div className="sub">
+                {idCard
+                  ? `Card ${idCard.issue_no} · ${fmtDate(idCard.issued_at)} · printed ${idCard.print_count} ${idCard.print_count === 1 ? "time" : "times"}`
+                  : "Create it to print the card"}
+              </div>
+              <div className="spacer" />
+              <a className={idCard ? "btn ghost" : "btn"} href={`/students/${id}/id-card`}>{idCard ? "Open ID card" : "Create ID card"}</a>
+            </div>
+          </div>
+        )}
 
         {(siblings ?? []).length > 0 && (
           <div className="panel">

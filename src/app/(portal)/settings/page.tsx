@@ -4,6 +4,12 @@ import { taka, fmtDate } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 import AddFeeRateForm from "./AddFeeRateForm";
 import { requirePage } from "@/lib/require-page";
+import IdCardLinks from "./IdCardLinks";
+
+const settingText = (rows: any[] | null, key: string) => {
+  const v = (rows ?? []).find((r) => r.key === key)?.value;
+  return typeof v === "string" ? v : "";
+};
 
 export const dynamic = "force-dynamic";
 
@@ -246,6 +252,12 @@ export default async function Settings() {
             </table>
           </div>
         </div>
+
+        <IdCardLinks
+          portal={settingText(settings, "portal_url")}
+          facebook={settingText(settings, "facebook_url")}
+          instagram={settingText(settings, "instagram_url")}
+        />
 
         <div className="panel">
           <div className="phead"><div className="ptitle">Operating settings</div></div>

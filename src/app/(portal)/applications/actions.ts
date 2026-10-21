@@ -42,13 +42,24 @@ export async function setApplicationStatus(_prev: State, formData: FormData): Pr
         }
       }
     }
+    // Approving also creates the student's ID card (and saves the photo, if one was uploaded).
+    if (formData.get("create_card") !== "1") {
+      const { data: cur } = await supabase.from("application").select("status").eq("id", id).maybeSingle();
+      if (cur?.status !== "approved") return { error: "Tick \"Create the student ID card\": an application is approved together with its ID card." };
+    }
+    const photoPath = String(formData.get("photo_path") ?? "") || null;
     const { data, error } = await supabase.rpc("fn_approve_application", {
       p_application_id: id,
       p_review_note: note || null,
+      p_photo_path: photoPath,
     });
-    if (error) return { error: "Could not approve the application — " + error.message };
+    if (error) {
+      if (photoPath) await supabase.storage.from("student-photos").remove([photoPath]);
+      return { error: "Could not approve the application: " + error.message };
+    }
     revalidatePath("/applications");
     revalidatePath("/students");
+    revalidatePath("/id-cards");
     return { ok: true, studentId: data as string };
   }
 

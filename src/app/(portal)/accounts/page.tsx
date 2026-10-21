@@ -52,6 +52,7 @@ export default async function AccountsPage() {
           roles={(roleData ?? []) as any[]}
           canManageAccess={canManageAccess}
           meId={me?.id ?? ""}
+          canViewAs={!!me && !me.impersonation && (me.is_owner || me.roles.some((r) => r.is_super && !r.read_only))}
         />
       </div>
     </>

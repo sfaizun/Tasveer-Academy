@@ -7,6 +7,7 @@ import NavLink from "@/components/NavLink";
 import Logo from "@/components/Logo";
 import PortalNav from "@/components/PortalNav";
 import ViewPicker from "@/components/ViewPicker";
+import { stopViewAs } from "./view-as-actions";
 import { PAGES, accessOf, canOpen, homeFor, pageKeyForPath } from "@/lib/access";
 
 const ADMIN_GROUPS = ["Overview", "Admissions", "Billing", "Office Accounts", "Academy"];
@@ -137,7 +138,7 @@ export default async function PortalLayout({ children }: { children: React.React
               <div style={{ fontSize: 12.5, fontWeight: 600, color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis" }}>
                 {me.full_name}
               </div>
-              <div className="sub" style={{ fontSize: 10.5 }}>{user.email}</div>
+              <div className="sub" style={{ fontSize: 10.5 }}>{me.impersonation ? `Viewed by ${me.impersonation.adminName}` : user.email}</div>
             </div>
           </div>
           {/* Same outlined button style as Sign out, so it's easy to spot. */}
@@ -155,7 +156,18 @@ export default async function PortalLayout({ children }: { children: React.React
       </PortalNav>
 
       <div className="main">
-        {readOnly && (
+        {me.impersonation && (
+          <div className="viewas-bar" role="note">
+            <span>
+              <b>Viewing as {me.full_name}</b> ({me.views.find((v) => v.kind === "own")?.label ?? me.view?.label ?? me.role}).
+              {" "}You see exactly what they see. Nothing can be changed while viewing as them.
+            </span>
+            <form action={stopViewAs}>
+              <button className="btn" type="submit" style={{ fontSize: 12, padding: "6px 12px" }}>Stop viewing as</button>
+            </form>
+          </div>
+        )}
+        {readOnly && !me.impersonation && (
           <div className="viewonly-bar" role="note">
             <b>View only.</b> You are viewing as {me.view?.label}: you can open these pages but can&apos;t change anything.
           </div>

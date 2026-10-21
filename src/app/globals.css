@@ -107,6 +107,11 @@ button{font-family:inherit}
 .viewonly-bar{display:flex;align-items:center;gap:8px;padding:8px 16px;font-size:12.5px;color:var(--ink);
               background:var(--tint2);border-bottom:1px solid var(--line)}
 .viewonly-bar b{font-weight:700;white-space:nowrap}
+/* Super Admin "View as": stays at the top while scrolling so Stop is always in reach. */
+.viewas-bar{position:sticky;top:0;z-index:17;display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:space-between;
+            padding:9px 16px;font-size:12.5px;color:var(--ink);background:var(--warn-soft);border-bottom:1px solid var(--warn)}
+.viewas-bar b{font-weight:700}
+@media screen and (max-width: 820px){ .viewas-bar{top:54px} }
 .top{min-height:64px;border-bottom:1px solid var(--line);background:var(--paper);
      display:flex;align-items:center;gap:14px;padding:12px 28px;flex-wrap:wrap}
 h1{margin:0;font-size:20px;font-weight:700;color:var(--ink);letter-spacing:-.015em}
@@ -426,7 +431,7 @@ table.heat td{width:34px;min-width:30px;height:26px;border-radius:4px;background
     --day0:#fde2e1; --day1:#e1ecfd; --day2:#e1f7ea; --day3:#fdf0da;
     --day4:#f0e1fb; --day5:#daf5f5; --day6:#fdeaf6;
   }
-  .side,.menu-btn,.backdrop,.mbar,.nav-theme,.viewonly-bar,.no-print{display:none!important}
+  .side,.menu-btn,.backdrop,.mbar,.nav-theme,.viewonly-bar,.viewas-bar,.no-print{display:none!important}
   .shell{display:block}
   .main{width:100%}
   .content{padding:0}
@@ -491,3 +496,64 @@ details.mock-teacher[open] > summary{background:var(--tint)}
 .inv-doc-totals div.strong{font-weight:600;border-top:1px solid var(--line);padding-top:4px;color:var(--ink)}
 @media (max-width:600px){.inv-doc{padding:18px 16px}.inv-doc-meta{grid-template-columns:1fr}}
 @media print{.inv-doc{border:0;box-shadow:none;padding:0;max-width:none}}
+
+/* ---------- Student ID card (components/IdCard.tsx) ----------
+   Drawn at 400 x 634 px; printed at exactly 54 x 85.6 mm (portrait CR80), one side per page.
+   Fixed light colours so the card looks the same in dark mode. */
+.idc-pair{display:flex;gap:24px;flex-wrap:wrap;justify-content:center}
+.idc-box{width:400px;height:634px;flex:0 0 auto}
+.idc{--red:#D9262C;width:400px;height:634px;box-sizing:border-box;background:#fff;color:#1d1b1a;font-family:var(--sans);
+     display:flex;flex-direction:column;overflow:hidden;border-radius:18px;border:1px solid #e7e1dc;
+     -webkit-print-color-adjust:exact;print-color-adjust:exact;line-height:1.3}
+.idc-mono{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.idc-head{background:var(--red);color:#fff;padding:22px 22px 70px;display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center}
+.idc-brand{display:flex;align-items:center;gap:12px;text-align:left}
+.idc-logo{width:58px;height:58px;border-radius:50%;background:#fff;padding:3px;box-sizing:border-box}
+.idc-name{font-size:23px;font-weight:800;letter-spacing:.02em;line-height:1.05}
+.idc-tag{font-size:10.5px;font-weight:600;letter-spacing:.16em;opacity:.92;margin-top:2px}
+.idc-addr{font-size:11px;line-height:1.45;opacity:.95;max-width:300px}
+.idc-mid{display:flex;flex-direction:column;align-items:center;margin-top:-58px;gap:8px;padding:0 24px;text-align:center}
+.idc-photo{width:118px;height:142px;border-radius:12px;border:4px solid #fff;background:#f1ece8;box-shadow:0 2px 10px rgba(0,0,0,.12);
+           display:flex;align-items:center;justify-content:center;overflow:hidden}
+.idc-photo img{width:100%;height:100%;object-fit:cover}
+.idc-kicker{font-size:10px;font-weight:700;letter-spacing:.22em;color:var(--red)}
+.idc-student{font-size:23px;font-weight:800;line-height:1.1}
+.idc-prog{font-size:12.5px;font-weight:600;color:#5f5752;line-height:1.35;max-height:34px;overflow:hidden}
+.idc-facts{margin:14px 24px 0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px 16px;padding:13px 16px;background:#faf6f3;border-radius:12px}
+.idc-k{font-size:9.5px;font-weight:700;letter-spacing:.14em;color:#6e655f}
+.idc-v{font-size:13.5px;font-weight:600;overflow-wrap:anywhere}
+.idc-v.idc-mono{font-size:15px}
+.idc-bar{margin-top:auto;padding:0 24px 16px;display:flex;flex-direction:column;align-items:center;gap:4px}
+.idc-barno{font-size:11px;letter-spacing:.2em;color:#5f5752}
+.idc-foot{height:8px;background:var(--red);flex:0 0 auto}
+.idc-head2{background:var(--red);color:#fff;padding:14px 22px;display:flex;align-items:center;gap:10px}
+.idc-logo2{width:36px;height:36px;border-radius:50%;background:#fff;padding:2px;box-sizing:border-box}
+.idc-name2{font-size:16px;font-weight:800;letter-spacing:.04em}
+.idc-id2{margin-left:auto;font-size:12px;font-weight:600}
+.idc-sec{padding:18px 24px 0;display:flex;flex-direction:column;gap:10px}
+.idc-rows{display:flex;flex-direction:column;gap:8px;padding:14px 16px;background:#faf6f3;border-radius:12px;font-size:13.5px}
+.idc-rows > div{display:flex;justify-content:space-between;gap:12px;align-items:baseline}
+.idc-rows > div > :last-child{text-align:right;overflow-wrap:anywhere}
+.idc-saddr{font-size:13px;line-height:1.45;color:#3d3632;max-height:38px;overflow:hidden}
+.idc-codes{margin:16px 24px 0;padding-top:14px;border-top:1px dashed #d9d0c9;display:flex;flex-direction:column;gap:10px}
+.idc-qrs{display:grid;gap:10px}
+.idc-qr{display:flex;flex-direction:column;align-items:center;gap:5px;text-align:center}
+.idc-qrbox{width:96px;height:96px;display:flex;align-items:center;justify-content:center;border:1px solid #e7e1dc;border-radius:10px;box-sizing:border-box;padding:6px}
+.idc-qrbox svg{width:100%;height:100%;display:block}
+.idc-qrl{font-size:11.5px;font-weight:700}
+.idc-qrs2{font-size:9.5px;color:#6e655f;overflow-wrap:anywhere}
+.idc-return{margin-top:auto;padding:12px 24px 14px;background:#faf6f3;display:flex;flex-direction:column;gap:3px;text-align:center;font-size:10.5px;line-height:1.45;color:#5f5752}
+.idc-return b{font-size:11px;color:#1d1b1a}
+.idc-small{font-size:9.5px;color:#6e655f}
+/* Smaller on phones (layout space follows via the box size). */
+@media screen and (max-width: 480px){
+  .idc-box{width:280px;height:444px}
+  .idc{transform:scale(.7);transform-origin:top left}
+}
+@media print{
+  /* The card page (students/[id]/id-card) sets the paper to the card size. */
+  .idc-pair{display:block}
+  .idc-box{width:54mm;height:85.6mm;overflow:hidden;break-after:page;page-break-after:always}
+  .idc-box:last-child{break-after:auto;page-break-after:auto}
+  .idc{transform:scale(.51024);transform-origin:top left;border:0;border-radius:0}
+}

@@ -32,6 +32,8 @@ export type AppUser = {
   views: PortalView[];
   /** The view in use now (null: an admin login with no access role yet). */
   view: PortalView | null;
+  /** Set while a Super Admin is viewing the portal as this login (read only). */
+  impersonation: { adminName: string; expiresAt: string } | null;
 } | null;
 
 export type Viewer = {
@@ -67,17 +69,31 @@ export function viewsFor(role: string, isOwner: boolean, roles: RoleDef[]): Port
 
 type Raw = { id: string; full_name: string; role: string; is_owner: boolean; app_user_role: { admin_role: RoleDef | null }[] | null };
 
-/** Reads the signed-in login with its access roles. Not cached: also used by the /view route. */
+const ME_COLS = "id, full_name, role, is_owner, app_user_role(admin_role(id, name, pages, is_super, read_only, sort_order))";
+type Imp = { target_user_id: string; target_name: string; admin_name: string; expires_at: string };
+
+/** Reads the signed-in login with its access roles. While a Super Admin is viewing as someone
+ * ("View as"), it is that person's login instead; the database then answers every query as them
+ * and refuses all changes. Not cached: also used by the /view route. */
 export async function loadMe(supabase: Awaited<ReturnType<typeof createClient>>, authId: string) {
-  const { data } = await supabase
-    .from("app_user")
-    .select("id, full_name, role, is_owner, app_user_role(admin_role(id, name, pages, is_super, read_only, sort_order))")
-    .eq("auth_id", authId)
-    .maybeSingle();
+  const [{ data: impData }, { data: own }] = await Promise.all([
+    supabase.rpc("fn_my_impersonation"),
+    supabase.from("app_user").select(ME_COLS).eq("auth_id", authId).maybeSingle(),
+  ]);
+  const imp = ((impData ?? []) as Imp[])[0] ?? null;
+  let data: unknown = own;
+  if (imp) {
+    // The database already answers as the person being viewed, so their own row is readable.
+    const { data: target } = await supabase.from("app_user").select(ME_COLS).eq("id", imp.target_user_id).maybeSingle();
+    data = target;
+  }
   const raw = data as Raw | null;
   if (!raw) return null;
   const roles = (raw.app_user_role ?? []).map((x) => x.admin_role).filter((r): r is RoleDef => !!r);
-  return { id: raw.id, full_name: raw.full_name, role: raw.role, is_owner: raw.is_owner, roles, views: viewsFor(raw.role, raw.is_owner, roles) };
+  return {
+    id: raw.id, full_name: raw.full_name, role: raw.role, is_owner: raw.is_owner, roles, views: viewsFor(raw.role, raw.is_owner, roles),
+    impersonation: imp ? { adminName: imp.admin_name, expiresAt: imp.expires_at } : null,
+  };
 }
 
 /**

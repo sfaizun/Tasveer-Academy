@@ -41,3 +41,13 @@ export async function addFeeRate(_prev: State, formData: FormData): Promise<Stat
   revalidatePath("/apply");
   return { ok: true };
 }
+
+/** Links printed as QR codes on the back of student ID cards. */
+export async function saveIdCardLinks(_prev: { ok?: boolean; error?: string } | null, formData: FormData): Promise<{ ok?: boolean; error?: string }> {
+  const get = (k: string) => String(formData.get(k) ?? "").trim();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_id_card_links", { p_portal: get("portal_url"), p_facebook: get("facebook_url"), p_instagram: get("instagram_url") });
+  if (error) return { error: error.message.charAt(0).toUpperCase() + error.message.slice(1) + "." };
+  revalidatePath("/settings");
+  return { ok: true };
+}

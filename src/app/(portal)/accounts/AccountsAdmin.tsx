@@ -1,5 +1,6 @@
 "use client";
 import { useActionState, useEffect, useMemo, useState } from "react";
+import { startViewAs } from "../view-as-actions";
 import { createCanteenLogin, createStudentLogin, createTeacherLogin, resetLoginPassword, setAppUserActive, setLoginRoles } from "./actions";
 
 const inputStyle: React.CSSProperties = {
@@ -136,6 +137,20 @@ function CreateStudentLoginForm({ students }: { students: PersonOption[] }) {
   );
 }
 
+/** Super Admin: see the portal exactly as this login sees it (nothing can be changed meanwhile). */
+function ViewAsButton({ id, name }: { id: string; name: string }) {
+  const [state, action, pending] = useActionState(startViewAs, null);
+  return (
+    <form action={action} style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
+      <input type="hidden" name="user_id" value={id} />
+      <button className="btn ghost" type="submit" disabled={pending} title={`See the portal as ${name} sees it`} style={{ fontSize: 12, padding: "6px 10px" }}>
+        {pending ? "Opening…" : "View as"}
+      </button>
+      {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+    </form>
+  );
+}
+
 function ResetPasswordRow({ email }: { email: string }) {
   const [state, action, pending] = useActionState(resetLoginPassword, null);
   const [open, setOpen] = useState(false);
@@ -237,6 +252,7 @@ export default function AccountsAdmin({
   roles = [],
   canManageAccess = false,
   meId = "",
+  canViewAs = false,
 }: {
   teachersWithoutLogin: PersonOption[];
   studentsWithoutLogin: PersonOption[];
@@ -245,6 +261,8 @@ export default function AccountsAdmin({
   roles?: RoleOption[];
   canManageAccess?: boolean;
   meId?: string;
+  /** Super Admin: may view the portal as any other login. */
+  canViewAs?: boolean;
 }) {
   const [roleFilter, setRoleFilter] = useState("");
   const [typeFilter, setTypeFilter] = useState("");
@@ -375,6 +393,7 @@ export default function AccountsAdmin({
                   </td>
                   <td className="n">
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+                      {canViewAs && a.active && a.id !== meId && <ViewAsButton id={a.id} name={a.full_name} />}
                       {a.email && <ResetPasswordRow email={a.email} />}
                       {isOwner && !a.is_owner && (
                         <form action={setAppUserActive}>
