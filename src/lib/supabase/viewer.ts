@@ -76,10 +76,18 @@ type Imp = { target_user_id: string; target_name: string; admin_name: string; ex
  * ("View as"), it is that person's login instead; the database then answers every query as them
  * and refuses all changes. Not cached: also used by the /view route. */
 export async function loadMe(supabase: Awaited<ReturnType<typeof createClient>>, authId: string) {
-  const [{ data: impData }, { data: own }] = await Promise.all([
-    supabase.rpc("fn_my_impersonation"),
-    supabase.from("app_user").select(ME_COLS).eq("auth_id", authId).maybeSingle(),
-  ]);
+  // Now and then (mostly just after signing in) a request goes out without the session and the
+  // database answers 401. That used to land the person on "This account has no access yet", so
+  // a failed lookup is retried before giving up; only a real "no login row" counts as no access.
+  let own: unknown = null;
+  let failed = true;
+  for (let attempt = 0; attempt < 3 && failed; attempt++) {
+    if (attempt) await new Promise((r) => setTimeout(r, 200 * attempt));
+    const res = await supabase.from("app_user").select(ME_COLS).eq("auth_id", authId).maybeSingle();
+    if (!res.error) { own = res.data; failed = false; }
+  }
+  if (failed) throw new Error("Could not load your account. Please try again.");
+  const { data: impData } = await supabase.rpc("fn_my_impersonation");
   const imp = ((impData ?? []) as Imp[])[0] ?? null;
   let data: unknown = own;
   if (imp) {
