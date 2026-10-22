@@ -3,7 +3,7 @@
  * enforces the same rules on the data itself. */
 
 export type PageKey =
-  | "dashboard" | "roster" | "attendance" | "test_marks" | "course_materials" | "homework" | "announcements" | "appointments" | "reports"
+  | "dashboard" | "roster" | "attendance" | "test_marks" | "report_cards" | "course_materials" | "homework" | "announcements" | "appointments" | "reports"
   | "applications" | "students" | "id_cards" | "mock_exams"
   | "billing" | "invoices"
   | "expenses" | "income"
@@ -18,6 +18,7 @@ export const PAGES: PageDef[] = [
   { key: "roster", label: "Class Schedule", href: "/roster", group: "Overview" },
   { key: "attendance", label: "Attendance", href: "/attendance", group: "Overview" },
   { key: "test_marks", label: "Test marks", href: "/test-marks", group: "Overview" },
+  { key: "report_cards", label: "Report cards", href: "/report-cards", group: "Overview" },
   { key: "course_materials", label: "Course materials", href: "/course-materials", group: "Overview" },
   { key: "homework", label: "Homework", href: "/homework", group: "Overview" },
   { key: "announcements", label: "Announcements", href: "/announcements", group: "Overview" },
@@ -55,10 +56,10 @@ export const STAFF_ROLES = ["admin", "teacher", "canteen_manager"];
 
 /** Each login's own portal: the pages of its "own" view. */
 export const BASE_PAGES: Record<string, PageKey[]> = {
-  teacher: ["dashboard", "roster", "attendance", "test_marks", "course_materials", "homework", "announcements", "appointments", "mock_exams", "reports"],
+  teacher: ["dashboard", "roster", "attendance", "test_marks", "report_cards", "course_materials", "homework", "announcements", "appointments", "mock_exams", "reports"],
   // Students and guardians read announcements on their dashboard and can open one to print it.
-  student: ["dashboard", "roster", "test_marks", "course_materials", "homework", "reports", "announcements", "appointments"],
-  guardian: ["dashboard", "roster", "test_marks", "course_materials", "homework", "reports", "announcements"],
+  student: ["dashboard", "roster", "test_marks", "report_cards", "course_materials", "homework", "reports", "announcements", "appointments"],
+  guardian: ["dashboard", "roster", "test_marks", "report_cards", "course_materials", "homework", "reports", "announcements"],
   canteen_manager: ["canteen"],
   admin: [],
 };

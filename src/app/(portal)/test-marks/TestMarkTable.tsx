@@ -52,6 +52,7 @@ export default function TestMarkTable({
                 <td>{r.subject_label}</td>
                 {showTeacher && <td className="sub">{r.teacher_name ?? "-"}</td>}
                 <td>
+                  {r.kind === "mock" && <span className="st part" style={{ marginRight: 6 }}>Mock</span>}
                   {r.test_name}
                   {r.remarks && <div className="sub" style={{ whiteSpace: "pre-wrap" }}>{r.remarks}</div>}
                 </td>

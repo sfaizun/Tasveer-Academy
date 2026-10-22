@@ -7,7 +7,9 @@ import { type GradeScale, gradeFor, percentOf } from "@/lib/grade";
 import { addTestMark, updateTestMark } from "./actions";
 
 export type SubjectOpt = { id: string; label: string; scale: GradeScale };
-export type StudentOpt = { id: string; name: string; reg_no: string | null; subjects: SubjectOpt[] };
+/** A mock exam the student is registered for (its marks are entered as a "Mock exam"). */
+export type MockOpt = { id: string; subject_id: string; label: string; name: string; date: string; scale: GradeScale };
+export type StudentOpt = { id: string; name: string; reg_no: string | null; subjects: SubjectOpt[]; mocks?: MockOpt[] };
 export type MarkRow = {
   id: string;
   student_id: string;
@@ -16,6 +18,8 @@ export type MarkRow = {
   subject_id: string;
   subject_label: string;
   teacher_name: string | null;
+  kind: "test" | "mock";
+  mock_exam_id: string | null;
   test_name: string;
   test_date: string;
   marks: number;
@@ -55,6 +59,8 @@ export default function TestMarkForm({
 
   const [studentId, setStudentId] = useState(mark?.student_id ?? defaultStudentId ?? "");
   const [subjectId, setSubjectId] = useState(mark?.subject_id ?? "");
+  const [kind, setKind] = useState<"test" | "mock">(mark?.kind ?? "test");
+  const [mockId, setMockId] = useState(mark?.mock_exam_id ?? "");
   const [marks, setMarks] = useState(mark ? String(mark.marks) : "");
   const [outOf, setOutOf] = useState(mark ? String(mark.out_of) : "100");
 
@@ -71,8 +77,10 @@ export default function TestMarkForm({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [studentId]);
 
+  const mocks = student?.mocks ?? [];
+  const mock = mocks.find((m) => m.id === mockId);
   const pct = marks.trim() && outOf.trim() ? percentOf(Number(marks), Number(outOf)) : null;
-  const scale: GradeScale = subjects.find((s) => s.id === subjectId)?.scale ?? mark?.grade_scale ?? "junior";
+  const scale: GradeScale = (kind === "mock" ? mock?.scale : subjects.find((s) => s.id === subjectId)?.scale) ?? mark?.grade_scale ?? "junior";
   const autoGrade = marks.trim() && outOf.trim() ? gradeFor(pct, scale) : null;
 
   const overMax = marks.trim() !== "" && outOf.trim() !== "" && Number(marks) > Number(outOf);
@@ -83,6 +91,7 @@ export default function TestMarkForm({
     else {
       ref.current?.reset();
       setSubjectId(subjects.length === 1 ? subjects[0].id : "");
+      setMockId("");
       setMarks("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -134,27 +143,55 @@ export default function TestMarkForm({
         ) : (
           <div className="field">
             <label className="lbl" htmlFor={`tm-s-${id}`}>Student<Req /></label>
-            <select id={`tm-s-${id}`} style={inputStyle} name="student_id" required value={studentId} onChange={(e) => setStudentId(e.target.value)}>
+            <select id={`tm-s-${id}`} style={inputStyle} name="student_id" required value={studentId} onChange={(e) => { setStudentId(e.target.value); setMockId(""); }}>
               <option value="" disabled>Choose…</option>
               {students.map((s) => <option key={s.id} value={s.id}>{s.name}{s.reg_no ? ` (${s.reg_no})` : ""}</option>)}
             </select>
           </div>
         )}
         <div className="field">
-          <label className="lbl" htmlFor={`tm-sub-${id}`}>Subject<Req /></label>
-          <select id={`tm-sub-${id}`} style={inputStyle} name="subject_id" required value={subjectId} onChange={(e) => setSubjectId(e.target.value)} disabled={!studentId}>
-            <option value="" disabled>{studentId ? (subjects.length ? "Choose…" : "No subjects") : "Choose the student first"}</option>
-            {subjects.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+          <label className="lbl" htmlFor={`tm-k-${id}`}>Type<Req /></label>
+          <select id={`tm-k-${id}`} style={inputStyle} name="kind" value={kind} onChange={(e) => setKind(e.target.value as "test" | "mock")}>
+            <option value="test">Class test</option>
+            <option value="mock">Mock exam</option>
           </select>
         </div>
-        <div className="field">
-          <label className="lbl" htmlFor={`tm-n-${id}`}>Test name<Req /></label>
-          <input id={`tm-n-${id}`} style={inputStyle} name="test_name" required maxLength={200} defaultValue={mark?.test_name ?? ""} placeholder="e.g. Mock 1, Class test: Algebra" />
-        </div>
-        <div className="field">
-          <label className="lbl" htmlFor={`tm-d-${id}`}>Date of test<Req /></label>
-          <input id={`tm-d-${id}`} style={inputStyle} type="date" name="test_date" required max={today} defaultValue={mark?.test_date ?? today} />
-        </div>
+        {kind === "mock" ? (
+          <>
+            <div className="field">
+              <label className="lbl" htmlFor={`tm-mx-${id}`}>Mock exam<Req /></label>
+              <select id={`tm-mx-${id}`} style={inputStyle} name="mock_exam_id" required value={mockId} onChange={(e) => setMockId(e.target.value)} disabled={!studentId}>
+                <option value="" disabled>{studentId ? (mocks.length ? "Choose…" : "Not registered for a mock") : "Choose the student first"}</option>
+                {mocks.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
+              </select>
+              <input type="hidden" name="subject_id" value={mock?.subject_id ?? ""} />
+              <input type="hidden" name="test_name" value={mock?.name ?? mark?.test_name ?? "Mock exam"} />
+            </div>
+            <div className="field">
+              <label className="lbl" htmlFor={`tm-d-${id}`}>Date of exam<Req /></label>
+              <input key={mockId || "none"} id={`tm-d-${id}`} style={inputStyle} type="date" name="test_date" required max={today}
+                defaultValue={mark?.kind === "mock" && mark.mock_exam_id === mockId ? mark.test_date : mock?.date && mock.date <= today ? mock.date : today} />
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="field">
+              <label className="lbl" htmlFor={`tm-sub-${id}`}>Subject<Req /></label>
+              <select id={`tm-sub-${id}`} style={inputStyle} name="subject_id" required value={subjectId} onChange={(e) => setSubjectId(e.target.value)} disabled={!studentId}>
+                <option value="" disabled>{studentId ? (subjects.length ? "Choose…" : "No subjects") : "Choose the student first"}</option>
+                {subjects.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
+              </select>
+            </div>
+            <div className="field">
+              <label className="lbl" htmlFor={`tm-n-${id}`}>Test name<Req /></label>
+              <input id={`tm-n-${id}`} style={inputStyle} name="test_name" required maxLength={200} defaultValue={mark?.kind === "mock" ? "" : mark?.test_name ?? ""} placeholder="e.g. Class test: Algebra" />
+            </div>
+            <div className="field">
+              <label className="lbl" htmlFor={`tm-d-${id}`}>Date of test<Req /></label>
+              <input id={`tm-d-${id}`} style={inputStyle} type="date" name="test_date" required max={today} defaultValue={mark?.test_date ?? today} />
+            </div>
+          </>
+        )}
       </div>
 
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))" }}>

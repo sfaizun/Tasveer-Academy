@@ -7,7 +7,7 @@ import ExportCsvButton from "@/components/ExportCsvButton";
 import { dhakaTodayISO, fmtDate } from "@/lib/format";
 import { subjectLabel } from "@/lib/mock";
 import { type GradeScale, scaleForProgramme, scaleText } from "@/lib/grade";
-import TestMarkForm, { type StudentOpt } from "./TestMarkForm";
+import TestMarkForm, { type MockOpt, type StudentOpt } from "./TestMarkForm";
 import { MARK_COLS, toMarkRow } from "./marks";
 import TestMarkTable from "./TestMarkTable";
 import StudentMarks from "./StudentMarks";
@@ -72,8 +72,10 @@ export default async function TestMarksPage({
   // teacher; this keeps it so for a teacher whose access role can see more (that shows when
   // viewing as the role).
   let mine: string | null = null;
+  let myTeacherId: string | null = null;
   if (!isAdmin) {
     const { data: t } = await supabase.from("teacher").select("id").eq("app_user_id", me.id).maybeSingle();
+    myTeacherId = t?.id ?? null;
     const { data: g } = t ? await supabase.from("class_group").select("id").eq("teacher_id", t.id) : { data: [] as { id: string }[] };
     const groups = (g ?? []).map((x) => x.id);
     mine = t ? `teacher_id.eq.${t.id}${groups.length ? `,class_group_id.in.(${groups.join(",")})` : ""}` : "id.eq.00000000-0000-0000-0000-000000000000";
@@ -87,11 +89,14 @@ export default async function TestMarksPage({
     ? supabase.from("enrolment").select("student_id, subject_id").or(mine)
     : Promise.resolve({ data: [] as { student_id: string; subject_id: string }[] });
 
-  const [{ data: marksData }, { data: enrolData }, { data: teacherData }, { data: pairData }] = await Promise.all([
+  const [{ data: marksData }, { data: enrolData }, { data: teacherData }, { data: pairData }, { data: regData }] = await Promise.all([
     q,
     enrolQ,
     isAdmin ? supabase.from("teacher").select("id, full_name").order("full_name") : Promise.resolve({ data: [] as any[] }),
     pairsQ,
+    supabase.from("mock_registration")
+      .select("student_id, subject_id, status, student(full_name, reg_no), mock_exam(id, series, exam_date, teacher_id, status, subject_id, subject(name, level, programme(code)))")
+      .neq("status", "withdrawn"),
   ]);
 
   // Students and the subjects each is enrolled in, for the form and filters.
@@ -105,10 +110,33 @@ export default async function TestMarksPage({
     byStudent.set(e.student_id, s);
     subjectNames.set(e.subject_id, label);
   }
+  // Mock exams each student is registered for: the office sees all; a teacher the mocks they run
+  // or ones in subjects they teach that student.
+  const teachPairs = new Set(((pairData ?? []) as any[]).map((e) => `${e.student_id}|${e.subject_id}`));
+  const mockPairs: string[] = [];
+  for (const r of (regData ?? []) as any[]) {
+    const ex = r.mock_exam;
+    if (!ex || ex.status === "cancelled" || !r.student) continue;
+    if (!isAdmin && ex.teacher_id !== myTeacherId && !teachPairs.has(`${r.student_id}|${ex.subject_id}`)) continue;
+    const s: StudentOpt = byStudent.get(r.student_id) ?? { id: r.student_id, name: r.student.full_name, reg_no: r.student.reg_no, subjects: [] };
+    const label = subjectLabel(ex.subject);
+    const opt: MockOpt = {
+      id: ex.id, subject_id: ex.subject_id, name: ex.series || "Mock exam", date: ex.exam_date,
+      label: `${label}: ${ex.series || "Mock exam"}${ex.exam_date ? ` (${fmtDate(ex.exam_date)})` : ""}`,
+      scale: scaleForProgramme(ex.subject?.programme?.code),
+    };
+    s.mocks = [...(s.mocks ?? []).filter((m) => m.id !== opt.id), opt];
+    byStudent.set(r.student_id, s);
+    subjectNames.set(ex.subject_id, label);
+    mockPairs.push(`${r.student_id}|${ex.subject_id}`);
+  }
   const students = [...byStudent.values()].sort((a, b) => a.name.localeCompare(b.name));
-  for (const s of students) s.subjects.sort((a, b) => a.label.localeCompare(b.label));
+  for (const s of students) {
+    s.subjects.sort((a, b) => a.label.localeCompare(b.label));
+    s.mocks?.sort((a, b) => (b.date ?? "").localeCompare(a.date ?? ""));
+  }
 
-  const myPairs = new Set(((pairData ?? []) as any[]).map((e) => `${e.student_id}|${e.subject_id}`));
+  const myPairs = new Set([...teachPairs, ...mockPairs]);
   const rows = ((marksData ?? []) as any[]).map(toMarkRow).filter((r) => isAdmin || myPairs.has(`${r.student_id}|${r.subject_id}`));
   for (const r of rows) {
     if (!subjectNames.has(r.subject_id)) subjectNames.set(r.subject_id, r.subject_label);

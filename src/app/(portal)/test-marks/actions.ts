@@ -17,6 +17,9 @@ function readMark(formData: FormData) {
   const marks = Math.round(Number(marksRaw) * 100) / 100;
   const out_of = Math.round(Number(outRaw) * 100) / 100;
   const remarks = String(formData.get("remarks") ?? "").trim().slice(0, 1000) || null;
+  const mock = String(formData.get("kind") ?? "") === "mock";
+  const mock_exam_id = mock ? String(formData.get("mock_exam_id") ?? "").trim() : "";
+  if (mock && !/^[0-9a-f-]{36}$/.test(mock_exam_id)) return { error: "Choose the mock exam." };
 
   if (!student_id) return { error: "Choose the student." };
   if (!subject_id) return { error: "Choose the subject." };
@@ -25,7 +28,7 @@ function readMark(formData: FormData) {
   if (!marksRaw || !Number.isFinite(marks) || marks < 0) return { error: "Enter the marks obtained." };
   if (!outRaw || !Number.isFinite(out_of) || out_of <= 0) return { error: "Enter the total marks (Out of)." };
   if (marks > out_of) return { error: "Marks obtained can't be more than Out of." };
-  return { values: { student_id, subject_id, test_name: test_name.slice(0, 200), test_date, marks, out_of, remarks } };
+  return { values: { student_id, subject_id, test_name: test_name.slice(0, 200), test_date, marks, out_of, remarks, mock_exam_id: mock_exam_id || null } };
 }
 
 type Attachment = { attachment_path: string; attachment_name: string; attachment_type: string | null; attachment_size: number | null };
@@ -49,6 +52,7 @@ async function removeFile(supabase: Supabase, path: string | null | undefined) {
 
 function friendly(msg: string) {
   if (/row-level security/i.test(msg)) return "You can only record marks for your own students and subjects.";
+  if (/test_mark_one_per_mock/i.test(msg)) return "Marks for this mock exam are already recorded for this student. Edit them instead.";
   return msg;
 }
 
