@@ -217,6 +217,7 @@ function ApplicationDetail({ app, matches, canApprove }: { app: ApplicationRow; 
         <div className="ptitle" style={{ marginBottom: 8 }}>Student</div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 14 }}>
           <Detail label="Full name" value={student.full_name} />
+          <Detail label="Date of birth" value={student.date_of_birth ? fmtDate(student.date_of_birth) : student.date_of_birth} />
           <Detail label="Gender" value={student.gender} />
           <Detail label="Nationality" value={student.nationality} />
           <Detail label="WhatsApp / mobile" value={student.phone} />

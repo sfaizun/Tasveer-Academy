@@ -160,16 +160,22 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
   const address = String(formData.get("address") ?? "").trim();
   const school_name = String(formData.get("school_name") ?? "").trim();
   const admitted_on = String(formData.get("admitted_on") ?? "").trim();
+  const date_of_birth = String(formData.get("date_of_birth") ?? "").trim();
 
   if (!studentId) return { error: "Missing student." };
   if (!full_name) return { error: "Name is required." };
   if (genderRaw && !(STUDENT_GENDERS as readonly string[]).includes(genderRaw)) {
     return { error: "Choose a valid gender option." };
   }
-  const phoneCheck = checkPhone(phone);
+  const phoneCheck = checkPhone(phone, true);
   if ("error" in phoneCheck) return { error: phoneCheck.error };
   if (!email) return { error: "Email is required. It is used for the student's portal login." };
   if (!EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
+  // Everything printed on the student ID card is required.
+  if (!school_name) return { error: "School is required." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(admitted_on)) return { error: "Admitted on is required." };
+  if (!address) return { error: "Address is required." };
+  if (date_of_birth && !/^\d{4}-\d{2}-\d{2}$/.test(date_of_birth)) return { error: "Enter a valid date of birth." };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -184,6 +190,7 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
       address: address || null,
       school_name: school_name || null,
       admitted_on: admitted_on || null,
+      date_of_birth: date_of_birth || null,
     })
     .eq("id", studentId);
 
@@ -210,10 +217,10 @@ export async function addGuardian(_prev: State, formData: FormData): Promise<Sta
 
   if (!studentId) return { error: "Missing student." };
   if (!full_name) return { error: "Name is required." };
-  if (relationRaw && !(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
-    return { error: "Choose a valid relation." };
+  if (!(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
+    return { error: "Choose the relation to the student." };
   }
-  const phoneCheck = checkPhone(phone);
+  const phoneCheck = checkPhone(phone, true);
   if ("error" in phoneCheck) return { error: phoneCheck.error };
   if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
 
@@ -257,10 +264,10 @@ export async function updateGuardian(_prev: State, formData: FormData): Promise<
   if (!guardianId) return { error: "Missing guardian." };
   if (!studentId) return { error: "Missing student." };
   if (!full_name) return { error: "Name is required." };
-  if (relationRaw && !(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
-    return { error: "Choose a valid relation." };
+  if (!(GUARDIAN_RELATIONS as readonly string[]).includes(relationRaw)) {
+    return { error: "Choose the relation to the student." };
   }
-  const phoneCheck = checkPhone(phone);
+  const phoneCheck = checkPhone(phone, true);
   if ("error" in phoneCheck) return { error: phoneCheck.error };
   if (email && !EMAIL_RE.test(email)) return { error: "Enter a valid email address." };
 

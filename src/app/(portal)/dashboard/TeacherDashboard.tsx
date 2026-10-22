@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import ApptCard from "../appointments/ApptCard";
 import { isCurrentEnrolment } from "@/lib/enrolment";
 import { dhakaToday } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -76,6 +77,8 @@ export default async function TeacherDashboard({ appUserId, fullName }: { appUse
             <div className="mono" style={{ fontSize: 22, fontWeight: 600, marginTop: 4 }}>{totalStudents}</div>
           </div>
         </div>
+
+        <ApptCard mode="teacher" appUserId={appUserId} />
 
         <div className="panel">
           <div className="phead"><div className="ptitle">My subjects</div></div>

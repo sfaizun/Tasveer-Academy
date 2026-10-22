@@ -3,7 +3,7 @@
  * enforces the same rules on the data itself. */
 
 export type PageKey =
-  | "dashboard" | "roster" | "test_marks" | "course_materials" | "homework" | "announcements" | "reports"
+  | "dashboard" | "roster" | "test_marks" | "course_materials" | "homework" | "announcements" | "appointments" | "reports"
   | "applications" | "students" | "id_cards" | "mock_exams"
   | "billing" | "invoices"
   | "expenses" | "income"
@@ -20,6 +20,7 @@ export const PAGES: PageDef[] = [
   { key: "course_materials", label: "Course materials", href: "/course-materials", group: "Overview" },
   { key: "homework", label: "Homework", href: "/homework", group: "Overview" },
   { key: "announcements", label: "Announcements", href: "/announcements", group: "Overview" },
+  { key: "appointments", label: "Appointments", href: "/appointments", group: "Overview" },
   { key: "reports", label: "Reports", href: "/reports", group: "Overview" },
   { key: "applications", label: "Applications", href: "/applications", group: "Admissions" },
   { key: "students", label: "Students", href: "/students", group: "Admissions" },
@@ -53,9 +54,9 @@ export const STAFF_ROLES = ["admin", "teacher", "canteen_manager"];
 
 /** Each login's own portal: the pages of its "own" view. */
 export const BASE_PAGES: Record<string, PageKey[]> = {
-  teacher: ["dashboard", "roster", "test_marks", "course_materials", "homework", "announcements", "mock_exams", "reports"],
+  teacher: ["dashboard", "roster", "test_marks", "course_materials", "homework", "announcements", "appointments", "mock_exams", "reports"],
   // Students and guardians read announcements on their dashboard and can open one to print it.
-  student: ["dashboard", "roster", "test_marks", "course_materials", "homework", "reports", "announcements"],
+  student: ["dashboard", "roster", "test_marks", "course_materials", "homework", "reports", "announcements", "appointments"],
   guardian: ["dashboard", "roster", "test_marks", "course_materials", "homework", "reports", "announcements"],
   canteen_manager: ["canteen"],
   admin: [],

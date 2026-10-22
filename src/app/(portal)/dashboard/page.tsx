@@ -9,6 +9,7 @@ import { markSeenAndGetAcks } from "../announcements/receipts";
 import { feedOf } from "../announcements/shared";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin } from "@/lib/access";
+import ApptCard from "../appointments/ApptCard";
 
 export const dynamic = "force-dynamic";
 
@@ -25,7 +26,7 @@ export default async function Dashboard() {
 
   // The view in use decides: an access role with the Dashboard sees the academy dashboard, a
   // teacher's own view their own dashboard.
-  if (academyAccess) return <AdminDashboard />;
+  if (academyAccess) return <AdminDashboard apptUserId={me && actsAsAdmin(me, "appointments") ? me.id : null} />;
   if (me?.role === "teacher") return <TeacherDashboard appUserId={me.id} fullName={me.full_name} />;
 
   // Student / guardian: published announcements from every class they're enrolled in (RLS on
@@ -56,6 +57,7 @@ export default async function Dashboard() {
             academy directly for anything you need.
           </div>
         </div>
+        {me?.role === "student" && <ApptCard mode="student" appUserId={me.id} />}
         <div>
           <div className="lbl" style={{ margin: "4px 0 10px" }}>Announcements</div>
           <MyAnnouncements announcements={(announcements ?? []) as any[]} acknowledgedIds={acknowledgedIds} pastLimit={3} />

@@ -10,7 +10,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 const RELATION_OPTIONS = [
-  { value: "", label: "Not specified" },
+  { value: "", label: "Choose…" },
   { value: "father", label: "Father" },
   { value: "mother", label: "Mother" },
   { value: "guardian", label: "Guardian" },
@@ -35,16 +35,16 @@ function GuardianFields({ guardian }: { guardian?: Guardian }) {
         <input style={inputStyle} type="text" name="full_name" defaultValue={guardian?.full_name ?? ""} required />
       </div>
       <div className="field">
-        <label className="lbl">Relation</label>
-        <select style={inputStyle} name="relation" defaultValue={guardian?.relation ?? ""}>
+        <label className="lbl">Relation<Req /></label>
+        <select style={inputStyle} name="relation" required defaultValue={guardian?.relation ?? ""}>
           {RELATION_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </div>
       <div className="field">
-        <label className="lbl">Phone</label>
-        <input style={inputStyle} type="tel" inputMode="tel" name="phone" placeholder="01XXXXXXXXX" title="11 digits starting with 01, or + and country code" defaultValue={guardian?.phone ?? ""} />
+        <label className="lbl">Phone<Req /></label>
+        <input style={inputStyle} type="tel" inputMode="tel" name="phone" required placeholder="01XXXXXXXXX" title="11 digits starting with 01, or + and country code" defaultValue={guardian?.phone ?? ""} />
       </div>
       <div className="field">
         <label className="lbl">Email</label>

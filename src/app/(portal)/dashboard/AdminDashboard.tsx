@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
+import ApptCard from "../appointments/ApptCard";
 import { taka, dhakaToday, dhakaTodayISO, currentBillingMonth, monthName } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -14,7 +15,7 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
   );
 }
 
-export default async function AdminDashboard() {
+export default async function AdminDashboard({ apptUserId }: { apptUserId?: string | null }) {
   const supabase = await createClient();
   const month = currentBillingMonth();
 
@@ -90,6 +91,8 @@ export default async function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {apptUserId && <ApptCard mode="office" appUserId={apptUserId} />}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>
           <Tile label="Collected this month" value={taka(collected)} sub={billingRun ? `${rate}% of raised` : "no invoices raised yet"} tone="var(--ok)" />

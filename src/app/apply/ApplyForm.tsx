@@ -132,6 +132,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
 
   const [student, setStudent] = useState({
     full_name: "",
+    date_of_birth: "",
     gender: "",
     nationality: "Bangladeshi",
     phone: "",
@@ -240,11 +241,15 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
 
   function validateClient(): string | null {
     if (!student.full_name.trim()) return "Enter the student's full name.";
+    if (!student.date_of_birth) return "Enter the student's date of birth.";
     if (!student.phone.trim()) return "Enter the student's WhatsApp/mobile number.";
     if (!cleanPhone(student.phone)) return "Student WhatsApp/mobile: " + PHONE_ERROR;
     if (!student.email.trim()) return "Enter the student's email. It is used to create the portal login.";
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(student.email.trim())) return "Enter a valid student email address.";
+    if (!student.school_name.trim()) return "Enter the student's current or previous school.";
+    if (!student.address.trim()) return "Enter the student's address.";
     if (!guardian.full_name.trim()) return "Enter the guardian's full name.";
+    if (!guardian.relation) return "Choose the guardian's relation to the student.";
     if (!guardian.phone.trim()) return "Enter the guardian's WhatsApp/mobile number.";
     if (!cleanPhone(guardian.phone)) return "Guardian WhatsApp/mobile: " + PHONE_ERROR;
     if (!programme) return "Choose a programme.";
@@ -467,6 +472,15 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setStudent({ ...student, full_name: e.target.value })}
                 />
               </Field>
+              <Field label="Date of birth" required>
+                <input
+                  type="date"
+                  required
+                  max={new Date().toISOString().slice(0, 10)}
+                  value={student.date_of_birth}
+                  onChange={(e) => setStudent({ ...student, date_of_birth: e.target.value })}
+                />
+              </Field>
               <Field label="Gender">
                 <select
                   style={selStyle}
@@ -504,17 +518,19 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setStudent({ ...student, email: e.target.value })}
                 />
               </Field>
-              <Field label="Current / previous school">
+              <Field label="Current / previous school" required>
                 <input
                   type="text"
+                  required
                   value={student.school_name}
                   onChange={(e) => setStudent({ ...student, school_name: e.target.value })}
                 />
               </Field>
             </div>
-            <Field label="Address">
+            <Field label="Address" required>
               <textarea
                 style={taStyle}
+                required
                 value={student.address}
                 onChange={(e) => setStudent({ ...student, address: e.target.value })}
               />
@@ -531,9 +547,10 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setGuardian({ ...guardian, full_name: e.target.value })}
                 />
               </Field>
-              <Field label="Relation to student">
+              <Field label="Relation to student" required>
                 <select
                   style={selStyle}
+                  required
                   value={guardian.relation}
                   onChange={(e) => setGuardian({ ...guardian, relation: e.target.value })}
                 >

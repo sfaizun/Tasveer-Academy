@@ -11,6 +11,7 @@ export type ApplicationPayload = {
   mock_only: boolean;
   student: {
     full_name: string;
+    date_of_birth: string;
     gender: string;
     nationality: string;
     phone: string;
@@ -58,6 +59,15 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   }
   if (!payload.student?.full_name?.trim()) {
     return { ok: false, error: "Student name is required." };
+  }
+  const dob = String(payload.student?.date_of_birth ?? "");
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || dob > new Date().toISOString().slice(0, 10) || dob < "1940-01-01") {
+    return { ok: false, error: "Enter the student's date of birth." };
+  }
+  if (!payload.student?.school_name?.trim()) return { ok: false, error: "Student's school is required." };
+  if (!payload.student?.address?.trim()) return { ok: false, error: "Student's address is required." };
+  if (!["father", "mother", "guardian", "other"].includes(payload.guardian?.relation ?? "")) {
+    return { ok: false, error: "Choose the guardian's relation to the student." };
   }
   if (!payload.student?.phone?.trim()) {
     return { ok: false, error: "Student WhatsApp/mobile number is required." };
@@ -112,6 +122,8 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   });
 
   if (error) {
+    // Same student name and date of birth as an earlier application or a current student.
+    if (error.message.includes("ALREADY_APPLIED")) return { ok: false, error: "You have already applied" };
     return { ok: false, error: "Could not submit the application. Please try again in a moment." };
   }
 

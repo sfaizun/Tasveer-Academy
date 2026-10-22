@@ -58,7 +58,7 @@ export default async function StudentDetail({
       supabase
         .from("student")
         .select(
-          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, programme_id, class_level_id, enrolment_type, programme(name, code), class_level(name)"
+          "id, reg_no, previous_reg_no, full_name, gender, nationality, phone, email, address, school_name, status, admitted_on, date_of_birth, programme_id, class_level_id, enrolment_type, programme(name, code), class_level(name)"
         )
         .eq("id", id)
         .maybeSingle(),
@@ -271,6 +271,7 @@ export default async function StudentDetail({
             <div><div className="lbl">Email</div><div>{s.email ?? "—"}</div></div>
             <div><div className="lbl">School</div><div>{s.school_name ?? "—"}</div></div>
             <div><div className="lbl">Admitted on</div><div className="mono">{fmtDate(s.admitted_on)}</div></div>
+            <div><div className="lbl">Date of birth</div><div className="mono">{s.date_of_birth ? fmtDate(s.date_of_birth) : "—"}</div></div>
             <div><div className="lbl">Address</div><div>{s.address ?? "—"}</div></div>
           </div>
           {isAdmin && (
@@ -288,6 +289,7 @@ export default async function StudentDetail({
                   address: s.address,
                   school_name: s.school_name,
                   admitted_on: s.admitted_on,
+                  date_of_birth: s.date_of_birth ?? null,
                 }}
               />
             </div>

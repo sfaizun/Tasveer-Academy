@@ -27,6 +27,7 @@ export type StudentDetails = {
   address: string | null;
   school_name: string | null;
   admitted_on: string | null;
+  date_of_birth: string | null;
 };
 
 /** Everything on the "Student" info panel is editable here except reg_no (permanent — the
@@ -71,24 +72,28 @@ export default function EditStudentForm({ studentId, details }: { studentId: str
           <input style={inputStyle} type="text" name="nationality" defaultValue={details.nationality ?? ""} />
         </div>
         <div className="field">
-          <label className="lbl">WhatsApp / mobile</label>
-          <input style={inputStyle} type="tel" inputMode="tel" name="phone" placeholder="01XXXXXXXXX" title="11 digits starting with 01, or + and country code" defaultValue={details.phone ?? ""} />
+          <label className="lbl">WhatsApp / mobile<Req /></label>
+          <input style={inputStyle} type="tel" inputMode="tel" name="phone" required placeholder="01XXXXXXXXX" title="11 digits starting with 01, or + and country code" defaultValue={details.phone ?? ""} />
         </div>
         <div className="field">
           <label className="lbl">Email<Req /></label>
           <input style={inputStyle} type="email" name="email" required defaultValue={details.email ?? ""} />
         </div>
         <div className="field">
-          <label className="lbl">School</label>
-          <input style={inputStyle} type="text" name="school_name" defaultValue={details.school_name ?? ""} />
+          <label className="lbl">School<Req /></label>
+          <input style={inputStyle} type="text" name="school_name" required defaultValue={details.school_name ?? ""} />
         </div>
         <div className="field">
-          <label className="lbl">Admitted on</label>
-          <input style={inputStyle} type="date" name="admitted_on" defaultValue={details.admitted_on ?? ""} />
+          <label className="lbl">Admitted on<Req /></label>
+          <input style={inputStyle} type="date" name="admitted_on" required defaultValue={details.admitted_on ?? ""} />
+        </div>
+        <div className="field">
+          <label className="lbl">Date of birth</label>
+          <input style={inputStyle} type="date" name="date_of_birth" defaultValue={details.date_of_birth ?? ""} />
         </div>
         <div className="field" style={{ gridColumn: "1 / -1" }}>
-          <label className="lbl">Address</label>
-          <input style={inputStyle} type="text" name="address" defaultValue={details.address ?? ""} />
+          <label className="lbl">Address<Req /></label>
+          <input style={inputStyle} type="text" name="address" required defaultValue={details.address ?? ""} />
         </div>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
