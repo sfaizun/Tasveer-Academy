@@ -561,3 +561,15 @@ details.mock-teacher[open] > summary{background:var(--tint)}
   .idc-box:last-child{break-after:auto;page-break-after:auto}
   .idc{transform:scale(.51024);transform-origin:top left;border:0;border-radius:0}
 }
+
+/* Attendance: Present / Absent switch per student. */
+.att-row{display:flex;align-items:center;gap:12px;padding:9px 18px;border-top:1px solid var(--line)}
+.att-row .who{flex:1 1 auto;min-width:0}
+.att-sw{display:inline-flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;flex-shrink:0}
+.att-sw button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:13px;font-weight:600;padding:8px 14px;cursor:pointer;min-height:38px}
+.att-sw button+button{border-left:1px solid var(--line)}
+.att-sw button.p.on{background:var(--ok-soft);color:var(--ok)}
+.att-sw button.a.on{background:var(--crit-soft);color:var(--crit)}
+.att-sw button:disabled{cursor:default}
+.att-row.absent .who b{color:var(--crit)}
+.att-pct{font-variant-numeric:tabular-nums}

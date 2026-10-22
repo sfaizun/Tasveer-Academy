@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import ApptCard from "../appointments/ApptCard";
+import { TodayAttendanceCard } from "../attendance/AttendanceCards";
 import { isCurrentEnrolment } from "@/lib/enrolment";
 import { dhakaToday } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -78,6 +79,7 @@ export default async function TeacherDashboard({ appUserId, fullName }: { appUse
           </div>
         </div>
 
+        <TodayAttendanceCard mine />
         <ApptCard mode="teacher" appUserId={appUserId} />
 
         <div className="panel">

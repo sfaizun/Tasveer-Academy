@@ -16,6 +16,7 @@ import MockExamsPanel, { type StudentMockRow } from "./MockExamsPanel";
 import { examTitle } from "@/lib/mock";
 import { isCurrentEnrolment } from "@/lib/enrolment";
 import StudentTestMarksPanel from "../../test-marks/StudentTestMarksPanel";
+import { StudentAttendanceCard } from "../../attendance/AttendanceCards";
 import { requirePage } from "@/lib/require-page";
 import { accessOf, canOpen, canSeeFees } from "@/lib/access";
 import { actsAsAdmin } from "@/lib/access";
@@ -384,6 +385,8 @@ export default async function StudentDetail({
         ) : null}
 
         <StudentTestMarksPanel supabase={supabase} studentId={id} />
+
+        <StudentAttendanceCard studentId={id} />
 
         {isAdmin && showFees && <AdmissionFeePanel studentId={id} invoices={(invoices ?? []) as any} />}
 

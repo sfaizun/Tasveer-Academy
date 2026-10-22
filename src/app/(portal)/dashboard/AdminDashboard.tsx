@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import ApptCard from "../appointments/ApptCard";
+import { TodayAttendanceCard } from "../attendance/AttendanceCards";
 import { taka, dhakaToday, dhakaTodayISO, currentBillingMonth, monthName } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -15,7 +16,7 @@ function Tile({ label, value, sub, tone }: { label: string; value: string; sub: 
   );
 }
 
-export default async function AdminDashboard({ apptUserId }: { apptUserId?: string | null }) {
+export default async function AdminDashboard({ apptUserId, attendance }: { apptUserId?: string | null; attendance?: boolean }) {
   const supabase = await createClient();
   const month = currentBillingMonth();
 
@@ -92,6 +93,7 @@ export default async function AdminDashboard({ apptUserId }: { apptUserId?: stri
           </div>
         )}
 
+        {attendance && <TodayAttendanceCard mine={false} />}
         {apptUserId && <ApptCard mode="office" appUserId={apptUserId} />}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>

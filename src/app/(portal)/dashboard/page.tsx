@@ -10,6 +10,7 @@ import { feedOf } from "../announcements/shared";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin } from "@/lib/access";
 import ApptCard from "../appointments/ApptCard";
+import { StudentAttendanceCard } from "../attendance/AttendanceCards";
 
 export const dynamic = "force-dynamic";
 
@@ -26,7 +27,7 @@ export default async function Dashboard() {
 
   // The view in use decides: an access role with the Dashboard sees the academy dashboard, a
   // teacher's own view their own dashboard.
-  if (academyAccess) return <AdminDashboard apptUserId={me && actsAsAdmin(me, "appointments") ? me.id : null} />;
+  if (academyAccess) return <AdminDashboard apptUserId={me && actsAsAdmin(me, "appointments") ? me.id : null} attendance={!!me && actsAsAdmin(me, "attendance")} />;
   if (me?.role === "teacher") return <TeacherDashboard appUserId={me.id} fullName={me.full_name} />;
 
   // Student / guardian: published announcements from every class they're enrolled in (RLS on
@@ -38,6 +39,12 @@ export default async function Dashboard() {
     .select(ANN_SELECT)
     .eq("status", "published")
     .order("published_at", { ascending: false });
+
+  // The student's own record, or a guardian's children (RLS limits this to them).
+  const { data: kidRows } = me?.role === "student" || me?.role === "guardian"
+    ? await supabase.from("student").select("id, full_name").order("full_name")
+    : { data: [] as { id: string; full_name: string }[] };
+  const kids = (kidRows ?? []) as { id: string; full_name: string }[];
 
   const shown = feedOf((announcements ?? []) as any[], 3).list;
   const acknowledgedIds = await markSeenAndGetAcks(supabase, shown.map((a: any) => a.id));
@@ -57,6 +64,9 @@ export default async function Dashboard() {
             academy directly for anything you need.
           </div>
         </div>
+        {kids.map((k) => (
+          <StudentAttendanceCard key={k.id} studentId={k.id} title={kids.length > 1 || me?.role === "guardian" ? `Attendance: ${k.full_name}` : "My attendance"} />
+        ))}
         {me?.role === "student" && <ApptCard mode="student" appUserId={me.id} />}
         <div>
           <div className="lbl" style={{ margin: "4px 0 10px" }}>Announcements</div>
