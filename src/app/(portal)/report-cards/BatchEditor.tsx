@@ -8,14 +8,15 @@ const input: React.CSSProperties = {
   background: "var(--paper)", color: "var(--ink)", fontFamily: "inherit", width: "100%",
 };
 
-function CommentSelect({ name, value, comments, onChange, disabled }: {
+function CommentSelect({ name, value, comments, onChange, disabled, placeholder, exclude }: {
   name: string; value: string; comments: RcComment[]; onChange: (v: string) => void; disabled: boolean;
+  placeholder: string; exclude?: string;
 }) {
   return (
     <select name={name} value={value} onChange={(e) => onChange(e.target.value)} style={input} disabled={disabled}>
-      <option value="">No comment</option>
+      <option value="">{placeholder}</option>
       {CATEGORIES.map((c) => {
-        const list = comments.filter((x) => x.category === c.key && (x.active || x.id === value));
+        const list = comments.filter((x) => x.category === c.key && x.id !== exclude && (x.active || x.id === value));
         return list.length ? (
           <optgroup key={c.key} label={c.label}>
             {list.map((x) => <option key={x.id} value={x.id}>{x.text}</option>)}
@@ -49,8 +50,13 @@ function Row({ row, comments, canEdit, month }: { row: RcBatchRow; comments: RcC
         <div><span className="lbl">Homework</span>{h.pct != null ? <b>{h.pct}%</b> : null} <span className="sub">{h.text}</span></div>
       </div>
       <div className="rc-row-com">
-        <CommentSelect name="c1" value={c1} comments={comments} disabled={!canEdit} onChange={(v) => { setC1(v); setDirty(true); }} />
-        <CommentSelect name="c2" value={c2} comments={comments} disabled={!canEdit} onChange={(v) => { setC2(v); setDirty(true); }} />
+        <CommentSelect name="c1" value={c1} comments={comments} disabled={!canEdit} placeholder="Choose a comment…" exclude={c2}
+          onChange={(v) => { setC1(v); if (!v) setC2(""); setDirty(true); }} />
+        {/* A second comment is optional; its box appears once the first is chosen. */}
+        {c1 ? (
+          <CommentSelect name="c2" value={c2} comments={comments} disabled={!canEdit} placeholder="Add a second comment (optional)" exclude={c1}
+            onChange={(v) => { setC2(v); setDirty(true); }} />
+        ) : <input type="hidden" name="c2" value="" />}
         <input name="text" value={text} maxLength={500} placeholder="Your own note (optional)" style={input} disabled={!canEdit}
           onChange={(e) => { setText(e.target.value); setDirty(true); }} />
         {canEdit && (

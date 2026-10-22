@@ -86,6 +86,10 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   if (!payload.guardian?.full_name?.trim()) {
     return { ok: false, error: "Guardian name is required." };
   }
+  if (!payload.guardian?.father_name?.trim()) return { ok: false, error: "Father's name is required." };
+  if (!payload.guardian?.mother_name?.trim()) return { ok: false, error: "Mother's name is required." };
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(payload.guardian?.email?.trim() ?? "")) return { ok: false, error: "Enter a valid guardian email address." };
+  if (!payload.guardian?.address?.trim()) return { ok: false, error: "Guardian address is required." };
   if (!payload.guardian?.phone?.trim()) {
     return { ok: false, error: "Guardian WhatsApp/mobile number is required." };
   }

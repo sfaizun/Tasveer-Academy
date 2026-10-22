@@ -251,6 +251,11 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     if (!student.address.trim()) return "Enter the student's address.";
     if (!guardian.full_name.trim()) return "Enter the guardian's full name.";
     if (!guardian.relation) return "Choose the guardian's relation to the student.";
+    if (!guardian.father_name.trim()) return "Enter the father's name.";
+    if (!guardian.mother_name.trim()) return "Enter the mother's name.";
+    if (!guardian.email.trim()) return "Enter the guardian's email.";
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardian.email.trim())) return "Enter a valid guardian email address.";
+    if (!guardian.address.trim()) return "Enter the guardian's address.";
     if (!guardian.phone.trim()) return "Enter the guardian's WhatsApp/mobile number.";
     if (!cleanPhone(guardian.phone)) return "Guardian WhatsApp/mobile: " + PHONE_ERROR;
     if (!programme) return "Choose a programme.";
@@ -563,16 +568,18 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   <option value="other">Other</option>
                 </select>
               </Field>
-              <Field label="Father's name">
+              <Field label="Father's name" required>
                 <input
                   type="text"
+                  required
                   value={guardian.father_name}
                   onChange={(e) => setGuardian({ ...guardian, father_name: e.target.value })}
                 />
               </Field>
-              <Field label="Mother's name">
+              <Field label="Mother's name" required>
                 <input
                   type="text"
+                  required
                   value={guardian.mother_name}
                   onChange={(e) => setGuardian({ ...guardian, mother_name: e.target.value })}
                 />
@@ -587,17 +594,19 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setGuardian({ ...guardian, phone: e.target.value })}
                 />
               </Field>
-              <Field label="Guardian email">
+              <Field label="Guardian email" required>
                 <input
                   type="email"
+                  required
                   value={guardian.email}
                   onChange={(e) => setGuardian({ ...guardian, email: e.target.value })}
                 />
               </Field>
             </div>
-            <Field label="Guardian address">
+            <Field label="Guardian address" required>
               <textarea
                 style={taStyle}
+                required
                 value={guardian.address}
                 onChange={(e) => setGuardian({ ...guardian, address: e.target.value })}
               />
