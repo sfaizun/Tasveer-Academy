@@ -573,3 +573,7 @@ details.mock-teacher[open] > summary{background:var(--tint)}
 .att-sw button:disabled{cursor:default}
 .att-row.absent .who b{color:var(--crit)}
 .att-pct{font-variant-numeric:tabular-nums}
+/* Teacher dashboard: cumulative attendance of a batch and of each student, highlighted green. */
+.att-batch{display:inline-flex;align-items:baseline;gap:2px;background:var(--ok-soft);color:var(--ok);font-weight:700;font-size:13px;border-radius:6px;padding:4px 10px;font-variant-numeric:tabular-nums}
+.att-batch .sub{font-weight:500}
+.att-pct-chip{display:inline-block;background:var(--ok-soft);color:var(--ok);font-weight:700;border-radius:4px;padding:2px 8px;font-variant-numeric:tabular-nums}
