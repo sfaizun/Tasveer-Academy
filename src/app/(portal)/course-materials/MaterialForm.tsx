@@ -62,25 +62,27 @@ export default function MaterialForm({ batches, today, material, onDone }: {
     });
   }
   const busy = pending || uploading;
+  // A material must always have at least one file: required when adding, or when every saved file is ticked for removal.
+  const needFiles = (material?.files.length ?? 0) - removed.length <= 0;
 
   return (
     <form ref={ref} onSubmit={onSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {material && <input type="hidden" name="id" value={material.id} />}
       <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
         <div className="field" style={{ gridColumn: "1 / -1" }}>
-          <label className="lbl" htmlFor={`cm-title-${material?.id ?? "new"}`}>Topic / name of material</label>
+          <label className="lbl" htmlFor={`cm-title-${material?.id ?? "new"}`}>Topic / name of material{" "}<span aria-hidden="true" style={{ color: "var(--coral)" }}>*</span></label>
           <input id={`cm-title-${material?.id ?? "new"}`} name="title" required maxLength={200} defaultValue={material?.title}
             placeholder="e.g. Chapter 4: Partnership accounts" style={input} />
         </div>
         <div className="field">
-          <label className="lbl" htmlFor={`cm-batch-${material?.id ?? "new"}`}>Subject and batch</label>
+          <label className="lbl" htmlFor={`cm-batch-${material?.id ?? "new"}`}>Subject and batch{" "}<span aria-hidden="true" style={{ color: "var(--coral)" }}>*</span></label>
           <select id={`cm-batch-${material?.id ?? "new"}`} name="class_group_id" required defaultValue={material?.class_group_id ?? (batches.length === 1 ? batches[0].id : "")} style={input}>
             <option value="" disabled>Choose…</option>
             {batches.map((b) => <option key={b.id} value={b.id}>{b.label}</option>)}
           </select>
         </div>
         <div className="field">
-          <label className="lbl" htmlFor={`cm-date-${material?.id ?? "new"}`}>Date</label>
+          <label className="lbl" htmlFor={`cm-date-${material?.id ?? "new"}`}>Date{" "}<span aria-hidden="true" style={{ color: "var(--coral)" }}>*</span></label>
           <input id={`cm-date-${material?.id ?? "new"}`} type="date" name="material_date" required defaultValue={material?.material_date ?? today} style={input} />
         </div>
         <div className="field" style={{ gridColumn: "1 / -1" }}>
@@ -104,9 +106,9 @@ export default function MaterialForm({ batches, today, material, onDone }: {
           </div>
         )}
         <div className="field" style={{ gridColumn: "1 / -1" }}>
-          <label className="lbl" htmlFor={`cm-files-${material?.id ?? "new"}`}>{material ? "Add more files" : "Attachments"}</label>
-          <input id={`cm-files-${material?.id ?? "new"}`} type="file" name="upload" multiple accept={STUDY_ACCEPT} style={{ ...input, padding: 8 }} />
-          <span className="sub">PDF, Word, PowerPoint or photos. Up to 10 files, 20 MB each.</span>
+          <label className="lbl" htmlFor={`cm-files-${material?.id ?? "new"}`}>{material ? "Add more files" : "Attachments"}{needFiles && <>{" "}<span aria-hidden="true" style={{ color: "var(--coral)" }}>*</span></>}</label>
+          <input id={`cm-files-${material?.id ?? "new"}`} type="file" name="upload" multiple required={needFiles} accept={STUDY_ACCEPT} style={{ ...input, padding: 8 }} />
+          <span className="sub">{needFiles ? "At least one file is required. " : ""}PDF, Word, PowerPoint or photos. Up to 10 files, 20 MB each.</span>
         </div>
       </div>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>

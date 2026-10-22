@@ -34,6 +34,7 @@ export async function saveMaterial(_prev: State, formData: FormData): Promise<St
   if (!isId(groupId)) err = "Choose the batch.";
   else if (!title) err = "Enter the topic or name of the material.";
   else if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) err = "Choose the date.";
+  else if (!isId(id) && files.length === 0) err = "Attach at least one file.";
   if (err) { await dropUploads(); return { error: err }; }
 
   const { data, error } = await supabase.rpc("fn_save_course_material", {
