@@ -242,6 +242,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   function validateClient(): string | null {
     if (!student.full_name.trim()) return "Enter the student's full name.";
     if (!student.date_of_birth) return "Enter the student's date of birth.";
+    if (!student.gender) return "Choose the student's gender.";
     if (!student.phone.trim()) return "Enter the student's WhatsApp/mobile number.";
     if (!cleanPhone(student.phone)) return "Student WhatsApp/mobile: " + PHONE_ERROR;
     if (!student.email.trim()) return "Enter the student's email. It is used to create the portal login.";
@@ -481,9 +482,10 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setStudent({ ...student, date_of_birth: e.target.value })}
                 />
               </Field>
-              <Field label="Gender">
+              <Field label="Gender" required>
                 <select
                   style={selStyle}
+                  required
                   value={student.gender}
                   onChange={(e) => setStudent({ ...student, gender: e.target.value })}
                 >

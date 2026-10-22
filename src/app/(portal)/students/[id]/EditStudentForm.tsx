@@ -10,7 +10,7 @@ const inputStyle: React.CSSProperties = {
 };
 
 const GENDER_OPTIONS = [
-  { value: "", label: "Not specified" },
+  { value: "", label: "Choose…" },
   { value: "male", label: "Male" },
   { value: "female", label: "Female" },
   { value: "other", label: "Other" },
@@ -60,10 +60,10 @@ export default function EditStudentForm({ studentId, details }: { studentId: str
           <input style={inputStyle} type="text" name="previous_reg_no" defaultValue={details.previous_reg_no ?? ""} />
         </div>
         <div className="field">
-          <label className="lbl">Gender</label>
-          <select style={inputStyle} name="gender" defaultValue={details.gender ?? ""}>
+          <label className="lbl">Gender<Req /></label>
+          <select style={inputStyle} name="gender" required defaultValue={details.gender ?? ""}>
             {GENDER_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>{o.label}</option>
+              <option key={o.value} value={o.value} disabled={!o.value}>{o.label}</option>
             ))}
           </select>
         </div>

@@ -64,6 +64,7 @@ export async function submitApplication(payload: ApplicationPayload): Promise<Re
   if (!/^\d{4}-\d{2}-\d{2}$/.test(dob) || dob > new Date().toISOString().slice(0, 10) || dob < "1940-01-01") {
     return { ok: false, error: "Enter the student's date of birth." };
   }
+  if (!["male", "female", "other"].includes(payload.student?.gender ?? "")) return { ok: false, error: "Choose the student's gender." };
   if (!payload.student?.school_name?.trim()) return { ok: false, error: "Student's school is required." };
   if (!payload.student?.address?.trim()) return { ok: false, error: "Student's address is required." };
   if (!["father", "mother", "guardian", "other"].includes(payload.guardian?.relation ?? "")) {

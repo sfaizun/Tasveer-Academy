@@ -8,7 +8,8 @@ export type PageKey =
   | "billing" | "invoices"
   | "expenses" | "income"
   | "catalogue" | "accounts" | "settings" | "audit_log" | "access"
-  | "canteen";
+  | "canteen"
+  | "my_profile";
 
 export type PageDef = { key: PageKey; label: string; href: string; group: string };
 
@@ -58,7 +59,7 @@ export const STAFF_ROLES = ["admin", "teacher", "canteen_manager"];
 export const BASE_PAGES: Record<string, PageKey[]> = {
   teacher: ["dashboard", "roster", "attendance", "test_marks", "report_cards", "course_materials", "homework", "announcements", "appointments", "mock_exams", "reports"],
   // Students and guardians read announcements on their dashboard and can open one to print it.
-  student: ["dashboard", "roster", "test_marks", "report_cards", "course_materials", "homework", "reports", "announcements", "appointments"],
+  student: ["dashboard", "my_profile", "roster", "test_marks", "report_cards", "course_materials", "homework", "reports", "announcements", "appointments"],
   guardian: ["dashboard", "roster", "test_marks", "report_cards", "course_materials", "homework", "reports", "announcements"],
   canteen_manager: ["canteen"],
   admin: [],

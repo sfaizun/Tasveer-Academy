@@ -164,8 +164,8 @@ export async function updateStudentDetails(_prev: State, formData: FormData): Pr
 
   if (!studentId) return { error: "Missing student." };
   if (!full_name) return { error: "Name is required." };
-  if (genderRaw && !(STUDENT_GENDERS as readonly string[]).includes(genderRaw)) {
-    return { error: "Choose a valid gender option." };
+  if (!(STUDENT_GENDERS as readonly string[]).includes(genderRaw)) {
+    return { error: "Gender is required." };
   }
   const phoneCheck = checkPhone(phone, true);
   if ("error" in phoneCheck) return { error: phoneCheck.error };
