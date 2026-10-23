@@ -1,6 +1,8 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
+import { getViewer } from "@/lib/supabase/viewer";
+import { actsAsAdmin } from "@/lib/access";
 
 type State = { error?: string; ok?: boolean } | null;
 
@@ -32,7 +34,11 @@ export async function addClassSlot(_prev: State, formData: FormData): Promise<St
   const capacity = parseCapacity(String(formData.get("capacity") ?? ""));
 
   const supabase = await createClient();
-  const mine = await myTeacherId(supabase);
+  // A teacher in their own view only schedules their own classes. A teacher who also holds an
+  // admin role (e.g. Super Admin) and is using that view schedules for the teacher they choose;
+  // forcing their own id here once put other teachers' batches under the wrong name.
+  const { me } = await getViewer();
+  const mine = me && actsAsAdmin(me, "roster") ? null : await myTeacherId(supabase);
   if (mine) {
     // A teacher can only add their own subject classes.
     if (targetType !== "class_group") return { error: NO_ACCESS };

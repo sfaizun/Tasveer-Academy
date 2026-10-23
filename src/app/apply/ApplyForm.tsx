@@ -253,8 +253,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
     if (!guardian.relation) return "Choose the guardian's relation to the student.";
     if (!guardian.father_name.trim()) return "Enter the father's name.";
     if (!guardian.mother_name.trim()) return "Enter the mother's name.";
-    if (!guardian.email.trim()) return "Enter the guardian's email.";
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardian.email.trim())) return "Enter a valid guardian email address.";
+    if (guardian.email.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(guardian.email.trim())) return "Enter a valid guardian email address.";
     if (!guardian.address.trim()) return "Enter the guardian's address.";
     if (!guardian.phone.trim()) return "Enter the guardian's WhatsApp/mobile number.";
     if (!cleanPhone(guardian.phone)) return "Guardian WhatsApp/mobile: " + PHONE_ERROR;
@@ -594,10 +593,9 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
                   onChange={(e) => setGuardian({ ...guardian, phone: e.target.value })}
                 />
               </Field>
-              <Field label="Guardian email" required>
+              <Field label="Guardian email">
                 <input
                   type="email"
-                  required
                   value={guardian.email}
                   onChange={(e) => setGuardian({ ...guardian, email: e.target.value })}
                 />
