@@ -418,14 +418,20 @@ export default function ApplicationsTable({
                     <td className="sub">{p.guardian?.phone ?? "—"}</td>
                     <td className="n"><StatusChip status={app.status} /></td>
                     <td className="n">
-                      <button
-                        className="btn ghost"
-                        type="button"
-                        style={{ fontSize: 12, padding: "6px 10px" }}
-                        onClick={() => setExpanded(isOpen ? null : app.id)}
-                      >
-                        {isOpen ? "Hide" : "View"}
-                      </button>
+                      <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+                        <button
+                          className="btn ghost"
+                          type="button"
+                          style={{ fontSize: 12, padding: "6px 10px" }}
+                          onClick={() => setExpanded(isOpen ? null : app.id)}
+                        >
+                          {isOpen ? "Hide" : "View"}
+                        </button>
+                        <a className="btn ghost" href={`/applications/${app.id}?print=1`} target="_blank" rel="noopener"
+                          style={{ fontSize: 12, padding: "6px 10px" }}>
+                          Print
+                        </a>
+                      </span>
                     </td>
                   </tr>
                   {isOpen && (
