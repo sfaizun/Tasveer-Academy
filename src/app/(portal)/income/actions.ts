@@ -12,10 +12,12 @@ function readIncome(formData: FormData) {
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const amount = Math.round(Number(amountRaw) * 100) / 100;
   const details = String(formData.get("details") ?? "").trim();
+  const category = String(formData.get("category") ?? "");
+  if (category !== "registration" && category !== "other") return { error: "Choose the heading: Registration fees or Other income." };
   if (!/^\d{4}-\d{2}-\d{2}$/.test(income_date)) return { error: "Choose the date." };
   if (!amountRaw || !Number.isFinite(amount) || amount <= 0) return { error: "Enter an amount above zero." };
   if (!details) return { error: "Enter the details of the income." };
-  return { values: { income_date, amount, details } };
+  return { values: { income_date, amount, details, category } };
 }
 
 /** The file is uploaded straight from the browser; the form sends its storage path here. */

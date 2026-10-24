@@ -8,6 +8,7 @@ import OfficeTabs from "@/components/OfficeTabs";
 import { dhakaTodayISO, fmtDate, taka } from "@/lib/format";
 import IncomeForm from "./IncomeForm";
 import IncomeTable from "./IncomeTable";
+import OfficeIncomeMonth from "./OfficeIncomeMonth";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin, viewReadOnly } from "@/lib/access";
 
@@ -36,7 +37,7 @@ function PL({ value, big = false }: { value: number; big?: boolean }) {
 export default async function IncomePage({
   searchParams,
 }: {
-  searchParams: Promise<{ from?: string; to?: string }>;
+  searchParams: Promise<{ from?: string; to?: string; month?: string }>;
 }) {
   await requirePage("income");
   const { me } = await getViewer();
@@ -47,12 +48,14 @@ export default async function IncomePage({
   const today = dhakaTodayISO();
   const from = isDate(sp.from) ? sp.from : `${today.slice(0, 7)}-01`;
   const to = isDate(sp.to) ? sp.to : today;
+  const thisMonth = today.slice(0, 7);
+  const month = /^\d{4}-\d{2}$/.test(sp.month ?? "") && (sp.month as string) <= thisMonth ? (sp.month as string) : thisMonth;
 
   const supabase = await createClient();
   const [{ data: incomeData }, { data: expenseData }] = await Promise.all([
     supabase
       .from("office_income")
-      .select("id, income_date, amount, details, attachment_name")
+      .select("id, income_date, amount, details, category, attachment_name")
       .gte("income_date", from)
       .lte("income_date", to)
       .order("income_date", { ascending: false })
@@ -66,7 +69,7 @@ export default async function IncomePage({
   ]);
 
   const rows = ((incomeData ?? []) as any[]).map((r) => ({
-    id: r.id, income_date: r.income_date, amount: Number(r.amount), details: r.details, attachment_name: r.attachment_name ?? null,
+    id: r.id, income_date: r.income_date, amount: Number(r.amount), details: r.details, category: (r.category === "registration" ? "registration" : "other") as "registration" | "other", attachment_name: r.attachment_name ?? null,
   }));
   const expenses = ((expenseData ?? []) as any[]).map((e) => ({ date: e.expense_date as string, amount: Number(e.amount) }));
 
@@ -90,8 +93,8 @@ export default async function IncomePage({
   return (
     <>
       <header className="top no-print">
-        <h1>Income</h1>
-        <div className="sub">Money received by the office, other than student fees</div>
+        <h1>Office income</h1>
+        <div className="sub">Service charge, admission fees, registration fees, canteen and other income</div>
         <div className="spacer" />
         <ThemeToggle />
       </header>
@@ -99,10 +102,12 @@ export default async function IncomePage({
       <div className="content" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
         <OfficeTabs active="income" />
 
+        <OfficeIncomeMonth month={month} thisMonth={thisMonth} readOnly={readOnly} />
+
         {!readOnly && <details className="panel collapsible no-print" open>
           <summary className="phead">
-            <div className="ptitle">Add income</div>
-            <div className="sub">Office only. Student fees are recorded as payments on the student&apos;s page.</div>
+            <div className="ptitle">Add registration fees or other income</div>
+            <div className="sub">An attachment is required. Student fees are recorded as payments on the student&apos;s page.</div>
           </summary>
           <div style={{ padding: 18 }}>
             <IncomeForm today={today} />
@@ -116,13 +121,13 @@ export default async function IncomePage({
             <div style={{ marginTop: 6, fontWeight: 600 }}>Office income report: {filterText}</div>
           </div>
           <div className="phead no-print">
-            <div className="ptitle">Income report</div>
+            <div className="ptitle">Registration fees and other income</div>
             <div className="sub">{filterText}</div>
             <div className="spacer" />
             <ExportCsvButton
               filename={`office-income-${from}-to-${to}`}
-              headers={["Date", "Details", "Attachment", "Amount"]}
-              rows={rows.map((r) => [r.income_date, r.details, r.attachment_name ?? "", r.amount])}
+              headers={["Date", "Heading", "Details", "Attachment", "Amount"]}
+              rows={rows.map((r) => [r.income_date, r.category === "registration" ? "Registration fees" : "Other income", r.details, r.attachment_name ?? "", r.amount])}
             />
             <PrintButton />
           </div>
@@ -146,7 +151,7 @@ export default async function IncomePage({
           <div style={{ padding: "18px 18px 6px", borderTop: "1px solid var(--line)", marginTop: 8 }}>
             <div className="ptitle" style={{ marginBottom: 4 }}>Profit / loss</div>
             <div className="sub" style={{ marginBottom: 12 }}>
-              Office income minus office expenses, {filterText}. Teacher expenses and student fees are not included.
+              Registration fees and other income minus office expenses, {filterText}. Service charge, admission fees and canteen are in the monthly office income above; teacher expenses and student fees are not included here.
             </div>
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", marginBottom: 14 }}>
               <div><div className="lbl">Office income</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{taka(incomeTotal)}</b></div>

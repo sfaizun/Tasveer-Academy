@@ -9,6 +9,7 @@ export type IncomeRow = {
   income_date: string;
   amount: number;
   details: string;
+  category: "registration" | "other";
   attachment_name: string | null;
 };
 
@@ -96,6 +97,14 @@ export default function IncomeForm({
         <div className="field">
           <label className="lbl" htmlFor={`in-d-${id}`}>Date<Req /></label>
           <input id={`in-d-${id}`} style={inputStyle} type="date" name="income_date" required defaultValue={income?.income_date ?? today} />
+        </div>
+        <div className="field">
+          <label className="lbl" htmlFor={`in-c-${id}`}>Heading<Req /></label>
+          <select id={`in-c-${id}`} style={inputStyle} name="category" required defaultValue={income?.category ?? ""}>
+            <option value="" disabled>Choose…</option>
+            <option value="registration">Registration fees</option>
+            <option value="other">Other income</option>
+          </select>
         </div>
         <div className="field">
           <label className="lbl" htmlFor={`in-a-${id}`}>Amount (৳)<Req /></label>
