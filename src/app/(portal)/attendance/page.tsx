@@ -6,6 +6,7 @@ import { dhakaTodayISO, fmtDate, fmtDateTime } from "@/lib/format";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin, viewReadOnly } from "@/lib/access";
 import Sheet from "./Sheet";
+import { holidayDates, holidayOn, loadHolidays } from "@/lib/holidays";
 import { classTitle, clock, type AttClass } from "./shared";
 
 export const dynamic = "force-dynamic";
@@ -34,6 +35,7 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
   const readOnly = isAdmin && viewReadOnly(me);
   const { data } = await supabase.rpc("fn_attendance_day", { p_date: date, p_mine: !isAdmin });
   const classes = (data ?? []) as AttClass[];
+  const holiday = holidayOn(await loadHolidays(supabase, date, date), date);
   const taken = classes.filter((c) => c.session_id).length;
   const notTaken = classes.length - taken;
 
@@ -63,7 +65,14 @@ export default async function AttendancePage({ searchParams }: { searchParams: P
           </div>
         )}
 
-        {classes.length === 0 && (
+        {holiday && (
+          <div className="panel" style={{ padding: "16px 18px", borderLeft: "3px solid var(--ok)" }}>
+            <b style={{ color: "var(--ink)" }}>Holiday: {holiday.name}</b>
+            <div className="sub">{holidayDates(holiday)}. No classes run and no attendance is taken.{holiday.note ? ` ${holiday.note}` : ""}</div>
+          </div>
+        )}
+
+        {classes.length === 0 && !holiday && (
           <div className="panel" style={{ padding: 18 }}>
             <div className="sub">
               {isAdmin ? "No classes on the schedule for this day." : "You have no classes on the schedule for this day."}

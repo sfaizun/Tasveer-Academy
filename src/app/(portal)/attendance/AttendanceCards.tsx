@@ -1,12 +1,18 @@
 import { createClient } from "@/lib/supabase/server";
 import { dhakaTodayISO, fmtDate } from "@/lib/format";
+import { holidayOn, loadHolidays } from "@/lib/holidays";
 import { classTitle, clock, pct, type AttClass } from "./shared";
 
 /** Dashboard panel for staff: today's classes and whether attendance is taken. */
 export async function TodayAttendanceCard({ mine }: { mine: boolean }) {
   const supabase = await createClient();
-  const { data } = await supabase.rpc("fn_attendance_day", { p_date: dhakaTodayISO(), p_mine: mine });
+  const today = dhakaTodayISO();
+  const [{ data }, hols] = await Promise.all([
+    supabase.rpc("fn_attendance_day", { p_date: today, p_mine: mine }),
+    loadHolidays(supabase, today, today),
+  ]);
   const classes = (data ?? []) as AttClass[];
+  const holiday = holidayOn(hols, today);
   const open = classes.filter((c) => !c.session_id);
   return (
     <div className="panel">
@@ -19,7 +25,9 @@ export async function TodayAttendanceCard({ mine }: { mine: boolean }) {
         <a href="/attendance" style={{ fontSize: 13 }}>Take attendance →</a>
       </div>
       {classes.length === 0 ? (
-        <div className="sub" style={{ padding: "14px 18px" }}>{mine ? "You have no classes today." : "No classes on the schedule today."}</div>
+        <div className="sub" style={{ padding: "14px 18px" }}>
+          {holiday ? <>Holiday today: <b>{holiday.name}</b>. No classes or attendance.</> : mine ? "You have no classes today." : "No classes on the schedule today."}
+        </div>
       ) : (
         (mine ? classes : open).slice(0, 8).map((c) => (
           <div key={c.slot_id} style={{ padding: "10px 18px", borderTop: "1px solid var(--line)", display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>

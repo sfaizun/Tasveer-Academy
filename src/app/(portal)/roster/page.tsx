@@ -4,6 +4,7 @@ import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import RosterAdmin from "./RosterAdmin";
 import ScheduleView from "./ScheduleView";
+import UpcomingHolidays from "../holidays/UpcomingHolidays";
 import { myStudentIds } from "../announcements/receipts";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin } from "@/lib/access";
@@ -168,6 +169,7 @@ export default async function RosterPage() {
           </div>
         )}
 
+        <UpcomingHolidays />
         <ScheduleView rows={scheduleRows} />
 
       </div>

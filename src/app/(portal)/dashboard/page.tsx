@@ -11,6 +11,7 @@ import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin } from "@/lib/access";
 import ApptCard from "../appointments/ApptCard";
 import { StudentAttendanceCard } from "../attendance/AttendanceCards";
+import UpcomingHolidays from "../holidays/UpcomingHolidays";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,7 @@ export default async function Dashboard() {
             academy directly for anything you need.
           </div>
         </div>
+        <UpcomingHolidays />
         {kids.map((k) => (
           <StudentAttendanceCard key={k.id} studentId={k.id} title={kids.length > 1 || me?.role === "guardian" ? `Attendance: ${k.full_name}` : "My attendance"} />
         ))}

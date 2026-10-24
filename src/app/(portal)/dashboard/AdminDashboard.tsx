@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import ApptCard from "../appointments/ApptCard";
 import { TodayAttendanceCard } from "../attendance/AttendanceCards";
+import UpcomingHolidays from "../holidays/UpcomingHolidays";
 import { taka, dhakaToday, dhakaTodayISO, currentBillingMonth, monthName } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
 
@@ -94,6 +95,7 @@ export default async function AdminDashboard({ apptUserId, attendance }: { apptU
         )}
 
         {attendance && <TodayAttendanceCard mine={false} />}
+        {attendance && <UpcomingHolidays manageLink />}
         {apptUserId && <ApptCard mode="office" appUserId={apptUserId} />}
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: 14 }}>

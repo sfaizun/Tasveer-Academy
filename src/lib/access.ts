@@ -3,7 +3,7 @@
  * enforces the same rules on the data itself. */
 
 export type PageKey =
-  | "dashboard" | "roster" | "attendance" | "test_marks" | "report_cards" | "course_materials" | "homework" | "announcements" | "appointments" | "reports"
+  | "dashboard" | "roster" | "attendance" | "holidays" | "test_marks" | "report_cards" | "course_materials" | "homework" | "announcements" | "appointments" | "reports"
   | "applications" | "students" | "id_cards" | "mock_exams"
   | "billing" | "invoices"
   | "expenses" | "income"
@@ -18,6 +18,7 @@ export const PAGES: PageDef[] = [
   { key: "dashboard", label: "Dashboard", href: "/dashboard", group: "Overview" },
   { key: "roster", label: "Class Schedule", href: "/roster", group: "Overview" },
   { key: "attendance", label: "Attendance", href: "/attendance", group: "Overview" },
+  { key: "holidays", label: "Holidays", href: "/holidays", group: "Overview" },
   { key: "test_marks", label: "Test marks", href: "/test-marks", group: "Overview" },
   { key: "report_cards", label: "Report cards", href: "/report-cards", group: "Overview" },
   { key: "course_materials", label: "Course materials", href: "/course-materials", group: "Overview" },

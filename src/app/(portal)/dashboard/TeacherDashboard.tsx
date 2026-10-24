@@ -1,6 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import ApptCard from "../appointments/ApptCard";
 import { TodayAttendanceCard } from "../attendance/AttendanceCards";
+import UpcomingHolidays from "../holidays/UpcomingHolidays";
+import { holidayOn, loadHolidays } from "@/lib/holidays";
 import { isCurrentEnrolment } from "@/lib/enrolment";
 import { dhakaToday } from "@/lib/format";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -53,10 +55,14 @@ export default async function TeacherDashboard({ appUserId, fullName }: { appUse
   // Cumulative attendance per batch and per student, from every class taken in the batch so far.
   const groupIds = groups.map((g: any) => g.id);
   const { data: sessions } = groupIds.length
-    ? await supabase.from("attendance_session").select("class_group_id, attendance_mark(student_id, status)").in("class_group_id", groupIds)
+    ? await supabase.from("attendance_session").select("class_group_id, session_date, attendance_mark(student_id, status)").in("class_group_id", groupIds)
     : { data: [] as any[] };
   const att = new Map<string, { classes: number; held: number; present: number; byStudent: Map<string, { held: number; present: number }> }>();
+  // Classes on a day later set as a holiday stay on record but don't count.
+  const sesDates = ((sessions ?? []) as any[]).map((x) => x.session_date as string).sort();
+  const hols = sesDates.length ? await loadHolidays(supabase, sesDates[0], sesDates[sesDates.length - 1]) : [];
   for (const ses of (sessions ?? []) as any[]) {
+    if (holidayOn(hols, ses.session_date)) continue;
     const a = att.get(ses.class_group_id) ?? { classes: 0, held: 0, present: 0, byStudent: new Map() };
     a.classes += 1;
     for (const m of ses.attendance_mark ?? []) {
@@ -100,6 +106,7 @@ export default async function TeacherDashboard({ appUserId, fullName }: { appUse
         </div>
 
         <TodayAttendanceCard mine />
+        <UpcomingHolidays />
         <ApptCard mode="teacher" appUserId={appUserId} />
 
         <div className="panel">
