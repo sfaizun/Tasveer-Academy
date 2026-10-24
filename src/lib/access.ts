@@ -6,7 +6,7 @@ export type PageKey =
   | "dashboard" | "roster" | "attendance" | "holidays" | "test_marks" | "report_cards" | "course_materials" | "homework" | "announcements" | "appointments" | "reports"
   | "applications" | "students" | "id_cards" | "mock_exams"
   | "billing" | "invoices"
-  | "expenses" | "income"
+  | "expenses" | "income" | "cash_balance"
   | "catalogue" | "accounts" | "settings" | "audit_log" | "access"
   | "canteen"
   | "my_profile";
@@ -34,6 +34,7 @@ export const PAGES: PageDef[] = [
   { key: "invoices", label: "Invoices", href: "/invoices", group: "Billing" },
   { key: "expenses", label: "Expenses", href: "/expenses", group: "Office Accounts" },
   { key: "income", label: "Income", href: "/income", group: "Office Accounts" },
+  { key: "cash_balance", label: "Cash balance", href: "/cash-balance", group: "Office Accounts" },
   { key: "catalogue", label: "Subjects & teachers", href: "/catalogue", group: "Academy" },
   { key: "accounts", label: "Accounts", href: "/accounts", group: "Academy" },
   { key: "settings", label: "Fees & settings", href: "/settings", group: "Academy" },
