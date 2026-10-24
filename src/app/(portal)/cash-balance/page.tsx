@@ -130,14 +130,14 @@ export default async function CashBalancePage({ searchParams }: { searchParams: 
                       <tr>
                         <th>Date</th><th className="n">Opening</th><th className="n">Fee collection</th><th className="n">Office income</th>
                         <th className="n">Office expenses</th><th className="n">Teacher expenses</th><th className="n">Closing</th>
-                        <th className="n">Counted cash</th><th className="n">Difference</th>
+                        <th className="n">Counted cash</th><th className="n">Difference</th><th className="no-print">Details</th>
                       </tr>
                     </thead>
                     <tbody>
                       {shown.map((d) => (
                         <tr key={d.day}>
                           <td className="mono" style={{ whiteSpace: "nowrap" }}>
-                            <a href={`/reports?cash_date=${d.day}`} title="See the day's payments">{fmtDate(d.day)}</a>
+                            <a href={`/cash-balance/${d.day}`} title="See the day's entries">{fmtDate(d.day)}</a>
                           </td>
                           <td className="n mono">{tk(d.opening)}</td>
                           <td className="n mono">{d.collection ? tk(d.collection) : "-"}</td>
@@ -147,6 +147,12 @@ export default async function CashBalancePage({ searchParams }: { searchParams: 
                           <td className="n mono"><b>{tk(d.closing)}</b></td>
                           <td className="n"><CountCell date={d.day} counted={d.counted} note={d.count_note} readOnly={readOnly} /></td>
                           <td className="n"><Diff v={d.difference} /></td>
+                          <td className="no-print">
+                            <span style={{ display: "inline-flex", gap: 6 }}>
+                              <a className="btn ghost" href={`/cash-balance/${d.day}`} style={{ fontSize: 12, padding: "5px 10px" }}>View</a>
+                              <a className="btn ghost" href={`/cash-balance/${d.day}?print=1`} target="_blank" rel="noopener" style={{ fontSize: 12, padding: "5px 10px" }}>Print</a>
+                            </span>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
