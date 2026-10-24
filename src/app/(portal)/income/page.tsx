@@ -130,7 +130,7 @@ export default async function IncomePage({
             <div style={{ marginTop: 6, fontWeight: 600 }}>Office income report: {filterText}</div>
           </div>
           <div className="phead no-print">
-            <div className="ptitle">Registration fees and other income</div>
+            <div className="ptitle">Office Income</div>
             <div className="sub">{filterText}</div>
             <div className="spacer" />
             <ExportCsvButton
