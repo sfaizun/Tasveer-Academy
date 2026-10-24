@@ -52,7 +52,7 @@ export default async function IncomePage({
   const month = /^\d{4}-\d{2}$/.test(sp.month ?? "") && (sp.month as string) <= thisMonth ? (sp.month as string) : thisMonth;
 
   const supabase = await createClient();
-  const [{ data: incomeData }, { data: expenseData }] = await Promise.all([
+  const [{ data: incomeData }, { data: expenseData }, { data: totalsData }] = await Promise.all([
     supabase
       .from("office_income")
       .select("id, income_date, amount, details, category, attachment_name")
@@ -66,6 +66,7 @@ export default async function IncomePage({
       .eq("expense_for", "office")
       .gte("expense_date", from)
       .lte("expense_date", to),
+    supabase.rpc("fn_office_income_totals", { p_from: from, p_to: to }),
   ]);
 
   const rows = ((incomeData ?? []) as any[]).map((r) => ({
@@ -75,7 +76,15 @@ export default async function IncomePage({
 
   const incomeTotal = rows.reduce((s, r) => s + r.amount, 0);
   const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
-  const profit = incomeTotal - expenseTotal;
+  // Profit / loss uses all office income: service charge, admission fees, registration fees,
+  // canteen profit/loss and other income.
+  const totals = ((totalsData ?? []) as any[]).map((t) => ({
+    m: String(t.month).slice(0, 7), service: Number(t.service_charge), admission: Number(t.admission), registration: Number(t.registration),
+    canteen: Number(t.canteen), other: Number(t.other), total: Number(t.total),
+  }));
+  const officeIncome = totals.reduce((s, t) => s + t.total, 0);
+  const sumOf = (k: "service" | "admission" | "registration" | "canteen" | "other") => totals.reduce((s, t) => s + t[k], 0);
+  const profit = officeIncome - expenseTotal;
 
   // Month by month, when the dates cover more than one month.
   const byMonth = new Map<string, { income: number; expense: number }>();
@@ -84,7 +93,7 @@ export default async function IncomePage({
     const [y, mo] = m.split("-").map(Number);
     m = mo === 12 ? `${y + 1}-01` : `${y}-${String(mo + 1).padStart(2, "0")}`;
   }
-  for (const r of rows) byMonth.get(r.income_date.slice(0, 7))!.income += r.amount;
+  for (const t of totals) { const b = byMonth.get(t.m); if (b) b.income += t.total; }
   for (const e of expenses) byMonth.get(e.date.slice(0, 7))!.expense += e.amount;
   const months = [...byMonth.entries()];
 
@@ -151,10 +160,16 @@ export default async function IncomePage({
           <div style={{ padding: "18px 18px 6px", borderTop: "1px solid var(--line)", marginTop: 8 }}>
             <div className="ptitle" style={{ marginBottom: 4 }}>Profit / loss</div>
             <div className="sub" style={{ marginBottom: 12 }}>
-              Registration fees and other income minus office expenses, {filterText}. Service charge, admission fees and canteen are in the monthly office income above; teacher expenses and student fees are not included here.
+              Office income (service charge, admission fees, registration fees, canteen profit/loss and other income) minus office expenses, {filterText}. Service charge counts in the month it is charged for. Teacher expenses are not included.
             </div>
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", marginBottom: 14 }}>
-              <div><div className="lbl">Office income</div><b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{taka(incomeTotal)}</b></div>
+              <div>
+                <div className="lbl">Office income</div>
+                <b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{taka(officeIncome)}</b>
+                <div className="sub" style={{ fontSize: 11.5, lineHeight: 1.5 }}>
+                  Service charge {taka(sumOf("service"))} · Admission {taka(sumOf("admission"))} · Registration {taka(sumOf("registration"))} · Canteen {sumOf("canteen") < 0 ? `(${taka(-sumOf("canteen"))})` : taka(sumOf("canteen"))} · Other {taka(sumOf("other"))}
+                </div>
+              </div>
               <div>
                 <div className="lbl">Office expenses</div>
                 <b className="mono" style={{ fontSize: 18, color: "var(--ink)" }}>{taka(expenseTotal)}</b>
@@ -179,7 +194,7 @@ export default async function IncomePage({
                   <tfoot>
                     <tr>
                       <td><b style={{ color: "var(--ink)" }}>Total</b></td>
-                      <td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(incomeTotal)}</b></td>
+                      <td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(officeIncome)}</b></td>
                       <td className="n mono"><b style={{ color: "var(--ink)" }}>{taka(expenseTotal)}</b></td>
                       <td className="n"><PL value={profit} /></td>
                     </tr>
