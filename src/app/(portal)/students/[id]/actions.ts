@@ -21,7 +21,6 @@ const fmtTk = (n: number) => "৳" + Number(n).toLocaleString("en-IN", { maximum
 
 export async function recordPayment(_prev: State, formData: FormData): Promise<State> {
   const studentId = String(formData.get("student_id") ?? "");
-  const invoiceId = String(formData.get("invoice_id") ?? "").trim() || null;
   const amountRaw = String(formData.get("amount") ?? "").trim();
   const method = String(formData.get("method") ?? "cash");
   const received_on = String(formData.get("received_on") ?? "").trim();
@@ -31,24 +30,41 @@ export async function recordPayment(_prev: State, formData: FormData): Promise<S
   if (!studentId) return { error: "Missing student." };
   if (!amountRaw || Number.isNaN(amount) || amount <= 0) return { error: "Enter a valid amount." };
 
+  const lineIds = formData.getAll("line_ids").map(String).filter(Boolean);
+
   const supabase = await createClient();
-  // The invoice the payment was taken against is settled first; anything over goes to the
-  // oldest open invoice, then stays as advance credit.
-  const { error } = await supabase.rpc("fn_record_payment", {
+  // The ticked items are paid in the order shown, each up to what is left on it. Anything over
+  // goes to the oldest open invoice, then stays as advance credit.
+  const { error } = await supabase.rpc("fn_record_payment_items", {
     p_student_id: studentId,
     p_amount: amount,
     p_method: method,
     p_received_on: received_on || null,
     p_note: note || null,
-    p_discount_invoice_id: invoiceId,
-    p_discount_amount: null,
-    p_discount_note: null,
+    p_line_ids: lineIds,
   });
 
   if (error) return { error: "Could not record the payment: " + error.message };
 
   revalidatePath(`/students/${studentId}`);
   revalidatePath("/students");
+  return { ok: true };
+}
+
+/** Partly paid invoice: put the money already paid on it against the ticked items, top first. */
+export async function setPaidItems(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const invoiceId = String(formData.get("invoice_id") ?? "");
+  const lineIds = formData.getAll("line_ids").map(String).filter(Boolean);
+  if (!invoiceId) return { error: "Missing invoice." };
+  if (lineIds.length === 0) return { error: "Tick the items that have been paid." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_set_paid_items", { p_invoice_id: invoiceId, p_line_ids: lineIds });
+  if (error) return { error: "Could not save: " + error.message };
+
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/reports");
   return { ok: true };
 }
 

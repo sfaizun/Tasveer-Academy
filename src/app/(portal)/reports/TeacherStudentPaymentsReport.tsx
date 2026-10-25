@@ -26,9 +26,9 @@ type Row = {
  * teacher's own O/A Level classes (or, for admin, every teacher's). Expanding a subject
  * lists its currently-enrolled students with what they've been billed and paid.
  *
- * A payment settles a whole invoice, not one line on it, so when an invoice covers more
- * than one subject (or the admission fee), a subject's "Paid" here is that subject's
- * proportional share of the invoice's total paid — an estimate, not a per-subject ledger.
+ * A subject's "Paid" is what was paid on that subject's own fee: the fees ticked when the
+ * payment was recorded (or set later on a partly paid invoice). Older untagged money keeps
+ * the earlier rule (admission fee first, then the subjects in proportion).
  * `fn_report_teacher_student_payments` does the scoping itself (admin sees everyone,
  * a teacher only their own class groups), matching every other report in this section.
  */
@@ -113,10 +113,11 @@ export default async function TeacherStudentPaymentsReport({
       </summary>
       <SubjectPaymentsAccordion groups={subjectGroups} showTeacherColumn={showTeacherColumn} linkStudents={linkStudents} />
       <div className="sub" style={{ padding: "0 16px 14px" }}>
-        &ldquo;Billed&rdquo; is the subject&apos;s tuition minus its own subject discounts; admission fees
-        and admission discounts are never included. On a fully paid or unpaid invoice the figures are
-        exact. On a partly paid one, the payment is split across the invoice&apos;s fees in proportion
-        to each fee&apos;s amount after its own discount.
+        &ldquo;Billed&rdquo; is the subject&apos;s tuition fee minus the discount applied to that subject only;
+        admission fees and admission discounts are excluded. For fully paid or unpaid invoices, the figures
+        are exact. For partially paid invoices, the payment is allocated only to the specific invoice items
+        selected for payment, as indicated by the tick boxes. The amount paid for each selected subject is
+        recorded against that subject, while admission fees are recorded separately under office income.
       </div>
     </details>
   );

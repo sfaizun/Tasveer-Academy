@@ -476,6 +476,10 @@ table.inv-edit td{vertical-align:top;padding:8px}
 table.inv-edit input,table.inv-edit select{min-width:0}
 .advance-pay{padding:10px 18px 12px;border-bottom:1px solid var(--line2)}
 .advance-pay summary{cursor:pointer;font-size:13px;color:var(--coral)}
+.pay-items{border:1px solid var(--line);border-radius:8px;padding:4px 12px;background:var(--paper)}
+.pay-item{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px solid var(--line2);font-size:13.5px;cursor:pointer}
+.pay-items > div:first-child .pay-item{border-top:0}
+.pay-item input{margin-top:3px;width:16px;height:16px;flex:none;accent-color:var(--coral)}
 
 /* Reports: mock exams grouped by teacher */
 details.mock-teacher{border-top:1px solid var(--line2)}

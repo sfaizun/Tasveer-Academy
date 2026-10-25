@@ -1,7 +1,7 @@
 "use client";
 import { Fragment, useCallback, useState } from "react";
 import { taka, fmtDate } from "@/lib/format";
-import PaymentForm from "./PaymentForm";
+import PaymentForm, { PaidItemsForm, type PayItem } from "./PaymentForm";
 import InvoiceEditor, { LINE_LABEL } from "./InvoiceEditor";
 import { EditForm, VoidForm, type PaymentRow } from "./PaymentsList";
 
@@ -55,20 +55,25 @@ const money = (n: number) => (Number(n) < 0 ? "− " + taka(Math.abs(Number(n)))
 /** One invoice opened up: its charges with their discounts, the payments on it, and (admin)
  * recording a payment against it or editing it. */
 function InvoiceDetail({
-  studentId, inv, payments, canEdit, canVoid,
+  studentId, inv, payments, items, canEdit, canVoid,
 }: {
   studentId: string;
   inv: InvoiceRow;
   payments: PaymentRow[];
+  items: PayItem[];
   canEdit: boolean;
   canVoid: boolean;
 }) {
-  const [mode, setMode] = useState<"pay" | "edit" | null>(null);
+  const [mode, setMode] = useState<"pay" | "edit" | "fix" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [managing, setManaging] = useState<{ id: string; kind: "edit" | "void" } | null>(null);
   const closeMode = useCallback(() => setMode(null), []);
   const paid = useCallback(() => {
     setNotice("Payment recorded.");
+    setMode(null);
+  }, []);
+  const fixed = useCallback(() => {
+    setNotice("Paid items saved.");
     setMode(null);
   }, []);
   const onSaved = useCallback((m: string) => {
@@ -83,6 +88,8 @@ function InvoiceDetail({
     .map((p) => ({ p, applied: (p.payment_allocation ?? []).filter((a) => a.invoice_id === inv.id).reduce((s, a) => s + Number(a.amount), 0) }))
     .filter((x) => x.applied > 0 && x.p.status === "confirmed");
   const editable = canEdit && inv.status !== "void";
+  const itemOf = new Map(items.map((i) => [i.line_id, i]));
+  const showLinePaid = inv.status === "partly_paid";
 
   return (
     <div className="inv-detail">
@@ -98,7 +105,14 @@ function InvoiceDetail({
                   <Fragment key={l.id}>
                     <tr>
                       <td className="sub" style={{ width: 120 }}>{LINE_LABEL[l.type] ?? l.type}</td>
-                      <td>{l.description}</td>
+                      <td>
+                        {l.description}
+                        {showLinePaid && itemOf.has(l.id) && (
+                          <span className="sub" style={{ fontSize: 11.5 }}>
+                            {" · "}paid {taka(itemOf.get(l.id)!.paid)}{itemOf.get(l.id)!.balance > 0 ? `, ${taka(itemOf.get(l.id)!.balance)} left` : ""}
+                          </span>
+                        )}
+                      </td>
                       <td className="n mono" style={{ width: 130 }}>{money(l.amount)}</td>
                     </tr>
                     {ds.map((d) => (
@@ -194,6 +208,11 @@ function InvoiceDetail({
               {mode === "pay" ? "Cancel payment" : "Record payment"}
             </button>
           )}
+          {inv.status === "partly_paid" && items.length > 0 && (
+            <button type="button" className="btn ghost" onClick={() => { setNotice(null); setMode(mode === "fix" ? null : "fix"); }}>
+              {mode === "fix" ? "Cancel" : "Set paid items"}
+            </button>
+          )}
           <button type="button" className="btn ghost" onClick={() => { setNotice(null); setMode("edit"); }}>
             Edit invoice
           </button>
@@ -201,7 +220,12 @@ function InvoiceDetail({
       )}
       {mode === "pay" && (
         <div className="inv-section">
-          <PaymentForm studentId={studentId} invoiceId={inv.id} defaultAmount={Number(inv.balance)} onDone={paid} />
+          <PaymentForm studentId={studentId} invoiceId={inv.id} items={items} onDone={paid} />
+        </div>
+      )}
+      {mode === "fix" && (
+        <div className="inv-section">
+          <PaidItemsForm studentId={studentId} invoiceId={inv.id} items={items} paid={Number(inv.paid)} onDone={fixed} />
         </div>
       )}
     </div>
@@ -212,6 +236,7 @@ export default function InvoicesList({
   studentId,
   invoices,
   payments,
+  items = [],
   outstanding,
   canEdit,
   canVoid,
@@ -220,6 +245,7 @@ export default function InvoicesList({
   studentId: string;
   invoices: InvoiceRow[];
   payments: PaymentRow[];
+  items?: PayItem[];
   outstanding: number;
   canEdit: boolean;
   canVoid: boolean;
@@ -288,7 +314,7 @@ export default function InvoicesList({
                   {isOpen && (
                     <tr>
                       <td colSpan={9} style={{ padding: 0, background: "var(--tint)" }}>
-                        <InvoiceDetail studentId={studentId} inv={inv} payments={payments} canEdit={canEdit} canVoid={canVoid} />
+                        <InvoiceDetail studentId={studentId} inv={inv} payments={payments} items={items.filter((i) => i.invoice_id === inv.id)} canEdit={canEdit} canVoid={canVoid} />
                       </td>
                     </tr>
                   )}

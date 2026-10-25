@@ -3,7 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
 import { taka, fmtDate } from "@/lib/format";
-import PaymentForm from "./PaymentForm";
+import PaymentForm, { type PayItem } from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
 import EditStudentForm from "./EditStudentForm";
@@ -154,6 +154,20 @@ export default async function StudentDetail({
       id: e.id,
       label: `${examTitle(e)} · ৳${Number(e.fee).toLocaleString("en-IN")}`,
     }));
+
+  // Each fee on the invoices with what is paid and left on it, for the payment tick boxes.
+  const invNo = new Map(((invoices ?? []) as any[]).map((i) => [i.id, i]));
+  const { data: itemRows } = isAdmin && showFees ? await supabase.rpc("fn_invoice_items", { p_student_id: id }) : { data: [] };
+  const payItems: PayItem[] = ((itemRows ?? []) as any[])
+    .map((r) => ({
+      line_id: r.line_id, invoice_id: r.invoice_id, invoice_no: invNo.get(r.invoice_id)?.invoice_no, type: r.type, description: r.description,
+      net: Number(r.net), paid: Number(r.paid), balance: Number(r.balance), ticked: !!r.ticked, ord: Number(r.ord),
+    }))
+    .sort((a, b) => {
+      const ia = invNo.get(a.invoice_id), ib = invNo.get(b.invoice_id);
+      return String(ia?.due_on ?? "").localeCompare(String(ib?.due_on ?? "")) || String(ia?.billing_month ?? "").localeCompare(String(ib?.billing_month ?? "")) || a.invoice_id.localeCompare(b.invoice_id) || a.ord - b.ord;
+    });
+  const openItems = payItems.filter((i) => ["unpaid", "partly_paid"].includes(invNo.get(i.invoice_id)?.status));
 
   const outstanding = (invoices ?? [])
     .filter((i: any) => i.status !== "void" && i.status !== "waived")
@@ -394,6 +408,7 @@ export default async function StudentDetail({
           studentId={id}
           invoices={(invoices ?? []) as any}
           payments={(payments ?? []) as PaymentRow[]}
+          items={payItems}
           outstanding={outstanding}
           canEdit={isAdmin}
           canVoid={isOwner}
@@ -404,9 +419,9 @@ export default async function StudentDetail({
           <div className="phead"><div className="ptitle">Payment history</div></div>
           {isAdmin && (
             <details className="advance-pay">
-              <summary>Record a payment without choosing an invoice (advance or lump sum)</summary>
+              <summary>Record a payment across invoices (tick the fees), or as advance credit</summary>
               <div style={{ padding: "12px 0 4px" }}>
-                <PaymentForm studentId={id} />
+                <PaymentForm studentId={id} items={openItems} />
               </div>
             </details>
           )}
