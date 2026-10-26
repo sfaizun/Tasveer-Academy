@@ -81,7 +81,7 @@ export default async function TestMarksPage({
     mine = t ? `teacher_id.eq.${t.id}${groups.length ? `,class_group_id.in.(${groups.join(",")})` : ""}` : "id.eq.00000000-0000-0000-0000-000000000000";
   }
   let enrolQ = supabase.from("enrolment")
-    .select("student_id, subject_id, student(full_name, reg_no), subject(name, level, sort_order, programme(code))")
+    .select("student_id, subject_id, student(full_name, reg_no), subject(name, level, sort_order, papers, programme(code))")
     .eq("status", "active");
   if (mine) enrolQ = enrolQ.or(mine);
   // Marks stay visible after a subject ends, so the teacher's subjects include past enrolments.
@@ -95,7 +95,7 @@ export default async function TestMarksPage({
     isAdmin ? supabase.from("teacher").select("id, full_name").order("full_name") : Promise.resolve({ data: [] as any[] }),
     pairsQ,
     supabase.from("mock_registration")
-      .select("student_id, subject_id, status, student(full_name, reg_no), mock_exam(id, series, exam_date, teacher_id, status, subject_id, subject(name, level, programme(code)))")
+      .select("student_id, subject_id, status, student(full_name, reg_no), mock_exam(id, series, exam_date, teacher_id, status, subject_id, subject(name, level, papers, programme(code)))")
       .neq("status", "withdrawn"),
   ]);
 
@@ -106,7 +106,7 @@ export default async function TestMarksPage({
     if (!e.student || !e.subject) continue;
     const s: StudentOpt = byStudent.get(e.student_id) ?? { id: e.student_id, name: e.student.full_name, reg_no: e.student.reg_no, subjects: [] };
     const label = subjectLabel(e.subject);
-    if (!s.subjects.some((x) => x.id === e.subject_id)) s.subjects.push({ id: e.subject_id, label, scale: scaleForProgramme(e.subject.programme?.code) });
+    if (!s.subjects.some((x) => x.id === e.subject_id)) s.subjects.push({ id: e.subject_id, label, scale: scaleForProgramme(e.subject.programme?.code), papers: e.subject.papers ?? [] });
     byStudent.set(e.student_id, s);
     subjectNames.set(e.subject_id, label);
   }
@@ -123,7 +123,7 @@ export default async function TestMarksPage({
     const opt: MockOpt = {
       id: ex.id, subject_id: ex.subject_id, name: ex.series || "Mock exam", date: ex.exam_date,
       label: `${label}: ${ex.series || "Mock exam"}${ex.exam_date ? ` (${fmtDate(ex.exam_date)})` : ""}`,
-      scale: scaleForProgramme(ex.subject?.programme?.code),
+      scale: scaleForProgramme(ex.subject?.programme?.code), papers: ex.subject?.papers ?? [],
     };
     s.mocks = [...(s.mocks ?? []).filter((m) => m.id !== opt.id), opt];
     byStudent.set(r.student_id, s);
@@ -193,7 +193,7 @@ export default async function TestMarksPage({
             <ExportCsvButton
               filename={`test-marks-${from || "all"}-to-${to}`}
               headers={["Date", "Student ID", "Student", "Subject", "Teacher", "Test", "Marks", "Out of", "Percentage", "Grade", "Remarks", "Attachment"]}
-              rows={rows.map((r) => [r.test_date, r.reg_no ?? "", r.student_name, r.subject_label, r.teacher_name ?? "", r.test_name, r.marks, r.out_of, r.percentage, r.grade, r.remarks ?? "", r.attachment_name ?? ""])}
+              rows={rows.map((r) => [r.test_date, r.reg_no ?? "", r.student_name, r.subject_label, r.teacher_name ?? "", r.title, r.marks, r.out_of, r.percentage, r.grade, r.remarks ?? "", r.attachment_name ?? ""])}
             />
             <PrintButton />
           </div>

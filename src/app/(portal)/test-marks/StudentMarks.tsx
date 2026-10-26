@@ -78,7 +78,7 @@ function SubjectRows({ label, marks }: { label: string; marks: MarkRow[] }) {
       {marks.map((r) => (
         <tr key={r.id}>
           <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmtDate(r.test_date)}</td>
-          <td>{r.kind === "mock" && <span className="st part" style={{ marginRight: 6 }}>Mock</span>}{r.test_name}</td>
+          <td>{r.kind === "mock" && <span className="st part" style={{ marginRight: 6 }}>Mock</span>}{r.title}</td>
           <td className="n mono" style={{ whiteSpace: "nowrap" }}>{fmtNum(r.marks)} / {fmtNum(r.out_of)}</td>
           <td className="n mono">{r.percentage.toFixed(2)}</td>
           <td><span className={`grade ${gradeTone(r.grade, r.grade_scale)}`}>{r.grade}</span></td>

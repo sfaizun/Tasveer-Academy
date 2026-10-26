@@ -6,9 +6,9 @@ import { ATTACHMENT_ACCEPT, checkAttachment } from "@/lib/attachments";
 import { type GradeScale, gradeFor, percentOf } from "@/lib/grade";
 import { addTestMark, updateTestMark } from "./actions";
 
-export type SubjectOpt = { id: string; label: string; scale: GradeScale };
+export type SubjectOpt = { id: string; label: string; scale: GradeScale; papers?: string[] };
 /** A mock exam the student is registered for (its marks are entered as a "Mock exam"). */
-export type MockOpt = { id: string; subject_id: string; label: string; name: string; date: string; scale: GradeScale };
+export type MockOpt = { id: string; subject_id: string; label: string; name: string; date: string; scale: GradeScale; papers?: string[] };
 export type StudentOpt = { id: string; name: string; reg_no: string | null; subjects: SubjectOpt[]; mocks?: MockOpt[] };
 export type MarkRow = {
   id: string;
@@ -21,6 +21,9 @@ export type MarkRow = {
   kind: "test" | "mock";
   mock_exam_id: string | null;
   mock_no: string | null;
+  paper: string | null;
+  /** Test name with the paper, e.g. "Mock Exam 2 (Paper 1)". */
+  title: string;
   test_name: string;
   test_date: string;
   marks: number;
@@ -63,6 +66,7 @@ export default function TestMarkForm({
   const [kind, setKind] = useState<"test" | "mock">(mark?.kind ?? "test");
   const [mockId, setMockId] = useState(mark?.mock_exam_id ?? "");
   const [mockNo, setMockNo] = useState(mark?.mock_no ? String(mark.mock_no) : "");
+  const [paper, setPaper] = useState(mark?.paper ?? "");
   const [marks, setMarks] = useState(mark ? String(mark.marks) : "");
   const [outOf, setOutOf] = useState(mark ? String(mark.out_of) : "100");
 
@@ -81,6 +85,9 @@ export default function TestMarkForm({
 
   const mocks = student?.mocks ?? [];
   const mock = mocks.find((m) => m.id === mockId);
+  // Paper or unit of the subject (none for subjects with a single paper).
+  const papers = (kind === "mock" ? mock?.papers : subjects.find((s) => s.id === subjectId)?.papers) ?? [];
+  const paperLabel = papers.length && papers.every((p) => p.startsWith("Paper")) ? "Paper" : "Unit";
   const pct = marks.trim() && outOf.trim() ? percentOf(Number(marks), Number(outOf)) : null;
   const scale: GradeScale = (kind === "mock" ? mock?.scale : subjects.find((s) => s.id === subjectId)?.scale) ?? mark?.grade_scale ?? "junior";
   const autoGrade = marks.trim() && outOf.trim() ? gradeFor(pct, scale) : null;
@@ -95,6 +102,7 @@ export default function TestMarkForm({
       setSubjectId(subjects.length === 1 ? subjects[0].id : "");
       setMockId("");
       setMockNo("");
+      setPaper("");
       setMarks("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -154,7 +162,7 @@ export default function TestMarkForm({
         )}
         <div className="field">
           <label className="lbl" htmlFor={`tm-k-${id}`}>Type<Req /></label>
-          <select id={`tm-k-${id}`} style={inputStyle} name="kind" value={kind} onChange={(e) => setKind(e.target.value as "test" | "mock")}>
+          <select id={`tm-k-${id}`} style={inputStyle} name="kind" value={kind} onChange={(e) => { setKind(e.target.value as "test" | "mock"); setPaper(""); }}>
             <option value="test">Class test</option>
             <option value="mock">Mock exam</option>
           </select>
@@ -163,7 +171,7 @@ export default function TestMarkForm({
           <>
             <div className="field">
               <label className="lbl" htmlFor={`tm-mx-${id}`}>Mock exam<Req /></label>
-              <select id={`tm-mx-${id}`} style={inputStyle} name="mock_exam_id" required value={mockId} onChange={(e) => setMockId(e.target.value)} disabled={!studentId}>
+              <select id={`tm-mx-${id}`} style={inputStyle} name="mock_exam_id" required value={mockId} onChange={(e) => { setMockId(e.target.value); setPaper(""); }} disabled={!studentId}>
                 <option value="" disabled>{studentId ? (mocks.length ? "Choose…" : "Not registered for a mock") : "Choose the student first"}</option>
                 {mocks.map((m) => <option key={m.id} value={m.id}>{m.label}</option>)}
               </select>
@@ -184,7 +192,7 @@ export default function TestMarkForm({
           <>
             <div className="field">
               <label className="lbl" htmlFor={`tm-sub-${id}`}>Subject<Req /></label>
-              <select id={`tm-sub-${id}`} style={inputStyle} name="subject_id" required value={subjectId} onChange={(e) => setSubjectId(e.target.value)} disabled={!studentId}>
+              <select id={`tm-sub-${id}`} style={inputStyle} name="subject_id" required value={subjectId} onChange={(e) => { setSubjectId(e.target.value); setPaper(""); }} disabled={!studentId}>
                 <option value="" disabled>{studentId ? (subjects.length ? "Choose…" : "No subjects") : "Choose the student first"}</option>
                 {subjects.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
@@ -198,6 +206,15 @@ export default function TestMarkForm({
               <input id={`tm-d-${id}`} style={inputStyle} type="date" name="test_date" required max={today} defaultValue={mark?.test_date ?? today} />
             </div>
           </>
+        )}
+        {papers.length > 0 && (
+          <div className="field">
+            <label className="lbl" htmlFor={`tm-p-${id}`}>{paperLabel}<Req /></label>
+            <select id={`tm-p-${id}`} style={inputStyle} name="paper" required value={papers.includes(paper) ? paper : ""} onChange={(e) => setPaper(e.target.value)}>
+              <option value="" disabled>Choose…</option>
+              {papers.map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
+          </div>
         )}
       </div>
 

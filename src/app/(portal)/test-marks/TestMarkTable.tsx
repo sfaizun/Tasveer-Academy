@@ -53,7 +53,7 @@ export default function TestMarkTable({
                 {showTeacher && <td className="sub">{r.teacher_name ?? "-"}</td>}
                 <td>
                   {r.kind === "mock" && <span className="st part" style={{ marginRight: 6 }}>Mock</span>}
-                  {r.test_name}
+                  {r.title}
                   {r.remarks && <div className="sub" style={{ whiteSpace: "pre-wrap" }}>{r.remarks}</div>}
                 </td>
                 <td className="n mono" style={{ whiteSpace: "nowrap" }}>{fmtNum(r.marks)} / {fmtNum(r.out_of)}</td>
