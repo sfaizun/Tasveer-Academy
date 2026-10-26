@@ -76,6 +76,10 @@ export async function saveBulkPaper(input: {
   const { data: existing } = await supabase.from("past_paper").select("id, paper, note")
     .eq("subject_id", input.subject_id).eq("year", input.year).eq("session", input.session);
   const match = ((existing ?? []) as { id: string; paper: string; note: string | null }[]).find((p) => p.paper.trim().toLowerCase() === input.paper.trim().toLowerCase());
+  if (!match && !files.some((f) => f.kind === "qp")) {
+    await dropUploads();
+    return { error: "This paper is not on the portal yet, so its question paper is needed. Upload the question paper with it." };
+  }
   const { data, error } = await supabase.rpc("fn_save_past_paper", {
     p_id: match?.id ?? null, p_subject_id: input.subject_id, p_year: input.year, p_session: input.session,
     p_paper: input.paper.trim(), p_note: match?.note ?? null, p_files: files, p_remove_kinds: [],

@@ -104,7 +104,7 @@ export default function BulkUpload({ subjects, thisYear }: { subjects: SubjectOp
   }
 
   const update = (key: string, patch: Partial<Row>) => setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)));
-  const problem = (r: Row) => (!r.subjectId ? "Choose the subject" : !r.paper.trim() ? "Enter the paper" : !r.files.qp ? "No question paper" : null);
+  const problem = (r: Row) => (!r.subjectId ? "Choose the subject" : !r.paper.trim() ? "Enter the paper" : null);
   const readyRows = rows.filter((r) => r.status !== "done" && !problem(r));
 
   async function uploadAll() {
@@ -162,7 +162,7 @@ export default function BulkUpload({ subjects, thisYear }: { subjects: SubjectOp
           <label className="lbl" htmlFor="bu-files">Files</label>
           <input id="bu-files" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => pick(e.target.files)} style={{ ...input, padding: 8 }} disabled={busy} />
           <span className="sub">
-            Select all the files together (unzip them first). Names like &ldquo;Physics may 2025 question paper 1&rdquo; and
+            Select all the files together (unzip them first). Mark schemes or examiner reports on their own are added to papers already uploaded. Names like &ldquo;Physics may 2025 question paper 1&rdquo; and
             &ldquo;Physics may 2025 Mark Scheme paper 1&rdquo; are matched automatically.
           </span>
         </div>
@@ -201,6 +201,7 @@ export default function BulkUpload({ subjects, thisYear }: { subjects: SubjectOp
                         : r.status === "failed" ? <span className="st over"><span className="dot" />Failed</span>
                         : p ? <span className="st over"><span className="dot" />{p}</span>
                         : <span className="st due"><span className="dot" />Ready</span>}
+                      {r.status === "ready" && !p && !r.files.qp && <div className="sub" style={{ whiteSpace: "normal", maxWidth: 260 }}>No question paper: adds to the paper already on the portal</div>}
                       {r.note && <div className="sub" style={{ whiteSpace: "normal", maxWidth: 260 }}>{r.note}</div>}
                     </td>
                   </tr>
