@@ -24,7 +24,7 @@ const input: React.CSSProperties = {
   background: "var(--paper)", color: "var(--ink)", fontFamily: "inherit", width: "100%",
 };
 
-function Review({ row, onDone }: { row: HomeworkRow; onDone: () => void }) {
+export function Review({ row, onDone }: { row: HomeworkRow; onDone: () => void }) {
   const [state, action, pending] = useActionState(reviewHomework, null);
   useEffect(() => { if (state?.ok) onDone(); }, [state]); // eslint-disable-line react-hooks/exhaustive-deps
   return (

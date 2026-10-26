@@ -102,7 +102,7 @@ export default async function ReportCardsPage({ searchParams }: { searchParams: 
   const cards = (monthCards ?? []) as { student_id: string; name: string; reg_no: string | null; subjects: number; commented: number }[];
   const batch = groups.find((g) => g.id === sp.batch) ?? (isTeacher && groups.length === 1 ? groups[0] : undefined);
   const { data: batchData } = batch ? await supabase.rpc("fn_report_batch", { p_class_group_id: batch.id, p_month: `${month}-01` }) : { data: null };
-  const b = batchData as { set_count: number | null; missing: number; can_edit: boolean; students: RcBatchRow[] } | null;
+  const b = batchData as { set_count: number | null; set_from_tasks?: boolean; missing: number; can_edit: boolean; students: RcBatchRow[] } | null;
 
   return (
     <>
@@ -145,7 +145,7 @@ export default async function ReportCardsPage({ searchParams }: { searchParams: 
             {b.students.length === 0 ? (
               <div className="sub" style={{ padding: "14px 18px" }}>No report cards for this batch in {monthTitle(month)} yet.</div>
             ) : (
-              <BatchEditor batch={batch.id} month={month} setCount={b.set_count} rows={b.students} comments={comments} canEdit={b.can_edit && !readOnly} />
+              <BatchEditor batch={batch.id} month={month} setCount={b.set_count} setFromTasks={!!b.set_from_tasks} rows={b.students} comments={comments} canEdit={b.can_edit && !readOnly} />
             )}
           </div>
         )}

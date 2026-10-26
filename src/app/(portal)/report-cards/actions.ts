@@ -43,21 +43,6 @@ export async function saveRcComments(_prev: State, f: FormData): Promise<State> 
   return { ok: true };
 }
 
-/** How many homework/assignments the batch was set in the month. */
-export async function setHomeworkCount(_prev: State, f: FormData): Promise<State> {
-  const batch = String(f.get("batch") ?? "");
-  const month = String(f.get("month") ?? "");
-  const n = Number(f.get("count"));
-  if (!isId(batch)) return { error: "Missing batch." };
-  if (!isMonth(month)) return { error: "Missing month." };
-  if (!Number.isInteger(n) || n < 0 || n > 100) return { error: "Enter a whole number from 0 to 100." };
-  const supabase = await createClient();
-  const { error } = await supabase.rpc("fn_set_homework_set", { p_class_group_id: batch, p_month: `${month}-01`, p_count: n });
-  if (error) return { error: tidy(error.message) };
-  done();
-  return { ok: true };
-}
-
 /** Office: add a comment to the list, or edit / retire one. */
 export async function saveCommentOption(_prev: State, f: FormData): Promise<State> {
   const id = String(f.get("id") ?? "");

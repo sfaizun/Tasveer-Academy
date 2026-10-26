@@ -1,6 +1,6 @@
 "use client";
 import { useActionState, useEffect, useState } from "react";
-import { saveRcComments, setHomeworkCount } from "./actions";
+import { saveRcComments } from "./actions";
 import { CATEGORIES, attendance, homework, type RcBatchRow, type RcComment } from "./shared";
 
 const input: React.CSSProperties = {
@@ -71,35 +71,31 @@ function Row({ row, comments, canEdit, month }: { row: RcBatchRow; comments: RcC
   );
 }
 
-function HomeworkSet({ batch, month, value, canEdit }: { batch: string; month: string; value: number | null; canEdit: boolean }) {
-  const [state, action, pending] = useActionState(setHomeworkCount, null);
+/** Homework set this month: counted from the Homework page (homework due in the month). */
+function HomeworkSet({ value, fromTasks }: { value: number | null; fromTasks: boolean }) {
   return (
-    <form action={action} style={{ display: "flex", gap: 10, alignItems: "flex-end", flexWrap: "wrap", padding: "12px 18px", borderBottom: "1px solid var(--line)" }}>
-      <input type="hidden" name="batch" value={batch} />
-      <input type="hidden" name="month" value={month} />
-      <div className="field" style={{ maxWidth: 260 }}>
-        <label className="lbl" htmlFor="rc-hw">Homework / assignments set this month</label>
-        <input id="rc-hw" name="count" type="number" min={0} max={100} step={1} required defaultValue={value ?? ""} style={{ ...input, width: 120 }} disabled={!canEdit} />
-      </div>
-      {canEdit && <button className="btn ghost" type="submit" disabled={pending} style={{ fontSize: 12, padding: "8px 12px" }}>{pending ? "Saving…" : "Save"}</button>}
+    <div style={{ display: "flex", gap: 10, alignItems: "baseline", flexWrap: "wrap", padding: "12px 18px", borderBottom: "1px solid var(--line)" }}>
+      <span className="lbl" style={{ margin: 0 }}>Homework set this month</span>
+      <b className="mono" style={{ color: "var(--ink)" }}>{value ?? 0}</b>
       <span className="sub">
-        {state?.error ? <span style={{ color: "var(--crit)" }}>{state.error}</span>
-          : state?.ok ? <span style={{ color: "var(--ok)" }}>Saved.</span>
-          : value == null ? "Not set yet. Completion is worked out from each student's homework submissions for this subject."
-          : "Completion = each student's submissions for this subject, out of this number."}
+        {fromTasks
+          ? "From the Homework page: homework for this batch due this month. Completion = each student's submissions, late ones included."
+          : value != null
+            ? "Entered earlier on this page. From now on it is counted from the Homework page."
+            : "No homework for this batch is due this month on the Homework page."}
       </span>
-    </form>
+    </div>
   );
 }
 
 /** A batch's report card rows for one month: homework set count, then each student's figures with
  * the teacher's comments (up to 2 from the list, plus an optional note). */
-export default function BatchEditor({ batch, month, setCount, rows, comments, canEdit }: {
-  batch: string; month: string; setCount: number | null; rows: RcBatchRow[]; comments: RcComment[]; canEdit: boolean;
+export default function BatchEditor({ month, setCount, setFromTasks, rows, comments, canEdit }: {
+  batch: string; month: string; setCount: number | null; setFromTasks: boolean; rows: RcBatchRow[]; comments: RcComment[]; canEdit: boolean;
 }) {
   return (
     <>
-      <HomeworkSet batch={batch} month={month} value={setCount} canEdit={canEdit} />
+      <HomeworkSet value={setCount} fromTasks={setFromTasks} />
       {rows.map((r) => <Row key={r.id} row={r} comments={comments} canEdit={canEdit} month={month} />)}
     </>
   );
