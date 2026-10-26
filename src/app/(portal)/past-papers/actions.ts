@@ -61,3 +61,31 @@ export async function removePaper(_prev: State, formData: FormData): Promise<Sta
   revalidatePath("/past-papers");
   return { ok: true };
 }
+
+/** Bulk upload: save one paper (adds to it, replacing files of the same kind, if it is already there). */
+export async function saveBulkPaper(input: {
+  subject_id: string; year: number; session: string; paper: string; files: FileIn[];
+}): Promise<{ ok?: boolean; error?: string; updated?: boolean }> {
+  const supabase = await createClient();
+  const dropUploads = async () => { if (input.files.length) await supabase.storage.from(BUCKET).remove(input.files.map((f) => f.path)); };
+  if (!isId(input.subject_id) || !Number.isInteger(input.year) || !["jan", "jun", "nov"].includes(input.session) || !input.paper.trim()) {
+    await dropUploads();
+    return { error: "Missing subject, year, session or paper." };
+  }
+  const files = input.files.filter((f) => KINDS.includes(f.kind));
+  const { data: existing } = await supabase.from("past_paper").select("id, paper, note")
+    .eq("subject_id", input.subject_id).eq("year", input.year).eq("session", input.session);
+  const match = ((existing ?? []) as { id: string; paper: string; note: string | null }[]).find((p) => p.paper.trim().toLowerCase() === input.paper.trim().toLowerCase());
+  const { data, error } = await supabase.rpc("fn_save_past_paper", {
+    p_id: match?.id ?? null, p_subject_id: input.subject_id, p_year: input.year, p_session: input.session,
+    p_paper: input.paper.trim(), p_note: match?.note ?? null, p_files: files, p_remove_kinds: [],
+  });
+  if (error) { await dropUploads(); return { error: tidy(error.message) }; }
+  const removed = ((data as { removed?: string[] } | null)?.removed ?? []).filter(Boolean);
+  if (removed.length) await supabase.storage.from(BUCKET).remove(removed);
+  return { ok: true, updated: !!match };
+}
+
+export async function refreshPapers() {
+  revalidatePath("/past-papers");
+}

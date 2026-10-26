@@ -7,6 +7,7 @@ import { subjectLabel } from "@/lib/mock";
 import { requirePage } from "@/lib/require-page";
 import { viewReadOnly } from "@/lib/access";
 import PaperForm, { SESSIONS, type PaperRow, type SubjectOpt } from "./PaperForm";
+import BulkUpload from "./BulkUpload";
 import PapersTable from "./PapersTable";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +44,7 @@ export default async function PastPapersPage({ searchParams }: {
   const allSubjects: SubjectOpt[] = ((subjData ?? []) as any[])
     .filter((s) => s.programme?.code === "o_level" || s.programme?.code === "a_level")
     .sort((a, b) => (a.programme.code === b.programme.code ? 0 : a.programme.code === "o_level" ? -1 : 1) || a.name.localeCompare(b.name) || String(a.level ?? "").localeCompare(String(b.level ?? "")))
-    .map((s) => ({ id: s.id, label: subjectLabel(s), programme: s.programme.code }));
+    .map((s) => ({ id: s.id, label: subjectLabel(s), programme: s.programme.code, name: s.name, level: s.level ?? null }));
   const subjectById = new Map(allSubjects.map((s) => [s.id, s]));
   const manageable = ((mine ?? []) as any[]).map((x) => (typeof x === "string" ? x : x.fn_past_paper_subjects ?? x.id)).filter(Boolean) as string[];
   const manageSubjects = allSubjects.filter((s) => manageable.includes(s.id));
@@ -99,6 +100,17 @@ export default async function PastPapersPage({ searchParams }: {
             </summary>
             <div style={{ padding: 18 }}>
               <PaperForm subjects={manageSubjects} thisYear={thisYear} />
+            </div>
+          </details>
+        )}
+        {manageSubjects.length > 0 && (
+          <details className="panel collapsible no-print">
+            <summary className="phead">
+              <div className="ptitle">Upload many papers at once</div>
+              <div className="sub">Choose all the PDFs of one exam session; each file is matched to its subject and paper by its name</div>
+            </summary>
+            <div style={{ padding: 18 }}>
+              <BulkUpload subjects={manageSubjects} thisYear={thisYear} />
             </div>
           </details>
         )}

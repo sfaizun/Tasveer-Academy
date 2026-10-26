@@ -3,7 +3,7 @@ import { useActionState, useEffect, useRef, useState, useTransition } from "reac
 import { fileSize, uploadStudyFiles, type UploadedFile } from "@/lib/files";
 import { savePaper } from "./actions";
 
-export type SubjectOpt = { id: string; label: string; programme: string };
+export type SubjectOpt = { id: string; label: string; programme: string; name?: string; level?: string | null };
 export type PaperFile = { id: string; kind: string; name: string; size: number | null };
 export type PaperRow = {
   id: string;
