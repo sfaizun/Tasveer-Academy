@@ -2,10 +2,11 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getViewer } from "@/lib/supabase/viewer";
 import ThemeToggle from "@/components/ThemeToggle";
-import { taka, fmtDate } from "@/lib/format";
+import { taka, fmtDate, dhakaTodayISO } from "@/lib/format";
 import PaymentForm, { type PayItem } from "./PaymentForm";
 import PaymentsList, { type PaymentRow } from "./PaymentsList";
 import StatusForm from "./StatusForm";
+import PromotePanel, { type PromotionRow } from "./PromotePanel";
 import EditStudentForm from "./EditStudentForm";
 import EnrolmentsPanel from "./EnrolmentsPanel";
 import GuardiansPanel from "./GuardiansPanel";
@@ -169,6 +170,27 @@ export default async function StudentDetail({
     });
   const openItems = payItems.filter((i) => ["unpaid", "partly_paid"].includes(invNo.get(i.invoice_id)?.status));
 
+  // Promotion: the classes a junior student can move to, the history, and the first month not billed yet.
+  const [{ data: classRows }, { data: promoRows }, { data: firstUnbilled }] = await Promise.all([
+    supabase.from("class_level").select("id, name, sort_order, programme(code)").order("sort_order"),
+    supabase.from("student_promotion")
+      .select("id, effective_month, note, created_by, created_at, undone_at, from_programme:from_programme_id(name, code), from_class:from_class_level_id(name), to_programme:to_programme_id(name, code), to_class:to_class_level_id(name)")
+      .eq("student_id", id).order("created_at", { ascending: false }),
+    isAdmin ? supabase.rpc("_first_unbilled_month", { p_student: id }) : Promise.resolve({ data: null }),
+  ]);
+  const juniorClasses = ((classRows ?? []) as any[]).filter((c) => c.programme?.code === "junior").map((c) => ({ id: c.id, name: c.name, sort: c.sort_order }));
+  const promoBy = new Map<string, string>();
+  const byIds = [...new Set(((promoRows ?? []) as any[]).map((r) => r.created_by).filter(Boolean))];
+  if (byIds.length) {
+    const { data: us } = await supabase.from("app_user").select("id, full_name").in("id", byIds);
+    for (const u of (us ?? []) as any[]) promoBy.set(u.id, u.full_name);
+  }
+  const levelLabel = (prog: any, cls: any) => (prog?.code === "junior" ? cls?.name ?? "Junior" : prog?.name ?? "-");
+  const promotions: PromotionRow[] = ((promoRows ?? []) as any[]).map((r) => ({
+    id: r.id, from_label: levelLabel(r.from_programme, r.from_class), to_label: levelLabel(r.to_programme, r.to_class),
+    effective_month: r.effective_month, note: r.note, by: promoBy.get(r.created_by) ?? null, created_at: r.created_at, undone_at: r.undone_at,
+  }));
+
   const outstanding = (invoices ?? [])
     .filter((i: any) => i.status !== "void" && i.status !== "waived")
     .reduce((sum: number, i: any) => sum + Number(i.balance || 0), 0);
@@ -313,6 +335,24 @@ export default async function StudentDetail({
             <div style={{ padding: "0 18px 18px" }}>
               <div className="lbl" style={{ marginBottom: 8 }}>Change status</div>
               <StatusForm studentId={id} status={s.status} />
+            </div>
+          )}
+          {isAdmin && (s.status === "active" && !isMockOnly || promotions.length > 0) && (
+            <div style={{ padding: "0 18px 18px" }}>
+              <div className="lbl" style={{ marginBottom: 8 }}>Promote to the next class or level</div>
+              <PromotePanel
+                studentId={id}
+                programme={s.programme?.code ?? ""}
+                programmeName={s.programme?.name ?? ""}
+                classLevel={juniorClasses.find((c) => c.id === s.class_level_id) ?? null}
+                classes={juniorClasses}
+                endingSubjects={currentEnrolments.map((e: any) => `${e.subject?.name ?? "Subject"}${e.level ? ` (${String(e.level).toUpperCase()})` : ""}`)}
+                hasCard={!!idCard}
+                firstMonth={String(firstUnbilled ?? "").slice(0, 7) || dhakaTodayISO().slice(0, 7)}
+                thisMonth={dhakaTodayISO().slice(0, 7)}
+                history={promotions}
+                canPromote={s.status === "active" && !isMockOnly}
+              />
             </div>
           )}
         </div>

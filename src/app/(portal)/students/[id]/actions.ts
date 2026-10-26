@@ -576,3 +576,39 @@ export async function voidPayment(_prev: State, formData: FormData): Promise<Sta
   revalidatePath("/students");
   return { ok: true };
 }
+
+/** Office: promote a student to the next class or level from a chosen month. */
+export async function promoteStudent(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const target = String(formData.get("target") ?? "");
+  const month = String(formData.get("effective_month") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  if (!studentId) return { error: "Missing student." };
+  if (!target) return { error: "Choose the new class or level." };
+  if (!/^\d{4}-\d{2}$/.test(month)) return { error: "Choose the month the new class starts." };
+  // "junior:<class id>" for a junior class, otherwise the programme code.
+  const [programme, classId] = target.startsWith("junior:") ? ["junior", target.slice(7)] : [target, null];
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_promote_student", {
+    p_student_id: studentId, p_to_programme: programme, p_to_class_level_id: classId,
+    p_effective_month: `${month}-01`, p_note: note || null,
+  });
+  if (error) return { error: error.message.charAt(0).toUpperCase() + error.message.slice(1) };
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/id-cards");
+  return { ok: true };
+}
+
+export async function undoPromotion(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const id = String(formData.get("promotion_id") ?? "");
+  if (!id) return { error: "Missing promotion." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_undo_promotion", { p_promotion_id: id });
+  if (error) return { error: error.message.charAt(0).toUpperCase() + error.message.slice(1) };
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/id-cards");
+  return { ok: true };
+}
