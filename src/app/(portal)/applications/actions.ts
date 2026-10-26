@@ -29,7 +29,7 @@ export async function setApplicationStatus(_prev: State, formData: FormData): Pr
     if (formData.get("confirm_duplicate") !== "1") {
       const [{ data: app }, { data: students }, { data: openApps }] = await Promise.all([
         supabase.from("application").select("id, ref_no, status, payload").eq("id", id).maybeSingle(),
-        supabase.from("student").select("id, reg_no, full_name, phone, email, status, application_id"),
+        supabase.from("student").select("id, reg_no, full_name, phone, email, status, application_id, guardian(phone)"),
         supabase.from("application").select("id, ref_no, status, payload").in("status", ["submitted", "under_review", "changes_requested"]),
       ]);
       if (app && app.status !== "approved") {
@@ -75,10 +75,49 @@ export async function setApplicationStatus(_prev: State, formData: FormData): Pr
       review_note: note || null,
       reviewed_by: reviewerId,
       reviewed_at: new Date().toISOString(),
+      duplicate_of: null,
     })
     .eq("id", id);
 
   if (error) return { error: "Could not update the application — " + error.message };
+
+  revalidatePath("/applications");
+  return { ok: true };
+}
+
+/** Closes an application that repeats an existing student or application: it is set to Rejected
+ * with "Duplicate of ..." and kept on record (nothing is deleted). */
+export async function markDuplicate(_prev: State, formData: FormData): Promise<State> {
+  const id = String(formData.get("id") ?? "");
+  const of = String(formData.get("duplicate_of") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+  if (!id) return { error: "Missing application." };
+  if (!of) return { error: "Choose or enter the record it repeats." };
+
+  const supabase = await createClient();
+  const { data: cur } = await supabase.from("application").select("status").eq("id", id).maybeSingle();
+  if (cur?.status === "approved") return { error: "An approved application can't be marked as a duplicate." };
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  let reviewerId: string | null = null;
+  if (user) {
+    const { data: me } = await supabase.from("app_user").select("id").eq("auth_id", user.id).maybeSingle();
+    reviewerId = me?.id ?? null;
+  }
+
+  const { error } = await supabase
+    .from("application")
+    .update({
+      status: "rejected",
+      duplicate_of: of,
+      review_note: `Duplicate of ${of}` + (note ? `. ${note}` : ""),
+      reviewed_by: reviewerId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq("id", id);
+  if (error) return { error: "Could not mark it as a duplicate: " + error.message };
 
   revalidatePath("/applications");
   return { ok: true };

@@ -18,9 +18,9 @@ export default async function ApplicationsPage() {
   const [{ data }, { data: studentData }] = await Promise.all([
     supabase
       .from("application")
-      .select("id, ref_no, status, payload, submitted_at, review_note, reviewed_at, created_at")
+      .select("id, ref_no, status, payload, submitted_at, review_note, reviewed_at, created_at, duplicate_of")
       .order("submitted_at", { ascending: false, nullsFirst: false }),
-    supabase.from("student").select("id, reg_no, full_name, phone, email, status, application_id"),
+    supabase.from("student").select("id, reg_no, full_name, phone, email, status, application_id, guardian(phone)"),
   ]);
 
   const applications = (data ?? []) as unknown as ApplicationRow[];

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import ThemeToggle from "@/components/ThemeToggle";
 import { submitApplication, type ApplicationPayload } from "./actions";
 import { cleanPhone, PHONE_ERROR, PHONE_HINT, PHONE_PLACEHOLDER } from "@/lib/phone";
@@ -106,6 +106,7 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<{ ref: string } | null>(null);
   const [slow, setSlow] = useState(false);
+  const sending = useRef(false);
 
   // If a submission is still pending after a few seconds, say so rather than
   // leaving the button reading "Submitting…" with nothing else to go on —
@@ -273,6 +274,8 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    // A second tap while the first is still sending does nothing.
+    if (pending || sending.current) return;
     setError(null);
     const clientError = validateClient();
     if (clientError) {
@@ -323,8 +326,9 @@ export default function ApplyForm({ catalogue }: { catalogue: CatalogueData }) {
       declaration_accepted: accepted,
     };
 
+    sending.current = true;
     startTransition(async () => {
-      const res = await submitApplication(payload);
+      const res = await submitApplication(payload).finally(() => { sending.current = false; });
       if (res.ok) {
         setResult({ ref: res.ref });
       } else {

@@ -2,7 +2,7 @@
 import { Fragment, useActionState, useMemo, useState } from "react";
 import { taka, fmtDate, fmtDateTime } from "@/lib/format";
 import type { DupMatch } from "@/lib/duplicates";
-import { setApplicationStatus } from "./actions";
+import { markDuplicate, setApplicationStatus } from "./actions";
 
 export type ApplicationRow = {
   id: string;
@@ -13,6 +13,7 @@ export type ApplicationRow = {
   review_note: string | null;
   reviewed_at: string | null;
   created_at: string;
+  duplicate_of?: string | null;
 };
 
 const STATUS_OPTIONS = [
@@ -29,7 +30,15 @@ const selStyle: React.CSSProperties = {
   fontFamily: "inherit", minWidth: 180,
 };
 
-function StatusChip({ status }: { status: string }) {
+function StatusChip({ status, duplicateOf }: { status: string; duplicateOf?: string | null }) {
+  if (duplicateOf) {
+    return (
+      <span className="st over" title={`Duplicate of ${duplicateOf}`}>
+        <span className="dot" />
+        Duplicate
+      </span>
+    );
+  }
   const map: Record<string, { cls: string; label: string }> = {
     submitted: { cls: "due", label: "Submitted" },
     under_review: { cls: "part", label: "Under review" },
@@ -161,6 +170,37 @@ function ReviewForm({ appId, currentStatus, matches, canApprove }: { appId: stri
           <a href={`/students/${state.studentId}`}>Open the student</a>
         </span>
       )}
+    </form>
+  );
+}
+
+/** Close this application as a repeat of an existing student or application (kept, not deleted). */
+function DuplicateForm({ appId, matches }: { appId: string; matches: DupMatch[] }) {
+  const [state, action, pending] = useActionState(markDuplicate, null);
+  const options = matches.map((m) => `${m.ref ?? ""}${m.full_name ? ` ${m.full_name}` : ""}`.trim()).filter(Boolean);
+  const [choice, setChoice] = useState(options[0] ?? "");
+  const [other, setOther] = useState("");
+  const value = choice === "__other" || !options.length ? other : choice;
+  return (
+    <form action={action} style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      <input type="hidden" name="id" value={appId} />
+      <input type="hidden" name="duplicate_of" value={value} />
+      {options.length > 0 && (
+        <select style={selStyle} value={choice} onChange={(e) => setChoice(e.target.value)} aria-label="Duplicate of">
+          {options.map((o) => <option key={o} value={o}>{o}</option>)}
+          <option value="__other">Another record…</option>
+        </select>
+      )}
+      {(choice === "__other" || !options.length) && (
+        <input type="text" value={other} onChange={(e) => setOther(e.target.value)} placeholder="Reg. no. or ref no. it repeats"
+          style={{ ...selStyle, minWidth: 200 }} />
+      )}
+      <input type="text" name="note" placeholder="Note (optional)" style={{ ...selStyle, minWidth: 180, flex: "1 1 180px" }} />
+      <button className="btn ghost" type="submit" disabled={pending || !value.trim()} style={{ fontSize: 12, padding: "8px 14px", color: "var(--crit)", borderColor: "var(--crit)" }}>
+        {pending ? "Saving…" : "Mark as duplicate"}
+      </button>
+      {state?.error && <span className="sub" style={{ color: "var(--crit)" }}>{state.error}</span>}
+      {state?.ok && <span className="sub" style={{ color: "var(--ok)" }}>Marked as a duplicate and closed.</span>}
     </form>
   );
 }
@@ -347,6 +387,16 @@ function ApplicationDetail({ app, matches, canApprove }: { app: ApplicationRow; 
         )}
         <ReviewForm appId={app.id} currentStatus={app.status} matches={matches} canApprove={canApprove} />
       </div>
+
+      {app.status !== "approved" && !app.duplicate_of && (
+        <div>
+          <div className="ptitle" style={{ marginBottom: 4 }}>Duplicate?</div>
+          <div className="sub" style={{ marginBottom: 8 }}>
+            If this student has already applied or is already a student, close this application as a duplicate. It is kept on record as Rejected.
+          </div>
+          <DuplicateForm appId={app.id} matches={matches} />
+        </div>
+      )}
     </div>
   );
 }
@@ -416,7 +466,7 @@ export default function ApplicationsTable({
                       </span>
                     </td>
                     <td className="sub">{p.guardian?.phone ?? "—"}</td>
-                    <td className="n"><StatusChip status={app.status} /></td>
+                    <td className="n"><StatusChip status={app.status} duplicateOf={app.duplicate_of} /></td>
                     <td className="n">
                       <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
                         <button
