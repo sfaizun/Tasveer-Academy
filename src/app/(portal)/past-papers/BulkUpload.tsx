@@ -1,7 +1,8 @@
 "use client";
 import { useMemo, useState } from "react";
 import { fileSize, uploadStudyFiles } from "@/lib/files";
-import { SESSIONS, KIND_LABEL, type SubjectOpt } from "./PaperForm";
+import type { SubjectOpt } from "./PaperForm";
+import { SESSIONS, KIND_LABEL } from "./shared";
 import { refreshPapers, saveBulkPaper } from "./actions";
 
 const input: React.CSSProperties = {

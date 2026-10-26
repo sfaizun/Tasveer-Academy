@@ -1,7 +1,8 @@
 "use client";
 import { Fragment, useActionState, useState } from "react";
 import { fileSize } from "@/lib/files";
-import PaperForm, { KIND_LABEL, sessionLabel, type PaperRow, type SubjectOpt } from "./PaperForm";
+import PaperForm, { type PaperRow, type SubjectOpt } from "./PaperForm";
+import { KIND_LABEL, sessionLabel } from "./shared";
 import { removePaper } from "./actions";
 
 function Remove({ id, onCancel }: { id: string; onCancel: () => void }) {

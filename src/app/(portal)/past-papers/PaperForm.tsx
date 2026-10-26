@@ -17,13 +17,7 @@ export type PaperRow = {
   files: PaperFile[];
 };
 
-export const SESSIONS: { value: string; label: string }[] = [
-  { value: "jan", label: "January" },
-  { value: "jun", label: "May/June" },
-  { value: "nov", label: "October/November" },
-];
-export const sessionLabel = (s: string) => SESSIONS.find((x) => x.value === s)?.label ?? s;
-export const KIND_LABEL: Record<string, string> = { qp: "Question paper", ms: "Mark scheme", er: "Examiner report" };
+import { SESSIONS, KIND_LABEL } from "./shared";
 
 const PAPER_ACCEPT = ".pdf,image/jpeg,image/png,image/webp";
 const OK_EXT = ["pdf", "jpg", "jpeg", "png", "webp"];

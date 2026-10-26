@@ -6,7 +6,8 @@ import { dhakaTodayISO } from "@/lib/format";
 import { subjectLabel } from "@/lib/mock";
 import { requirePage } from "@/lib/require-page";
 import { viewReadOnly } from "@/lib/access";
-import PaperForm, { SESSIONS, type PaperRow, type SubjectOpt } from "./PaperForm";
+import PaperForm, { type PaperRow, type SubjectOpt } from "./PaperForm";
+import { SESSIONS } from "./shared";
 import BulkUpload from "./BulkUpload";
 import PapersTable from "./PapersTable";
 
