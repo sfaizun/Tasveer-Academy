@@ -35,7 +35,7 @@ export default function ExportCsvButton({
   return (
     <button
       type="button"
-      className="btn ghost"
+      className="btn ghost no-print"
       style={{ fontSize: 12, padding: "6px 10px" }}
       onClick={(e) => {
         // Some callers place this inside a <summary> (a collapsible report panel's

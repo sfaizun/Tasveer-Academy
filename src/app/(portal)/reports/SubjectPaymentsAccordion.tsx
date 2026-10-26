@@ -1,5 +1,6 @@
 "use client";
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { flushSync } from "react-dom";
 import { taka } from "@/lib/format";
 
 export type StudentPaymentRow = {
@@ -34,6 +35,15 @@ export default function SubjectPaymentsAccordion({
   linkStudents: boolean;
 }) {
   const [open, setOpen] = useState<string | null>(null);
+  // When printing, every subject's students are shown.
+  const [printing, setPrinting] = useState(false);
+  useEffect(() => {
+    const before = () => flushSync(() => setPrinting(true));
+    const after = () => setPrinting(false);
+    window.addEventListener("beforeprint", before);
+    window.addEventListener("afterprint", after);
+    return () => { window.removeEventListener("beforeprint", before); window.removeEventListener("afterprint", after); };
+  }, []);
 
   if (groups.length === 0) {
     return <div className="sub" style={{ padding: "0 16px 16px" }}>No active subject enrolments yet.</div>;
@@ -52,12 +62,12 @@ export default function SubjectPaymentsAccordion({
             <th className="n">Billed</th>
             <th className="n">Paid</th>
             <th className="n">Balance</th>
-            <th className="n"></th>
+            <th className="n no-print"></th>
           </tr>
         </thead>
         <tbody>
           {groups.map((g) => {
-            const isOpen = open === g.class_group_id;
+            const isOpen = open === g.class_group_id || printing;
             const sortedStudents = g.students.slice().sort((a, b) => a.student_name.localeCompare(b.student_name));
             return (
               <Fragment key={g.class_group_id}>
@@ -70,7 +80,7 @@ export default function SubjectPaymentsAccordion({
                   <td className="n mono" style={{ color: g.totalBalance > 0 ? "var(--crit)" : undefined }}>
                     {taka(g.totalBalance)}
                   </td>
-                  <td className="n">
+                  <td className="n no-print">
                     <button
                       className="btn ghost"
                       type="button"

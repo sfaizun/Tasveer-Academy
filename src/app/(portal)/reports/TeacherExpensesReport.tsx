@@ -1,5 +1,6 @@
 import type { createClient } from "@/lib/supabase/server";
 import ExportCsvButton from "@/components/ExportCsvButton";
+import PrintSectionButton from "@/components/PrintSectionButton";
 import { fmtDate, monthName, taka } from "@/lib/format";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -52,6 +53,8 @@ export default async function TeacherExpensesReport({
       <summary className="phead">
         <div className="ptitle">My balance</div>
         <div className="sub">Fee collection (your share of fees received, admission fees excluded) − expenses − service charge, {to.slice(0, 4)}</div>
+        <div className="spacer" />
+        <PrintSectionButton target="my-balance" />
       </summary>
       <div className="tblwrap">
         <table>
@@ -82,8 +85,9 @@ export default async function TeacherExpensesReport({
           headers={["Date", "Details", "Attachment", "Amount"]}
           rows={rows.map((r) => [r.expense_date, r.details, r.attachment_name ?? "", r.amount])}
         />
+        <PrintSectionButton target="my-expenses" />
       </summary>
-      <form method="GET" action="/reports#my-expenses" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", padding: "14px 18px 4px" }}>
+      <form method="GET" action="/reports#my-expenses" className="no-print" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-end", padding: "14px 18px 4px" }}>
         {month && <input type="hidden" name="month" value={month} />}
         <div className="field"><label className="lbl" htmlFor="xe-from">From</label><input id="xe-from" style={inputStyle} type="date" name="exp_from" defaultValue={from} /></div>
         <div className="field"><label className="lbl" htmlFor="xe-to">To</label><input id="xe-to" style={inputStyle} type="date" name="exp_to" defaultValue={to} /></div>

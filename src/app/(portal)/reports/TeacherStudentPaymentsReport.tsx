@@ -1,5 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import ExportCsvButton from "@/components/ExportCsvButton";
+import PrintSectionButton from "@/components/PrintSectionButton";
 import SubjectPaymentsAccordion, { type SubjectGroup } from "./SubjectPaymentsAccordion";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
@@ -91,7 +92,7 @@ export default async function TeacherStudentPaymentsReport({
   );
 
   return (
-    <details className="panel collapsible" open>
+    <details className="panel collapsible" open id={mine ? "my-student-payments" : "student-payments"}>
       <summary className="phead">
         <div className="ptitle">{title}</div>
         <div className="sub">{subtitle}</div>
@@ -110,6 +111,7 @@ export default async function TeacherStudentPaymentsReport({
             Number(r.balance),
           ])}
         />
+        <PrintSectionButton target={mine ? "my-student-payments" : "student-payments"} />
       </summary>
       <SubjectPaymentsAccordion groups={subjectGroups} showTeacherColumn={showTeacherColumn} linkStudents={linkStudents} />
       <div className="sub" style={{ padding: "0 16px 14px" }}>
