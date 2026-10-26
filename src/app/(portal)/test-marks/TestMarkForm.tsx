@@ -20,6 +20,7 @@ export type MarkRow = {
   teacher_name: string | null;
   kind: "test" | "mock";
   mock_exam_id: string | null;
+  mock_no: string | null;
   test_name: string;
   test_date: string;
   marks: number;
@@ -61,6 +62,7 @@ export default function TestMarkForm({
   const [subjectId, setSubjectId] = useState(mark?.subject_id ?? "");
   const [kind, setKind] = useState<"test" | "mock">(mark?.kind ?? "test");
   const [mockId, setMockId] = useState(mark?.mock_exam_id ?? "");
+  const [mockNo, setMockNo] = useState(mark?.mock_no ? String(mark.mock_no) : "");
   const [marks, setMarks] = useState(mark ? String(mark.marks) : "");
   const [outOf, setOutOf] = useState(mark ? String(mark.out_of) : "100");
 
@@ -92,6 +94,7 @@ export default function TestMarkForm({
       ref.current?.reset();
       setSubjectId(subjects.length === 1 ? subjects[0].id : "");
       setMockId("");
+      setMockNo("");
       setMarks("");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -166,6 +169,10 @@ export default function TestMarkForm({
               </select>
               <input type="hidden" name="subject_id" value={mock?.subject_id ?? ""} />
               <input type="hidden" name="test_name" value={mock?.name ?? mark?.test_name ?? "Mock exam"} />
+            </div>
+            <div className="field">
+              <label className="lbl" htmlFor={`tm-mn-${id}`}>Mock number<Req /></label>
+              <input id={`tm-mn-${id}`} style={inputStyle} name="mock_no" required maxLength={50} value={mockNo} onChange={(e) => setMockNo(e.target.value)} placeholder="e.g. 2" />
             </div>
             <div className="field">
               <label className="lbl" htmlFor={`tm-d-${id}`}>Date of exam<Req /></label>
