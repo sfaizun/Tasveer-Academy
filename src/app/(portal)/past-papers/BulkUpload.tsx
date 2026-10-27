@@ -48,22 +48,31 @@ function matchSubject(name: string, subjects: SubjectOpt[]): SubjectOpt | null {
   return best?.s ?? null;
 }
 
+/** The name without its extension, with _ - . as spaces, so "IGCSE_ACCOUNTING_2025_Nov_P1_QP.pdf"
+ * reads as "IGCSE ACCOUNTING 2025 Nov P1 QP". */
+const plain = (name: string) => ` ${name.replace(/\.[a-z0-9]+$/i, "").replace(/[_\-.]+/g, " ")} `;
+
 function kindOf(name: string): Kind {
-  const n = name.toLowerCase();
-  if (/mark\s*scheme|\bms\b/.test(n)) return "ms";
-  if (/examiner'?s?\s*report|\ber\b/.test(n)) return "er";
+  const n = plain(name).toLowerCase();
+  if (/mark\s*scheme|\sms\s/.test(n)) return "ms";
+  if (/examiner'?s?\s*report|\ser\s/.test(n)) return "er";
   return "qp";
 }
 
-/** "paper 1H" gives "Paper 1H", "unit 2" gives "Unit 2", "P3" gives "P3". */
-function paperOf(name: string): string {
-  const n = name.replace(/\.[a-z0-9]+$/i, "");
-  let m = n.match(/paper\s*(\d+\s*[a-z]?)\b/i);
+/** "paper 1H" gives "Paper 1H", "unit 2" gives "Unit 2". "P1" gives "Paper 1" for O Level and "P1"
+ * for A Level (IAL Maths units); "Higher P2" gives "Paper 2H" and "Foundation P1" gives "Paper 1F". */
+function paperOf(name: string, level: string): string {
+  const n = plain(name);
+  let m = n.match(/paper\s*(\d+\s*[a-z]?)\s/i);
   if (m) return `Paper ${m[1].replace(/\s+/g, "").toUpperCase()}`;
   m = n.match(/unit\s*(\d+)/i);
   if (m) return `Unit ${m[1]}`;
-  m = n.match(/\b([PSM][1-4])\b/);
-  if (m) return m[1];
+  m = n.match(/\s([PSM])\s?([1-4])([HF]?)\s/i);
+  if (m) {
+    const tier = m[3] ? m[3].toUpperCase() : /\shigher\s/i.test(n) ? "H" : /\sfoundation\s/i.test(n) ? "F" : "";
+    if (level === "o_level" && m[1].toUpperCase() === "P") return `Paper ${m[2]}${tier}`;
+    return `${m[1].toUpperCase()}${m[2]}`;
+  }
   return "";
 }
 
@@ -90,7 +99,7 @@ export default function BulkUpload({ subjects, thisYear }: { subjects: SubjectOp
       if (!OK_EXT.includes(ext)) { bad.push(`${f.name} (not a PDF or photo)`); continue; }
       if (f.size > MAX) { bad.push(`${f.name} (over 20 MB)`); continue; }
       const s = matchSubject(f.name, levelSubjects);
-      const paper = paperOf(f.name);
+      const paper = paperOf(f.name, level);
       const kind = kindOf(f.name);
       const key = `${s?.id ?? "?" + f.name}|${paper.toLowerCase()}`;
       const row = groups.get(key) ?? { key, subjectId: s?.id ?? "", paper, files: {}, status: "ready" as const };
@@ -163,7 +172,7 @@ export default function BulkUpload({ subjects, thisYear }: { subjects: SubjectOp
           <input id="bu-files" type="file" multiple accept=".pdf,image/jpeg,image/png,image/webp" onChange={(e) => pick(e.target.files)} style={{ ...input, padding: 8 }} disabled={busy} />
           <span className="sub">
             Select all the files together (unzip them first). Mark schemes or examiner reports on their own are added to papers already uploaded. Names like &ldquo;Physics may 2025 question paper 1&rdquo; and
-            &ldquo;Physics may 2025 Mark Scheme paper 1&rdquo; are matched automatically.
+            &ldquo;Physics may 2025 Mark Scheme paper 1&rdquo;, or &ldquo;IGCSE_PHYSICS_2025_Nov_P1_QP&rdquo; and &ldquo;IGCSE_PHYSICS_2025_Nov_P1_MS&rdquo;, are matched automatically.
           </span>
         </div>
       </div>
