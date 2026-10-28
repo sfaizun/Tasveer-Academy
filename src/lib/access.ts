@@ -5,7 +5,7 @@
 export type PageKey =
   | "dashboard" | "roster" | "attendance" | "holidays" | "test_marks" | "report_cards" | "course_materials" | "past_papers" | "homework" | "announcements" | "appointments" | "reports"
   | "applications" | "students" | "id_cards" | "mock_exams"
-  | "billing" | "invoices"
+  | "billing" | "invoices" | "fee_collection"
   | "expenses" | "income" | "cash_balance"
   | "catalogue" | "accounts" | "settings" | "audit_log" | "access"
   | "canteen"
@@ -33,6 +33,7 @@ export const PAGES: PageDef[] = [
   { key: "mock_exams", label: "Mock exams", href: "/mock-exams", group: "Admissions" },
   { key: "billing", label: "Billing run", href: "/billing", group: "Billing" },
   { key: "invoices", label: "Invoices", href: "/invoices", group: "Billing" },
+  { key: "fee_collection", label: "Monthly Fees Collection", href: "/fee-collection", group: "Billing" },
   { key: "expenses", label: "Expenses", href: "/expenses", group: "Office Accounts" },
   { key: "income", label: "Income", href: "/income", group: "Office Accounts" },
   { key: "cash_balance", label: "Cash balance", href: "/cash-balance", group: "Office Accounts" },
@@ -60,7 +61,7 @@ export const STAFF_ROLES = ["admin", "teacher", "canteen_manager"];
 
 /** Each login's own portal: the pages of its "own" view. */
 export const BASE_PAGES: Record<string, PageKey[]> = {
-  teacher: ["dashboard", "roster", "attendance", "test_marks", "report_cards", "course_materials", "past_papers", "homework", "announcements", "appointments", "mock_exams", "reports"],
+  teacher: ["dashboard", "roster", "attendance", "test_marks", "report_cards", "course_materials", "past_papers", "homework", "announcements", "appointments", "mock_exams", "reports", "fee_collection"],
   // Students and guardians read announcements on their dashboard and can open one to print it.
   student: ["dashboard", "my_profile", "roster", "test_marks", "report_cards", "course_materials", "past_papers", "homework", "reports", "announcements", "appointments"],
   guardian: ["dashboard", "roster", "test_marks", "report_cards", "course_materials", "homework", "reports", "announcements"],

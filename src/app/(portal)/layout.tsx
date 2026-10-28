@@ -87,6 +87,7 @@ export default async function PortalLayout({ children }: { children: React.React
             {(isTeacher || me.role === "student") && <NavLink href="/appointments">Appointments</NavLink>}
             {isTeacher && <NavLink href="/mock-exams">Mock exams</NavLink>}
             <NavLink href="/reports">Reports</NavLink>
+            {isTeacher && <NavLink href="/fee-collection">Monthly Fees Collection</NavLink>}
           </>
         ) : (
           // An access role's pages (Academy > Access).
