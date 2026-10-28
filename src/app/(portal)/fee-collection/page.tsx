@@ -6,7 +6,7 @@ import { dhakaTodayISO, fmtDate, monthName } from "@/lib/format";
 import { requirePage } from "@/lib/require-page";
 import { actsAsAdmin } from "@/lib/access";
 import FeeCollectionReport from "./FeeCollectionReport";
-import type { CollectionRow, VoidRow } from "./types";
+import type { CollectionRow, RefundCollectionRow, VoidRow } from "./types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,12 +34,14 @@ export default async function FeeCollectionPage({ searchParams }: { searchParams
   const last = `${month}-${String(lastDay).padStart(2, "0")}`;
 
   const supabase = await createClient();
-  const [{ data: rowsData, error }, { data: voidData }] = await Promise.all([
+  const [{ data: rowsData, error }, { data: voidData }, { data: refundData }] = await Promise.all([
     supabase.rpc("fn_fee_collection", { p_month: first, p_mine: !full }),
     supabase.rpc("fn_fee_collection_voids", { p_month: first, p_mine: !full }),
+    supabase.rpc("fn_fee_collection_refunds", { p_month: first, p_mine: !full }),
   ]);
   const rows = ((rowsData ?? []) as CollectionRow[]).map((r) => ({ ...r, amount: Number(r.amount), payment_amount: Number(r.payment_amount) }));
   const voids = ((voidData ?? []) as VoidRow[]).map((v) => ({ ...v, amount: Number(v.amount) }));
+  const refunds = ((refundData ?? []) as RefundCollectionRow[]).map((r) => ({ ...r, amount: Number(r.amount), refund_amount: Number(r.refund_amount) }));
 
   return (
     <>
@@ -67,6 +69,7 @@ export default async function FeeCollectionPage({ searchParams }: { searchParams
           <FeeCollectionReport
             rows={rows}
             voids={voids}
+            refunds={refunds}
             month={month}
             monthLabel={monthName(first)}
             period={`${fmtDate(first)} 00:00:00 to ${fmtDate(last)} 23:59:59 (Dhaka time)`}

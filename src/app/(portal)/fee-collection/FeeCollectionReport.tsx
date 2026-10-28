@@ -3,7 +3,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import PrintSectionButton from "@/components/PrintSectionButton";
 import { fmtDate, fmtDateTime, monthName, taka } from "@/lib/format";
 import { buildXlsx, saveBlob, type XlsxCell } from "@/lib/xlsx";
-import { CATEGORY_LABEL, METHOD_LABEL, type CollectionRow, type VoidRow } from "./types";
+import { CATEGORY_LABEL, METHOD_LABEL, type CollectionRow, type RefundCollectionRow, type VoidRow } from "./types";
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 const methodLabel = (m: string) => METHOD_LABEL[m] ?? m;
@@ -12,7 +12,7 @@ const classSection = (r: { class_label: string | null; section: string | null })
   [r.class_label, r.section ? `Batch ${r.section}` : null].filter(Boolean).join(", ");
 /** Amounts for the PDF: its standard fonts have no taka sign. */
 const tk = (n: number) => "Tk " + n.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const BASIS = "Cash basis: every payment is counted in the month it was received, whatever month, invoice or session it paid for. Unpaid invoices and voided receipts are never counted.";
+const BASIS = "Cash basis: every payment is counted in the month it was received, whatever month, invoice or session it paid for, and every refund is deducted in the month it was given. Unpaid invoices and voided receipts are never counted.";
 
 const sel: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "7px 10px", fontSize: 12.5,
@@ -34,9 +34,10 @@ function Tile({ label, value, sub }: { label: string; value: string; sub?: strin
   );
 }
 
-export default function FeeCollectionReport({ rows, voids, month, monthLabel, period, full, scopeLabel, linkStudents, linkInvoices }: {
+export default function FeeCollectionReport({ rows, voids, refunds = [], month, monthLabel, period, full, scopeLabel, linkStudents, linkInvoices }: {
   rows: CollectionRow[];
   voids: VoidRow[];
+  refunds?: RefundCollectionRow[];
   month: string;
   monthLabel: string;
   period: string;
@@ -57,11 +58,11 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
 
   const teachers = useMemo(() => {
     const m = new Map<string, string>();
-    for (const r of rows) if (r.teacher_id) m.set(r.teacher_id, r.teacher_name ?? "Teacher");
+    for (const r of [...rows, ...refunds]) if (r.teacher_id) m.set(r.teacher_id, r.teacher_name ?? "Teacher");
     return [...m.entries()].sort((a, b) => a[1].localeCompare(b[1]));
-  }, [rows]);
-  const methods = useMemo(() => [...new Set(rows.map((r) => r.method))].sort(), [rows]);
-  const categories = useMemo(() => Object.keys(CATEGORY_LABEL).filter((c) => rows.some((r) => r.category === c)), [rows]);
+  }, [rows, refunds]);
+  const methods = useMemo(() => [...new Set([...rows, ...refunds].map((r) => r.method))].sort(), [rows, refunds]);
+  const categories = useMemo(() => Object.keys(CATEGORY_LABEL).filter((c) => rows.some((r) => r.category === c) || refunds.some((r) => r.category === c)), [rows, refunds]);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -71,6 +72,17 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
       && (!teacher || (teacher === "office" ? !r.teacher_id : r.teacher_id === teacher))
       && (!s || [r.student_name, r.reg_no, r.receipt_no, r.invoice_no ?? "", r.item].some((x) => x.toLowerCase().includes(s))));
   }, [rows, q, method, category, teacher]);
+  // Refunds given in the month, with the same filters.
+  const refundsShown = useMemo(() => {
+    const s = q.trim().toLowerCase();
+    return refunds.filter((r) =>
+      (!method || r.method === method)
+      && (!category || r.category === category)
+      && (!teacher || (teacher === "office" ? !r.teacher_id : r.teacher_id === teacher))
+      && (!s || [r.student_name, r.reg_no, r.refund_no, r.invoice_no ?? "", r.item].some((x) => x.toLowerCase().includes(s))));
+  }, [refunds, q, method, category, teacher]);
+  const refundTotal = r2(refundsShown.reduce((n, r) => n + r.amount, 0));
+  const refundCount = new Set(refundsShown.map((r) => r.refund_id)).size;
 
   const groups: StudentGroup[] = useMemo(() => {
     const m = new Map<string, StudentGroup>();
@@ -158,6 +170,10 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
     out.push(["Total fees collected", summary.total, summary.txns]);
     out.push(["Total students paid", null, summary.students]);
     out.push(["Total transactions", null, summary.txns]);
+    if (refundsShown.length) {
+      out.push(["Refunds given (deducted)", -refundTotal, refundCount]);
+      out.push(["Net collection", r2(summary.total - refundTotal)]);
+    }
     if (full) {
       out.push(["Teacher fees (tuition and mock)", summary.teacherFees]);
       out.push(["Office income (admission and other)", summary.officeIncome]);
@@ -200,6 +216,14 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
       { name: "Transactions", rows: out, boldRows: bold, moneyCols: [10], widths: [6, 14, 26, 22, 13, 15, 15, 34, 16, 10, 14] },
       { name: "Student totals", rows: totals, boldRows: [totals.length - 1], moneyCols: [5], widths: [6, 14, 26, 22, 13, 14] },
     ];
+    if (refundsShown.length) {
+      const rr: XlsxCell[][] = [["Refund no.", "Refund date", "Student ID", "Student name", "Class / section", "Invoice no.", "Fee refunded", "Fee month(s)", "Method", "Reason", "Amount"],
+        ...refundsShown.map((r) => [r.refund_no, fmtDate(r.refunded_on), r.reg_no, r.student_name, classSection(r), r.invoice_no ?? "",
+          r.item + (full && r.teacher_name ? ` (${r.teacher_name})` : ""), r.billing_month ? monthName(r.billing_month) : "", methodLabel(r.method), r.reason, -r.amount] as XlsxCell[]),
+        ["", "", "", "Total refunds", "", "", "", "", "", "", -refundTotal],
+        ["", "", "", "Net collection", "", "", "", "", "", "", r2(summary.total - refundTotal)]];
+      sheets.push({ name: "Refunds", rows: rr, boldRows: [rr.length - 2, rr.length - 1], moneyCols: [10], widths: [15, 13, 14, 26, 22, 15, 34, 16, 10, 36, 14] });
+    }
     if (voids.length) {
       sheets.push({
         name: "Voided (not counted)",
@@ -268,6 +292,20 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
         body.push(boldRow(["", "", "Total fees collected", "", "", "", "", `${summary.txns} transactions, ${summary.students} students`, "", "", tk(summary.total)]));
         autoTable(doc, { ...base, startY: y, head: [DETAIL_HEAD], body, styles: { fontSize: 7.5, cellPadding: 3.5 }, columnStyles: { 0: { cellWidth: 22 }, 10: { halign: "right", cellWidth: 70 } } });
         y = after();
+        if (refundsShown.length) {
+          doc.setFont("helvetica", "bold");
+          doc.setFontSize(10);
+          doc.text("Refunds given (deducted in this month)", 40, y);
+          autoTable(doc, { ...base, startY: y + 8, head: [["Refund no.", "Date", "Student ID", "Student name", "Invoice no.", "Fee refunded", "Fee month(s)", "Method", "Reason", "Amount"]],
+            body: [
+              ...refundsShown.map((r) => [r.refund_no, fmtDate(r.refunded_on), r.reg_no, r.student_name, r.invoice_no ?? "", r.item + (full && r.teacher_name ? ` (${r.teacher_name})` : ""),
+                r.billing_month ? monthName(r.billing_month) : "", methodLabel(r.method), r.reason, "- " + tk(r.amount)]),
+              ["", "", "", "Total refunds", "", "", "", "", "", "- " + tk(refundTotal)].map((c) => ({ content: c, styles: { fontStyle: "bold" } })),
+              ["", "", "", "Net collection", "", "", "", "", "", tk(r2(summary.total - refundTotal))].map((c) => ({ content: c, styles: { fontStyle: "bold" } })),
+            ],
+            styles: { fontSize: 7.5, cellPadding: 3.5 }, columnStyles: { 9: { halign: "right" } } });
+          y = after();
+        }
         if (voids.length) {
           doc.setFont("helvetica", "bold");
           doc.setFontSize(10);
@@ -341,14 +379,16 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
           <div className="ptitle">Summary for {monthLabel}</div>
           {anyFilter && <span className="sub">Filtered: {filterText}</span>}
           <div className="spacer" style={{ flex: 1 }} />
-          <button className="btn ghost" type="button" style={small} onClick={excelSummary} disabled={!filtered.length}>Excel</button>
-          <button className="btn ghost" type="button" style={small} onClick={() => pdf("summary")} disabled={!filtered.length || !!busy}>{busy === "summary" ? "Making PDF…" : "PDF"}</button>
+          <button className="btn ghost" type="button" style={small} onClick={excelSummary} disabled={!filtered.length && !refundsShown.length}>Excel</button>
+          <button className="btn ghost" type="button" style={small} onClick={() => pdf("summary")} disabled={(!filtered.length && !refundsShown.length) || !!busy}>{busy === "summary" ? "Making PDF…" : "PDF"}</button>
           <PrintSectionButton target="fc-summary" label="Print summary" />
         </div>
         <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))" }}>
           <Tile label="Total fees collected" value={taka(summary.total)} sub={full ? "All cash received this month" : "Your share of cash received this month"} />
           <Tile label="Total students paid" value={String(summary.students)} sub="Students with at least one payment" />
           <Tile label="Total transactions" value={String(summary.txns)} sub="Receipts, each counted once" />
+          {refundsShown.length > 0 && <Tile label="Refunds given" value={"− " + taka(refundTotal)} sub={`${refundCount} ${refundCount === 1 ? "refund" : "refunds"}, deducted this month`} />}
+          {refundsShown.length > 0 && <Tile label="Net collection" value={taka(r2(summary.total - refundTotal))} sub="Collected less refunds" />}
         </div>
         <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))", marginTop: 16 }}>
           {full && (
@@ -359,7 +399,9 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
                   <tr><td>Teacher fees (tuition and mock)</td><td className="n mono">{taka(summary.teacherFees)}</td></tr>
                   <tr><td>Office income (admission and other)</td><td className="n mono">{taka(summary.officeIncome)}</td></tr>
                   {summary.advance !== 0 && <tr><td>Advance (not yet applied to an invoice)</td><td className="n mono">{taka(summary.advance)}</td></tr>}
-                  <tr><td><b>Total</b></td><td className="n mono"><b>{taka(summary.total)}</b></td></tr>
+                  <tr><td><b>Total collected</b></td><td className="n mono"><b>{taka(summary.total)}</b></td></tr>
+                  {refundsShown.length > 0 && <tr><td>Refunds given this month</td><td className="n mono">− {taka(refundTotal)}</td></tr>}
+                  {refundsShown.length > 0 && <tr><td><b>Net collection</b></td><td className="n mono"><b>{taka(r2(summary.total - refundTotal))}</b></td></tr>}
                 </tbody>
               </table>
             </div>
@@ -456,8 +498,8 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
           <div className="ptitle">Student-wise collection</div>
           <div className="sub">{summary.txns} {summary.txns === 1 ? "transaction" : "transactions"} · select a name to see that student&apos;s receipts</div>
           <div className="spacer" />
-          <button className="btn ghost" type="button" style={small} onClick={excelDetail} disabled={!filtered.length}>Excel</button>
-          <button className="btn ghost" type="button" style={small} onClick={() => pdf("detail")} disabled={!filtered.length || !!busy}>{busy === "detail" ? "Making PDF…" : "PDF"}</button>
+          <button className="btn ghost" type="button" style={small} onClick={excelDetail} disabled={!filtered.length && !refundsShown.length}>Excel</button>
+          <button className="btn ghost" type="button" style={small} onClick={() => pdf("detail")} disabled={(!filtered.length && !refundsShown.length) || !!busy}>{busy === "detail" ? "Making PDF…" : "PDF"}</button>
           <PrintSectionButton target="fc-detail" label="Print details" />
         </div>
         <div className="tblwrap">
@@ -518,6 +560,41 @@ export default function FeeCollectionReport({ rows, voids, month, monthLabel, pe
             )}
           </table>
         </div>
+        {refundsShown.length > 0 && (
+          <div style={{ padding: "16px 16px 4px" }}>
+            <div className="ptitle" style={{ fontSize: 14 }}>Refunds given in {monthLabel}</div>
+            <div className="sub" style={{ marginBottom: 8 }}>
+              Deducted in this month, the month the money was given back{full ? ": subject and mock fees from the teacher, admission fees from office income" : " from your fees"}. The original payments stay in the months they were received.
+            </div>
+            <div className="tblwrap">
+              <table>
+                <thead>
+                  <tr><th>Refund no.</th><th>Date</th><th>Student ID</th><th>Student name</th><th>Invoice no.</th><th>Fee refunded</th><th>Fee month(s)</th><th>Method</th><th>Reason</th><th className="n">Amount</th></tr>
+                </thead>
+                <tbody>
+                  {refundsShown.map((r, i) => (
+                    <tr key={`${r.refund_id}-${r.invoice_line_id}-${i}`}>
+                      <td className="mono">{r.refund_no}</td>
+                      <td className="mono" style={{ whiteSpace: "nowrap" }}>{fmtDate(r.refunded_on)}</td>
+                      <td className="mono">{r.reg_no}</td>
+                      <td>{linkStudents ? <a href={`/students/${r.student_id}`}>{r.student_name}</a> : r.student_name}</td>
+                      <td className="mono">{r.invoice_no ? (linkInvoices && r.invoice_id ? <a href={`/invoices/${r.invoice_id}`}>{r.invoice_no}</a> : r.invoice_no) : "—"}</td>
+                      <td>{r.item}{full && r.teacher_name && <div className="sub">{r.teacher_name}</div>}{full && (r.category === "admission" || r.category === "other") && <div className="sub">Office income</div>}</td>
+                      <td style={{ whiteSpace: "nowrap" }}>{r.billing_month ? monthName(r.billing_month) : "—"}</td>
+                      <td>{methodLabel(r.method)}</td>
+                      <td>{r.reason}</td>
+                      <td className="n mono" style={{ color: "var(--crit)" }}>− {taka(r.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+                <tfoot>
+                  <tr><td colSpan={9}><b>Total refunds</b></td><td className="n mono"><b>− {taka(refundTotal)}</b></td></tr>
+                  <tr><td colSpan={9}><b>Net collection</b> <span className="sub">· collected {taka(summary.total)} less refunds</span></td><td className="n mono"><b>{taka(r2(summary.total - refundTotal))}</b></td></tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        )}
         {voids.length > 0 && (
           <div style={{ padding: "16px 16px 4px" }}>
             <div className="ptitle" style={{ fontSize: 14 }}>Voided receipts</div>

@@ -612,3 +612,53 @@ export async function undoPromotion(_prev: State, formData: FormData): Promise<S
   revalidatePath("/id-cards");
   return { ok: true };
 }
+
+/** Office: give back money received on an invoice, for the ticked items (admission fee or a
+ * subject). The refunded fee is cancelled on the invoice, and the amount comes off the teacher's
+ * collection or office income in the month of the refund. */
+export async function recordRefund(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const invoiceId = String(formData.get("invoice_id") ?? "");
+  const method = String(formData.get("method") ?? "cash");
+  const refundedOn = String(formData.get("refunded_on") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const lineIds = formData.getAll("line_ids").map(String).filter(Boolean);
+  if (!invoiceId) return { error: "Missing invoice." };
+  if (lineIds.length === 0) return { error: "Tick the items to refund." };
+  if (!reason) return { error: "Enter the reason for the refund." };
+  const items: { line_id: string; amount: number }[] = [];
+  for (const id of lineIds) {
+    const amount = Number(String(formData.get(`amount_${id}`) ?? "").trim());
+    if (!Number.isFinite(amount) || amount <= 0) return { error: "Enter an amount above zero for each ticked item." };
+    items.push({ line_id: id, amount: Math.round(amount * 100) / 100 });
+  }
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_record_refund", {
+    p_invoice_id: invoiceId,
+    p_items: items,
+    p_method: method,
+    p_refunded_on: refundedOn || null,
+    p_reason: reason,
+  });
+  if (error) return { error: "Could not record the refund: " + error.message };
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/fee-collection");
+  return { ok: true, message: `Refund of ${fmtTk(items.reduce((n, i) => n + i.amount, 0))} recorded.` };
+}
+
+/** Owner: cancel a refund recorded by mistake. The record stays, marked cancelled. */
+export async function voidRefund(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const refundId = String(formData.get("refund_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!refundId) return { error: "Missing refund." };
+  if (!reason) return { error: "A reason is required to cancel a refund." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_void_refund", { p_refund_id: refundId, p_reason: reason });
+  if (error) return { error: "Could not cancel the refund: " + error.message };
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/fee-collection");
+  return { ok: true, message: "Refund cancelled." };
+}

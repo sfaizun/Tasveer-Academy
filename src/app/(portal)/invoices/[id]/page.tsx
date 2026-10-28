@@ -43,10 +43,11 @@ export default async function InvoicePrintPage({
   const { data: inv } = await supabase
     .from("invoice")
     .select(
-      `id, invoice_no, billing_month, issued_on, due_on, gross, discount, net, paid, balance, status,
+      `id, invoice_no, billing_month, issued_on, due_on, gross, discount, net, paid, balance, refunded, status,
        student(id, reg_no, full_name, phone, programme(name), class_level(name), guardian(full_name, phone, is_primary)),
        invoice_line(id, type, description, rate, quantity, amount, applies_to_line_id, created_at),
-       payment_allocation(amount, payment(receipt_no, received_on, method, status))`
+       payment_allocation(amount, payment(receipt_no, received_on, method, status)),
+       refund(refund_no, refunded_on, method, amount, status, reason)`
     )
     .eq("id", id)
     .order("created_at", { referencedTable: "invoice_line" })
@@ -61,6 +62,7 @@ export default async function InvoicePrintPage({
   const loose = lines.filter((l) => l.type === "discount" && !charges.some((c) => c.id === l.applies_to_line_id));
   const payments = ((i.payment_allocation ?? []) as any[]).filter((a) => a.payment?.status === "confirmed");
   const minus = (n: number) => "− " + taka(Math.abs(Number(n)));
+  const refunds = ((i.refund ?? []) as any[]).filter((r) => r.status === "confirmed");
 
   return (
     <>
@@ -151,6 +153,7 @@ export default async function InvoicePrintPage({
           <div className="inv-doc-totals">
             <div><span>Gross</span><b className="mono">{taka(i.gross)}</b></div>
             <div><span>Discount</span><b className="mono">{Number(i.discount) > 0 ? minus(i.discount) : taka(0)}</b></div>
+            {Number(i.refunded ?? 0) > 0 && <div><span>Refunded</span><b className="mono">{minus(i.refunded)}</b></div>}
             <div className="strong"><span>Total</span><b className="mono">{taka(i.net)}</b></div>
             <div><span>Paid</span><b className="mono">{taka(i.paid)}</b></div>
             <div className="strong"><span>Balance due</span><b className="mono">{taka(i.balance)}</b></div>
@@ -166,6 +169,23 @@ export default async function InvoicePrintPage({
                       <td className="mono">{a.payment?.receipt_no}</td>
                       <td className="sub">{fmtDate(a.payment?.received_on)} · {METHOD[a.payment?.method] ?? a.payment?.method}</td>
                       <td className="n mono">{taka(a.amount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {refunds.length > 0 && (
+            <div style={{ marginTop: 18 }}>
+              <div className="lbl" style={{ marginBottom: 6 }}>Refunds given</div>
+              <table className="inv-doc-lines">
+                <tbody>
+                  {refunds.map((r, k) => (
+                    <tr key={k}>
+                      <td className="mono">{r.refund_no}</td>
+                      <td className="sub">{fmtDate(r.refunded_on)} · {METHOD[r.method] ?? r.method} · {r.reason}</td>
+                      <td className="n mono">{minus(r.amount)}</td>
                     </tr>
                   ))}
                 </tbody>

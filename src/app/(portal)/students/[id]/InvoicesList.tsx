@@ -4,6 +4,7 @@ import { taka, fmtDate } from "@/lib/format";
 import PaymentForm, { PaidItemsForm, type PayItem } from "./PaymentForm";
 import InvoiceEditor, { LINE_LABEL } from "./InvoiceEditor";
 import { EditForm, VoidForm, type PaymentRow } from "./PaymentsList";
+import { RefundForm, RefundsList, type RefundItem, type RefundRow } from "./RefundForm";
 
 const invoiceStatusMap: Record<string, { cls: string; label: string }> = {
   draft: { cls: "due", label: "Draft" },
@@ -46,6 +47,8 @@ export type InvoiceRow = {
   net: number;
   paid: number;
   balance: number;
+  /** Refunded on this invoice (fee cancelled and money given back). */
+  refunded?: number | null;
   status: string;
   invoice_line?: InvoiceLine[] | null;
 };
@@ -55,16 +58,19 @@ const money = (n: number) => (Number(n) < 0 ? "− " + taka(Math.abs(Number(n)))
 /** One invoice opened up: its charges with their discounts, the payments on it, and (admin)
  * recording a payment against it or editing it. */
 function InvoiceDetail({
-  studentId, inv, payments, items, canEdit, canVoid,
+  studentId, inv, payments, items, refunds, refundItems, canEdit, canVoid, canRefund,
 }: {
   studentId: string;
   inv: InvoiceRow;
   payments: PaymentRow[];
   items: PayItem[];
+  refunds: RefundRow[];
+  refundItems: RefundItem[];
   canEdit: boolean;
   canVoid: boolean;
+  canRefund: boolean;
 }) {
-  const [mode, setMode] = useState<"pay" | "edit" | "fix" | null>(null);
+  const [mode, setMode] = useState<"pay" | "edit" | "fix" | "refund" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [managing, setManaging] = useState<{ id: string; kind: "edit" | "void" } | null>(null);
   const closeMode = useCallback(() => setMode(null), []);
@@ -90,6 +96,9 @@ function InvoiceDetail({
   const editable = canEdit && inv.status !== "void";
   const itemOf = new Map(items.map((i) => [i.line_id, i]));
   const showLinePaid = inv.status === "partly_paid";
+  const refundOf = new Map(refundItems.map((i) => [i.line_id, i]));
+  const refundable = refundItems.some((i) => i.refundable > 0);
+  const lineName = (id: string) => lines.find((l) => l.id === id)?.description ?? "Fee";
 
   return (
     <div className="inv-detail">
@@ -107,6 +116,9 @@ function InvoiceDetail({
                       <td className="sub" style={{ width: 120 }}>{LINE_LABEL[l.type] ?? l.type}</td>
                       <td>
                         {l.description}
+                        {(refundOf.get(l.id)?.refunded ?? 0) > 0 && (
+                          <span className="sub" style={{ fontSize: 11.5, color: "var(--crit)" }}>{" · "}refunded {taka(refundOf.get(l.id)!.refunded)}</span>
+                        )}
                         {showLinePaid && itemOf.has(l.id) && (
                           <span className="sub" style={{ fontSize: 11.5 }}>
                             {" · "}paid {taka(itemOf.get(l.id)!.paid)}{itemOf.get(l.id)!.balance > 0 ? `, ${taka(itemOf.get(l.id)!.balance)} left` : ""}
@@ -137,6 +149,7 @@ function InvoiceDetail({
           <div className="inv-totals">
             <div className="sub">Gross <b className="mono">{taka(inv.gross)}</b></div>
             <div className="sub">Discount <b className="mono">{Number(inv.discount) > 0 ? "− " + taka(inv.discount) : taka(0)}</b></div>
+            {Number(inv.refunded ?? 0) > 0 && <div className="sub">Refunded <b className="mono" style={{ color: "var(--crit)" }}>− {taka(Number(inv.refunded))}</b></div>}
             <div className="sub">Net <b className="mono">{taka(inv.net)}</b></div>
             <div className="sub">Paid <b className="mono" style={{ color: "var(--ok)" }}>{taka(inv.paid)}</b></div>
             <div className="sub">Balance <b className="mono" style={{ color: Number(inv.balance) > 0 ? "var(--crit)" : undefined }}>{taka(inv.balance)}</b></div>
@@ -199,6 +212,8 @@ function InvoiceDetail({
         )}
       </div>
 
+      <RefundsList studentId={studentId} refunds={refunds} lineName={lineName} canVoid={canVoid} />
+
       {notice && <div className="sub" style={{ color: "var(--ok)" }}>{notice}</div>}
 
       {editable && mode !== "edit" && (
@@ -213,6 +228,11 @@ function InvoiceDetail({
               {mode === "fix" ? "Cancel" : "Set paid items"}
             </button>
           )}
+          {canRefund && refundable && (
+            <button type="button" className="btn ghost" onClick={() => { setNotice(null); setMode(mode === "refund" ? null : "refund"); }}>
+              {mode === "refund" ? "Close refund" : "Refund"}
+            </button>
+          )}
           <button type="button" className="btn ghost" onClick={() => { setNotice(null); setMode("edit"); }}>
             Edit invoice
           </button>
@@ -221,6 +241,11 @@ function InvoiceDetail({
       {mode === "pay" && (
         <div className="inv-section">
           <PaymentForm studentId={studentId} invoiceId={inv.id} items={items} onDone={paid} />
+        </div>
+      )}
+      {mode === "refund" && (
+        <div className="inv-section">
+          <RefundForm studentId={studentId} invoiceId={inv.id} items={refundItems} onDone={onSaved} />
         </div>
       )}
       {mode === "fix" && (
@@ -237,18 +262,24 @@ export default function InvoicesList({
   invoices,
   payments,
   items = [],
+  refunds = [],
+  refundItems = [],
   outstanding,
   canEdit,
   canVoid,
+  canRefund = false,
   initialOpen,
 }: {
   studentId: string;
   invoices: InvoiceRow[];
   payments: PaymentRow[];
   items?: PayItem[];
+  refunds?: RefundRow[];
+  refundItems?: RefundItem[];
   outstanding: number;
   canEdit: boolean;
   canVoid: boolean;
+  canRefund?: boolean;
   initialOpen?: string | null;
 }) {
   // Open the requested invoice, else the oldest one still owing (that's the one to collect on).
@@ -289,7 +320,10 @@ export default function InvoicesList({
                     <td className="n mono">{Number(inv.discount) > 0 ? taka(inv.discount) : <span className="sub">—</span>}</td>
                     <td className="n mono">{taka(inv.paid)}</td>
                     <td className="n mono">{taka(inv.balance)}</td>
-                    <td className="n"><StatusChip status={inv.status} /></td>
+                    <td className="n">
+                      <StatusChip status={inv.status} />
+                      {Number(inv.refunded ?? 0) > 0 && <div className="sub" style={{ fontSize: 11 }}>Refunded {taka(Number(inv.refunded))}</div>}
+                    </td>
                     <td className="n" style={{ whiteSpace: "nowrap" }}>
                       <a
                         className="btn ghost"
@@ -314,7 +348,11 @@ export default function InvoicesList({
                   {isOpen && (
                     <tr>
                       <td colSpan={9} style={{ padding: 0, background: "var(--tint)" }}>
-                        <InvoiceDetail studentId={studentId} inv={inv} payments={payments} items={items.filter((i) => i.invoice_id === inv.id)} canEdit={canEdit} canVoid={canVoid} />
+                        <InvoiceDetail
+                          studentId={studentId} inv={inv} payments={payments} items={items.filter((i) => i.invoice_id === inv.id)}
+                          refunds={refunds.filter((r) => r.invoice_id === inv.id)} refundItems={refundItems.filter((r) => r.invoice_id === inv.id)}
+                          canEdit={canEdit} canVoid={canVoid} canRefund={canRefund}
+                        />
                       </td>
                     </tr>
                   )}

@@ -19,8 +19,9 @@ import { isCurrentEnrolment } from "@/lib/enrolment";
 import StudentTestMarksPanel from "../../test-marks/StudentTestMarksPanel";
 import { StudentAttendanceCard } from "../../attendance/AttendanceCards";
 import { requirePage } from "@/lib/require-page";
-import { accessOf, canOpen, canSeeFees } from "@/lib/access";
+import { accessOf, canOpen, canSeeFees, viewReadOnly } from "@/lib/access";
 import { actsAsAdmin } from "@/lib/access";
+import type { RefundItem, RefundRow } from "./RefundForm";
 
 export const dynamic = "force-dynamic";
 
@@ -75,7 +76,7 @@ export default async function StudentDetail({
         .order("from_month", { ascending: false }),
       supabase
         .from("invoice")
-        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, status, invoice_line(id, type, description, rate, quantity, amount, enrolment_id, applies_to_line_id, created_at)")
+        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, refunded, status, invoice_line(id, type, description, rate, quantity, amount, enrolment_id, applies_to_line_id, created_at)")
         .eq("student_id", id)
         .order("billing_month", { ascending: false })
         .order("created_at", { referencedTable: "invoice_line" }),
@@ -169,6 +170,22 @@ export default async function StudentDetail({
       return String(ia?.due_on ?? "").localeCompare(String(ib?.due_on ?? "")) || String(ia?.billing_month ?? "").localeCompare(String(ib?.billing_month ?? "")) || a.invoice_id.localeCompare(b.invoice_id) || a.ord - b.ord;
     });
   const openItems = payItems.filter((i) => ["unpaid", "partly_paid"].includes(invNo.get(i.invoice_id)?.status));
+
+  // Refunds given on this student's invoices, and (office) what can still be refunded.
+  const canRefund = isAdmin && showFees && canOpen(accessOf(me), "invoices") && !viewReadOnly(me);
+  const [{ data: refundRows }, { data: refundItemRows }] = showFees
+    ? await Promise.all([
+        supabase.from("refund")
+          .select("id, refund_no, invoice_id, refunded_on, method, amount, reason, status, void_reason, refund_line(invoice_line_id, amount)")
+          .eq("student_id", id).order("created_at", { ascending: false }),
+        canRefund ? supabase.rpc("fn_refund_items", { p_student_id: id }) : Promise.resolve({ data: [] as any[] }),
+      ])
+    : [{ data: [] as any[] }, { data: [] as any[] }];
+  const refunds: RefundRow[] = ((refundRows ?? []) as any[]).map((r) => ({ ...r, amount: Number(r.amount) }));
+  const refundItems: RefundItem[] = ((refundItemRows ?? []) as any[]).map((r) => ({
+    invoice_id: r.invoice_id, line_id: r.line_id, type: r.type, description: r.description, teacher_name: r.teacher_name,
+    received: Number(r.received), refunded: Number(r.refunded), refundable: Number(r.refundable), ord: Number(r.ord),
+  })).sort((a, b) => a.ord - b.ord);
 
   // Promotion: the classes a junior student can move to, the history, and the first month not billed yet.
   const [{ data: classRows }, { data: promoRows }, { data: firstUnbilled }] = await Promise.all([
@@ -449,9 +466,12 @@ export default async function StudentDetail({
           invoices={(invoices ?? []) as any}
           payments={(payments ?? []) as PaymentRow[]}
           items={payItems}
+          refunds={refunds}
+          refundItems={refundItems}
           outstanding={outstanding}
           canEdit={isAdmin}
           canVoid={isOwner}
+          canRefund={canRefund}
           initialOpen={openInvoiceId ?? null}
         />}
 

@@ -40,6 +40,30 @@ export type VoidRow = {
   student_name: string;
 };
 
+/** One refunded item (fn_fee_collection_refunds): money given back in the month, by its refund date. */
+export type RefundCollectionRow = {
+  refund_id: string;
+  refund_no: string;
+  refunded_on: string;
+  method: string;
+  refund_amount: number;
+  reason: string;
+  student_id: string;
+  reg_no: string;
+  student_name: string;
+  class_label: string | null;
+  section: string | null;
+  invoice_id: string | null;
+  invoice_no: string | null;
+  billing_month: string | null;
+  invoice_line_id: string;
+  category: string;
+  item: string;
+  teacher_id: string | null;
+  teacher_name: string | null;
+  amount: number;
+};
+
 export const CATEGORY_LABEL: Record<string, string> = {
   tuition: "Tuition",
   mock: "Mock exam",
