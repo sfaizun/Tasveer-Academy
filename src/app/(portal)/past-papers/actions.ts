@@ -1,11 +1,19 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getViewer } from "@/lib/supabase/viewer";
+import { actsAsAdmin, viewReadOnly } from "@/lib/access";
 
 type State = { ok?: boolean; error?: string } | null;
 const BUCKET = "past-papers";
 const KINDS = ["qp", "ms", "er"];
 const isId = (s: unknown): s is string => typeof s === "string" && /^[0-9a-f-]{36}$/.test(s);
+/** Edit and Remove belong to the admin portal (an admin view with Past papers). */
+async function inAdminPortal() {
+  const { me } = await getViewer();
+  return !!me && actsAsAdmin(me, "past_papers") && !viewReadOnly(me);
+}
+const NOT_ADMIN = "Only the office can change or remove a past paper.";
 const tidy = (msg: string) => msg.charAt(0).toUpperCase() + msg.slice(1).replace(/\.$/, "") + ".";
 
 type FileIn = { kind: string; path: string; name: string; type: string; size: number };
@@ -32,7 +40,8 @@ export async function savePaper(_prev: State, formData: FormData): Promise<State
   const dropUploads = async () => { if (files.length) await supabase.storage.from(BUCKET).remove(files.map((f) => f.path)); };
 
   let err: string | null = null;
-  if (!isId(subjectId)) err = "Choose the subject.";
+  if (isId(id) && !(await inAdminPortal())) err = NOT_ADMIN;
+  else if (!isId(subjectId)) err = "Choose the subject.";
   else if (!Number.isInteger(year) || year < 1990) err = "Enter the year.";
   else if (!["jan", "jun", "nov"].includes(session)) err = "Choose the exam session.";
   else if (!paper) err = "Enter the paper, e.g. Paper 1 or Unit 2.";
@@ -53,6 +62,7 @@ export async function savePaper(_prev: State, formData: FormData): Promise<State
 export async function removePaper(_prev: State, formData: FormData): Promise<State> {
   const id = String(formData.get("id") ?? "");
   if (!isId(id)) return { error: "Missing paper." };
+  if (!(await inAdminPortal())) return { error: NOT_ADMIN };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("fn_delete_past_paper", { p_id: id });
   if (error) return { error: tidy(error.message) };
@@ -76,6 +86,16 @@ export async function saveBulkPaper(input: {
   const { data: existing } = await supabase.from("past_paper").select("id, paper, note")
     .eq("subject_id", input.subject_id).eq("year", input.year).eq("session", input.session);
   const match = ((existing ?? []) as { id: string; paper: string; note: string | null }[]).find((p) => p.paper.trim().toLowerCase() === input.paper.trim().toLowerCase());
+  // Outside the admin portal a paper already on the portal can only get files it doesn't have yet.
+  if (match && !(await inAdminPortal())) {
+    const { data: have } = await supabase.from("past_paper_file").select("kind").eq("paper_id", match.id);
+    const clash = files.find((f) => ((have ?? []) as { kind: string }[]).some((h) => h.kind === f.kind));
+    if (clash) {
+      await dropUploads();
+      const what = clash.kind === "qp" ? "question paper" : clash.kind === "ms" ? "mark scheme" : "examiner report";
+      return { error: `This paper already has a ${what}. Only the office can replace it.` };
+    }
+  }
   if (!match && !files.some((f) => f.kind === "qp")) {
     await dropUploads();
     return { error: "This paper is not on the portal yet, so its question paper is needed. Upload the question paper with it." };

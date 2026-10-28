@@ -5,7 +5,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import { dhakaTodayISO } from "@/lib/format";
 import { subjectLabel } from "@/lib/mock";
 import { requirePage } from "@/lib/require-page";
-import { viewReadOnly } from "@/lib/access";
+import { actsAsAdmin, viewReadOnly } from "@/lib/access";
 import PaperForm, { type PaperRow, type SubjectOpt } from "./PaperForm";
 import { SESSIONS } from "./shared";
 import BulkUpload from "./BulkUpload";
@@ -23,7 +23,7 @@ const sel: React.CSSProperties = {
 
 /** Past papers: question papers, mark schemes and examiner reports by subject, year and session.
  * Students see their own subjects; teachers see all and add papers for the subjects they teach;
- * admins with Past papers see and manage all. */
+ * admins with Past papers see all, add, edit and remove. */
 export default async function PastPapersPage({ searchParams }: {
   searchParams: Promise<{ level?: string; subject?: string; year?: string; session?: string }>;
 }) {
@@ -49,6 +49,8 @@ export default async function PastPapersPage({ searchParams }: {
   const subjectById = new Map(allSubjects.map((s) => [s.id, s]));
   const manageable = ((mine ?? []) as any[]).map((x) => (typeof x === "string" ? x : x.fn_past_paper_subjects ?? x.id)).filter(Boolean) as string[];
   const manageSubjects = allSubjects.filter((s) => manageable.includes(s.id));
+  // Edit and Remove are for the admin portal only (an admin view with Past papers); teachers add papers.
+  const canChange = actsAsAdmin(me, "past_papers") && !viewReadOnly(me);
 
   // Filters, limited to what this login can see.
   const seen = (index ?? []) as { subject_id: string; year: number }[];
@@ -150,7 +152,7 @@ export default async function PastPapersPage({ searchParams }: {
           {seen.length === 0 && isStudent ? (
             <div className="sub" style={{ padding: 18 }}>No past papers have been added for your subjects yet.</div>
           ) : (
-            <PapersTable rows={rows} manageable={manageable} subjects={manageSubjects} thisYear={thisYear} />
+            <PapersTable rows={rows} manageable={canChange ? manageable : []} subjects={manageSubjects} thisYear={thisYear} />
           )}
         </div>
       </div>
