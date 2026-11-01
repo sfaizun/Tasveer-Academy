@@ -5,6 +5,7 @@ import PaymentForm, { PaidItemsForm, type PayItem } from "./PaymentForm";
 import InvoiceEditor, { LINE_LABEL } from "./InvoiceEditor";
 import { EditForm, VoidForm, type PaymentRow } from "./PaymentsList";
 import { RefundForm, RefundsList, type RefundItem, type RefundRow } from "./RefundForm";
+import InvoiceVoid from "./InvoiceVoid";
 
 const invoiceStatusMap: Record<string, { cls: string; label: string }> = {
   draft: { cls: "due", label: "Draft" },
@@ -50,6 +51,8 @@ export type InvoiceRow = {
   /** Refunded on this invoice (fee cancelled and money given back). */
   refunded?: number | null;
   status: string;
+  void_reason?: string | null;
+  voided_at?: string | null;
   invoice_line?: InvoiceLine[] | null;
 };
 
@@ -70,7 +73,7 @@ function InvoiceDetail({
   canVoid: boolean;
   canRefund: boolean;
 }) {
-  const [mode, setMode] = useState<"pay" | "edit" | "fix" | "refund" | null>(null);
+  const [mode, setMode] = useState<"pay" | "edit" | "fix" | "refund" | "void" | "restore" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [managing, setManaging] = useState<{ id: string; kind: "edit" | "void" } | null>(null);
   const closeMode = useCallback(() => setMode(null), []);
@@ -99,6 +102,7 @@ function InvoiceDetail({
   const refundOf = new Map(refundItems.map((i) => [i.line_id, i]));
   const refundable = refundItems.some((i) => i.refundable > 0);
   const lineName = (id: string) => lines.find((l) => l.id === id)?.description ?? "Fee";
+  const hasMoney = onThis.length > 0 || Number(inv.paid) > 0 || refunds.some((r) => r.status === "confirmed");
 
   return (
     <div className="inv-detail">
@@ -214,6 +218,22 @@ function InvoiceDetail({
 
       <RefundsList studentId={studentId} refunds={refunds} lineName={lineName} canVoid={canVoid} />
 
+      {inv.status === "void" && (
+        <div className="inv-section">
+          <div className="sub" style={{ color: "var(--crit)" }}>
+            Void{inv.voided_at ? ` since ${fmtDate(inv.voided_at)}` : ""}{inv.void_reason ? `: ${inv.void_reason}` : ""}. It owes nothing and is left out of all dues.
+          </div>
+          {canVoid && mode !== "restore" && (
+            <div className="inv-actions">
+              <button type="button" className="btn ghost" onClick={() => { setNotice(null); setMode("restore"); }}>Restore invoice</button>
+            </div>
+          )}
+          {canVoid && mode === "restore" && (
+            <InvoiceVoid studentId={studentId} invoiceId={inv.id} invoiceNo={inv.invoice_no} mode="restore" onDone={onSaved} onCancel={closeMode} />
+          )}
+        </div>
+      )}
+
       {notice && <div className="sub" style={{ color: "var(--ok)" }}>{notice}</div>}
 
       {editable && mode !== "edit" && (
@@ -236,11 +256,31 @@ function InvoiceDetail({
           <button type="button" className="btn ghost" onClick={() => { setNotice(null); setMode("edit"); }}>
             Edit invoice
           </button>
+          {canVoid && (
+            <button
+              type="button" className="btn ghost" style={{ color: "var(--crit)" }}
+              onClick={() => { setNotice(null); setMode(mode === "void" ? null : "void"); }}
+            >
+              {mode === "void" ? "Keep invoice" : "Void invoice"}
+            </button>
+          )}
         </div>
       )}
       {mode === "pay" && (
         <div className="inv-section">
           <PaymentForm studentId={studentId} invoiceId={inv.id} items={items} onDone={paid} />
+        </div>
+      )}
+      {mode === "void" && (
+        <div className="inv-section">
+          {hasMoney ? (
+            <div className="sub" style={{ color: "var(--crit)" }}>
+              This invoice has money on it, so it can&apos;t be voided yet. First void or edit the receipts listed above
+              {refunds.some((r) => r.status === "confirmed") ? " and cancel its refunds" : ""}, then void the invoice.
+            </div>
+          ) : (
+            <InvoiceVoid studentId={studentId} invoiceId={inv.id} invoiceNo={inv.invoice_no} mode="void" onDone={onSaved} onCancel={closeMode} />
+          )}
         </div>
       )}
       {mode === "refund" && (

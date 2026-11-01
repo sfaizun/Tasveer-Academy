@@ -662,3 +662,35 @@ export async function voidRefund(_prev: State, formData: FormData): Promise<Stat
   revalidatePath("/fee-collection");
   return { ok: true, message: "Refund cancelled." };
 }
+
+/** Owner: void an invoice raised by mistake. Refused while it has payments on it. */
+export async function voidInvoice(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const invoiceId = String(formData.get("invoice_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!invoiceId) return { error: "Missing invoice." };
+  if (!reason) return { error: "A reason is required to void an invoice." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_void_invoice", { p_invoice_id: invoiceId, p_reason: reason });
+  if (error) return { error: "Could not void the invoice: " + error.message };
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/invoices");
+  return { ok: true, message: "Invoice voided." };
+}
+
+/** Owner: restore an invoice voided by mistake. Its fees are owed again. */
+export async function restoreInvoice(_prev: State, formData: FormData): Promise<State> {
+  const studentId = String(formData.get("student_id") ?? "");
+  const invoiceId = String(formData.get("invoice_id") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  if (!invoiceId) return { error: "Missing invoice." };
+  if (!reason) return { error: "A reason is required to restore an invoice." };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("fn_restore_invoice", { p_invoice_id: invoiceId, p_reason: reason });
+  if (error) return { error: "Could not restore the invoice: " + error.message };
+  revalidatePath(`/students/${studentId}`);
+  revalidatePath("/students");
+  revalidatePath("/invoices");
+  return { ok: true, message: "Invoice restored." };
+}

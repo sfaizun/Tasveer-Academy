@@ -26,7 +26,7 @@ export default async function AdminDashboard({ apptUserId, attendance }: { apptU
     supabase.from("teacher").select("id", { count: "exact", head: true }).eq("active", true),
     supabase.from("subject").select("id", { count: "exact", head: true }).eq("active", true),
     supabase.from("fee_rate").select("kind, programme_id, class_level_id, level, subject_id, amount, effective_from, created_at"),
-    supabase.from("invoice").select("net, paid, balance, status").eq("billing_month", month),
+    supabase.from("invoice").select("net, paid, balance, status").eq("billing_month", month).neq("status", "void"),
     supabase.from("payment").select("amount").eq("status", "confirmed").gte("received_on", month),
     supabase.from("application").select("id", { count: "exact", head: true }).eq("status", "submitted"),
   ]);

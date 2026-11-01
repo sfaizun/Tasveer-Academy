@@ -109,7 +109,8 @@ export default async function InvoicesPage({
     invoices = data ?? [];
   }
 
-  const totals = invoices.reduce(
+  // Void invoices are shown but owe nothing, so they stay out of the totals.
+  const totals = invoices.filter((inv) => inv.status !== "void").reduce(
     (acc, inv) => ({
       net: acc.net + Number(inv.net || 0),
       paid: acc.paid + Number(inv.paid || 0),

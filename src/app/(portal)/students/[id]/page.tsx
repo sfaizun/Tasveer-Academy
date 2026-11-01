@@ -76,7 +76,7 @@ export default async function StudentDetail({
         .order("from_month", { ascending: false }),
       supabase
         .from("invoice")
-        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, refunded, status, invoice_line(id, type, description, rate, quantity, amount, enrolment_id, applies_to_line_id, created_at)")
+        .select("id, invoice_no, billing_month, due_on, overdue_on, gross, discount, net, paid, balance, refunded, status, void_reason, voided_at, invoice_line(id, type, description, rate, quantity, amount, enrolment_id, applies_to_line_id, created_at)")
         .eq("student_id", id)
         .order("billing_month", { ascending: false })
         .order("created_at", { referencedTable: "invoice_line" }),
