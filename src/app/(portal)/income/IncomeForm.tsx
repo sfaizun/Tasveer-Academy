@@ -13,7 +13,7 @@ export type IncomeRow = {
   attachment_name: string | null;
 };
 
-const MAX_BYTES = 10 * 1024 * 1024;
+const MAX_BYTES = 25 * 1024 * 1024;
 const ACCEPT = "image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif,.pdf,.doc,.docx,.xls,.xlsx";
 const OK_EXT = ["jpg", "jpeg", "png", "webp", "heic", "heif", "pdf", "doc", "docx", "xls", "xlsx"];
 const MIME_BY_EXT: Record<string, string> = {
@@ -70,7 +70,7 @@ export default function IncomeForm({
       if (hasFile) {
         const ext = (file.name.split(".").pop() || "").toLowerCase();
         if (!OK_EXT.includes(ext)) { setFileErr("Use a photo (JPG, PNG, HEIC), PDF, Word or Excel file."); return; }
-        if (file.size > MAX_BYTES) { setFileErr("The file is larger than 10 MB. Please use a smaller one."); return; }
+        if (file.size > MAX_BYTES) { setFileErr("The file is larger than 25 MB. Please use a smaller one."); return; }
         const type = file.type || MIME_BY_EXT[ext];
         const path = `office/${(fd.get("income_date") as string || today).slice(0, 7)}/${crypto.randomUUID()}.${ext}`;
         setSendingFile(true);
@@ -154,7 +154,7 @@ export default function IncomeForm({
               ? "Choose the new file to save. Until then the old file stays attached."
               : keepsOld
                 ? "Leave empty to keep the current file."
-                : "Receipt, money receipt or voucher. Photo, PDF, Word or Excel, up to 10 MB."}
+                : "Receipt, money receipt or voucher. Photo, PDF, Word or Excel, up to 25 MB."}
           </span>
         </div>
       </div>

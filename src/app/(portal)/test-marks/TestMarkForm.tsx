@@ -263,7 +263,7 @@ export default function TestMarkForm({
         )}
         <label className="lbl" htmlFor={`tm-f-${id}`}>{mark?.attachment_name ? "Replace attachment" : "Attachment"}</label>
         <input id={`tm-f-${id}`} name="attachment" type="file" accept={ATTACHMENT_ACCEPT} style={{ ...inputStyle, padding: "7px 9px" }} onChange={() => setFileErr(null)} />
-        <span className="sub">Optional. Marked script or result sheet. Photo, PDF, Word or Excel, up to 10 MB.</span>
+        <span className="sub">Optional. Marked script or result sheet. Photo, PDF, Word or Excel, up to 25 MB.</span>
       </div>
 
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
