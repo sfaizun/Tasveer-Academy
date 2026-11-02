@@ -15,8 +15,29 @@ export type IdCardData = {
 
 const LOGO = "/logo.png";
 
-async function qr(url: string) {
-  return QRCode.toString(url, { type: "svg", margin: 0, errorCorrectionLevel: "M", color: { dark: "#1d1b1aff", light: "#ffffff00" } });
+/** A QR code as an SVG of filled squares (each run of dark modules is one rectangle), drawn with
+ * crisp edges. Drawing filled shapes rather than stroked lines keeps it sharp when the card is saved
+ * as a PDF or printed: stroked lines left faint seams between rows on some codes. All codes on a
+ * card use the same version (grid size), so they print at the same module size. */
+function qrSvg(url: string, version: number) {
+  const { modules } = QRCode.create(url, { errorCorrectionLevel: "M", version });
+  const n = modules.size;
+  let d = "";
+  for (let y = 0; y < n; y++) {
+    let x = 0;
+    while (x < n) {
+      if (!modules.get(y, x)) { x++; continue; }
+      const start = x;
+      while (x < n && modules.get(y, x)) x++;
+      d += `M${start} ${y}h${x - start}v1h${start - x}z`;
+    }
+  }
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${n} ${n}" shape-rendering="crispEdges"><path fill="#1d1b1a" d="${d}"/></svg>`;
+}
+
+function qrSet(urls: string[]) {
+  const version = Math.max(1, ...urls.map((u) => QRCode.create(u, { errorCorrectionLevel: "M" }).version));
+  return urls.map((u) => qrSvg(u, version));
 }
 
 const host = (u: string) => u.replace(/^https?:\/\//, "").replace(/^www\./, "").replace(/\/$/, "");
@@ -31,7 +52,7 @@ export default async function IdCard({ d }: { d: IdCardData }) {
     { label: "Facebook", url: d.links.facebook, sub: host(d.links.facebook).split("/")[1] || host(d.links.facebook) },
     { label: "Instagram", url: d.links.instagram, sub: handle(d.links.instagram) },
   ].filter((c) => c.url);
-  const svgs = await Promise.all(codes.map((c) => qr(c.url)));
+  const svgs = qrSet(codes.map((c) => c.url));
   const s = d.student;
 
   return (
