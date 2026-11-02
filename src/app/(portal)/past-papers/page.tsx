@@ -14,8 +14,10 @@ import PapersTable from "./PapersTable";
 export const dynamic = "force-dynamic";
 
 const isId = (s: unknown): s is string => typeof s === "string" && /^[0-9a-f-]{36}$/.test(s);
+const PAGE_SIZE = 20;
 const SESSION_ORDER: Record<string, number> = { nov: 3, jun: 2, jan: 1 };
 
+const pagerBtn: React.CSSProperties = { fontSize: 12, padding: "6px 11px", minWidth: 34, justifyContent: "center" };
 const sel: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 7, padding: "7px 10px", fontSize: 12.5,
   background: "var(--paper)", color: "var(--ink)", maxWidth: "100%", fontFamily: "inherit",
@@ -25,7 +27,7 @@ const sel: React.CSSProperties = {
  * Students see their own subjects; teachers see all and add papers for the subjects they teach;
  * admins with Past papers see all, add, edit and remove. */
 export default async function PastPapersPage({ searchParams }: {
-  searchParams: Promise<{ level?: string; subject?: string; year?: string; session?: string }>;
+  searchParams: Promise<{ level?: string; subject?: string; year?: string; session?: string; page?: string }>;
 }) {
   await requirePage("past_papers");
   const { me } = await getViewer();
@@ -85,6 +87,23 @@ export default async function PastPapersPage({ searchParams }: {
       || a.paper.localeCompare(b.paper, undefined, { numeric: true }));
 
   const filtered = !!(level || subject || year || session);
+
+  // Pages of PAGE_SIZE papers; the filters stay in the page links.
+  const pages = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  const page = Math.min(Math.max(1, Number.parseInt(sp.page ?? "1", 10) || 1), pages);
+  const pageRows = rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const pageHref = (n: number) => {
+    const q = new URLSearchParams();
+    if (level) q.set("level", level);
+    if (subject) q.set("subject", subject);
+    if (year) q.set("year", String(year));
+    if (session) q.set("session", session);
+    if (n > 1) q.set("page", String(n));
+    const qs = q.toString();
+    return qs ? `/past-papers?${qs}` : "/past-papers";
+  };
+  // Page numbers to show: first, last, and two either side of the current page.
+  const pageNums = Array.from({ length: pages }, (_, i) => i + 1).filter((n) => n === 1 || n === pages || Math.abs(n - page) <= 2);
 
   return (
     <>
@@ -152,7 +171,34 @@ export default async function PastPapersPage({ searchParams }: {
           {seen.length === 0 && isStudent ? (
             <div className="sub" style={{ padding: 18 }}>No past papers have been added for your subjects yet.</div>
           ) : (
-            <PapersTable rows={rows} manageable={canChange ? manageable : []} subjects={manageSubjects} thisYear={thisYear} />
+            <PapersTable rows={pageRows} manageable={canChange ? manageable : []} subjects={manageSubjects} thisYear={thisYear} />
+          )}
+          {pages > 1 && (
+            <nav aria-label="Pages" className="no-print" style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", padding: "12px 16px", borderTop: "1px solid var(--line)" }}>
+              <span className="sub" style={{ marginRight: "auto" }}>
+                Showing {(page - 1) * PAGE_SIZE + 1} to {Math.min(page * PAGE_SIZE, rows.length)} of {rows.length}
+              </span>
+              {page > 1 ? (
+                <a className="btn ghost" href={pageHref(page - 1)} style={pagerBtn}>Previous</a>
+              ) : (
+                <span className="btn ghost" aria-disabled="true" style={{ ...pagerBtn, opacity: 0.45 }}>Previous</span>
+              )}
+              {pageNums.map((n, i) => (
+                <span key={n} style={{ display: "contents" }}>
+                  {i > 0 && n - pageNums[i - 1] > 1 && <span className="sub" aria-hidden="true">…</span>}
+                  {n === page ? (
+                    <span className="btn" aria-current="page" style={pagerBtn}>{n}</span>
+                  ) : (
+                    <a className="btn ghost" href={pageHref(n)} style={pagerBtn} aria-label={`Page ${n}`}>{n}</a>
+                  )}
+                </span>
+              ))}
+              {page < pages ? (
+                <a className="btn ghost" href={pageHref(page + 1)} style={pagerBtn}>Next</a>
+              ) : (
+                <span className="btn ghost" aria-disabled="true" style={{ ...pagerBtn, opacity: 0.45 }}>Next</span>
+              )}
+            </nav>
           )}
         </div>
       </div>
