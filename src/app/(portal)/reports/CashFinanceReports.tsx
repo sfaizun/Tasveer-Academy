@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { taka, fmtDate, monthName, currentBillingMonth } from "@/lib/format";
 import ReportBars, { type ReportBarRow } from "@/components/ReportBars";
 import ExportCsvButton from "@/components/ExportCsvButton";
+import PrintSectionButton from "@/components/PrintSectionButton";
+import CashPdfButton from "./CashPdfButton";
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
 
@@ -261,18 +263,28 @@ export default async function CashFinanceReports({
       </details>
     ),
     cash: (
-      <details key="cash" className="panel collapsible" open>
+      <details key="cash" id="cash-collection" className="panel collapsible" open>
         <summary className="phead" style={{ flexWrap: "wrap" }}>
           <div className="ptitle">Daily cash collection</div>
           <div className="sub">{fmtDate(cashDate)} — {taka(totalCash)} collected</div>
           <div className="spacer" />
+          <PrintSectionButton target="cash-collection" />
+          <CashPdfButton
+            date={cashDate}
+            methods={Object.entries(METHOD_LABEL).map(([key, label]) => [label, cashByMethod.get(key) ?? 0] as [string, number])}
+            rows={cash.map((p) => ({ receipt_no: p.receipt_no, student: p.student?.full_name ?? "", reg_no: p.student?.reg_no ?? "", method: METHOD_LABEL[p.method] ?? p.method, amount: Number(p.amount), note: p.note ?? "" }))}
+          />
           <ExportCsvButton
             filename={`cash-collection-${cashDate}`}
             headers={["Receipt", "Student", "Reg. no.", "Method", "Amount", "Note"]}
             rows={cash.map((p) => [p.receipt_no, p.student?.full_name ?? "", p.student?.reg_no ?? "", METHOD_LABEL[p.method] ?? p.method, Number(p.amount), p.note ?? ""])}
           />
         </summary>
-        <div style={{ padding: "0 16px 16px" }}>
+        <div className="print-only" style={{ padding: "0 16px 12px" }}>
+          <div style={{ fontSize: 16, fontWeight: 700 }}>Tasveer Academy: Daily Cash Collection</div>
+          <div className="sub">Date: {fmtDate(cashDate)} · {cash.length} receipt{cash.length === 1 ? "" : "s"} · {taka(totalCash)} collected</div>
+        </div>
+        <div className="no-print" style={{ padding: "0 16px 16px" }}>
           <CashDateFilter cashDate={cashDate} month={month} />
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(120px,1fr))", gap: 10, padding: "0 16px 16px" }}>
@@ -298,6 +310,12 @@ export default async function CashFinanceReports({
                   </tr>
                 ))}
               </tbody>
+              <tfoot>
+                <tr>
+                  <td colSpan={3}><b>Total ({cash.length} receipt{cash.length === 1 ? "" : "s"})</b></td>
+                  <td className="n mono"><b>{taka(totalCash)}</b></td>
+                </tr>
+              </tfoot>
             </table>
           </div>
         ) : (
